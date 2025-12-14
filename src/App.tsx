@@ -20,7 +20,7 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename="/TacticusDamageCalc">
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
