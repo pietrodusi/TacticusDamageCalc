@@ -1,0 +1,80 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  /* Warhammer 40K inspired color palette */
+  --color-imperial-gold: #D4AF37;
+  --color-imperial-red: #8B0000;
+  --color-imperial-blue: #1E3A5F;
+
+  --color-chaos-black: #1a1a2e;
+  --color-chaos-purple: #4a0080;
+  --color-chaos-red: #8B0000;
+
+  --color-xenos-green: #2D5A27;
+  --color-xenos-blue: #0077B6;
+
+  --color-rarity-common: #9CA3AF;
+  --color-rarity-uncommon: #22C55E;
+  --color-rarity-rare: #3B82F6;
+  --color-rarity-epic: #A855F7;
+  --color-rarity-legendary: #F59E0B;
+
+  --font-family-display: 'Cinzel', serif;
+  --font-family-body: 'Inter', sans-serif;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-gray-900);
+    color: var(--color-gray-100);
+    font-family: var(--font-family-body);
+  }
+}
+
+@layer components {
+  .card {
+    background-color: var(--color-gray-800);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-gray-700);
+    box-shadow: var(--shadow-lg);
+    transition: border-color 200ms;
+  }
+
+  .card:hover {
+    border-color: var(--color-imperial-gold);
+  }
+
+  .btn-primary {
+    background-color: var(--color-imperial-gold);
+    color: var(--color-gray-900);
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-lg);
+    transition: background-color 200ms;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--color-yellow-500);
+  }
+
+  .btn-secondary {
+    background-color: var(--color-gray-700);
+    color: var(--color-gray-100);
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-lg);
+    transition: background-color 200ms;
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--color-gray-600);
+  }
+
+  .stat-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    display: inline-block;
+    margin-right: 0.25rem;
+  }
+}

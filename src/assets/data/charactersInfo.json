@@ -1,0 +1,338 @@
+{
+    "ultraTigurius": {
+		"img": "/portraits/VarroTigurius.webp"
+	},
+	"ultraEliminatorSgt": {
+        "img": "/portraits/Certus.webp"
+    },
+    "ultraInceptorSgt": {
+        "img": "/portraits/Bellator.webp"
+    },
+    "ultraApothecary": {
+        "img": "/portraits/Incisus.webp"
+    },
+    "ultraCalgar": {
+        "img": "/portraits/Calgar.webp"
+    },
+    "ultraTitus": {
+        "img": "/portraits/Titus.webp"
+    },
+    "ultraDreadnought": {
+        "img": "/portraits/Galatian.webp"
+    },
+    "adeptRetributor": {
+        "img": "/portraits/Vindicta.webp"
+    },
+    "adeptHospitaller": {
+        "img": "/portraits/Isabella.webp"
+    },
+    "adeptMorvenn": {
+        "img": "/portraits/MorvennVahl.webp"
+    },
+    "adeptCanoness": {
+        "img": "/portraits/Roswitha.webp"
+    },
+    "adeptCelestine": {
+        "img": "/portraits/Celestine.webp"
+    },
+    "adeptExorcist": {
+        "img": "/portraits/Exorcist.webp"
+    },
+    "necroWarden": {
+        "img": "/portraits/Makhotep.webp"
+    },
+    "necroDestroyer": {
+        "img": "/portraits/Imospekh.webp"
+    },
+    "necroSpyder": {
+        "img": "/portraits/Aleph-Null.webp"
+    },
+    "necroPlasmancer": {
+        "img": "/portraits/Thutmose.webp"
+    },
+    "necroOverlord": {
+        "img": "/portraits/Anuphet.webp"
+	},
+    "astraPrimarisPsy": {
+        "img": "/portraits/Sibyll.webp"
+	},
+    "astraYarrick": {
+        "img": "/portraits/Yarrick.webp"
+    },
+    "astraBullgryn": {
+        "img": "/portraits/Kut.webp"
+    },
+    "astraOrdnance": {
+        "img": "/portraits/Thaddeus.webp"
+    },
+    "astraCreed": {
+        "img": "/portraits/Creed.webp"
+    },
+    "astraDreir": {
+        "img": "/portraits/Dreir.webp"
+    },
+    "astraOrdnanceBattery": {
+        "img": "/portraits/Malleus Rocket Launcher.webp"
+    },
+    "blackTerminator": {
+        "img": "/portraits/Angrax.webp"
+    },
+    "blackObliterator": {
+        "img": "/portraits/Volk.webp"
+    },
+    "blackPossession": {
+        "img": "/portraits/Archimatos.webp"
+    },
+    "blackHaarken": {
+        "img": "/portraits/Haarken.webp"
+    },
+    "blackAbaddon": {
+        "img": "/portraits/Abaddon.webp"
+    },
+    "blackForgefiend": {
+        "img": "/portraits/Forgefiend.webp"
+    },
+    "deathTyphus": {
+        "img": "/portraits/Typhus.webp"
+    },
+    "deathBlightlord": {
+        "img": "/portraits/Maladus.webp"
+    },
+    "deathRotbone": {
+        "img": "/portraits/Nauseous.webp"
+    },
+    "deathPutrifier": {
+        "img": "/portraits/Pestillian.webp"
+    },
+    "deathBlightbringer": {
+        "img": "/portraits/Corrodius.webp"
+    },
+    "deathCrawler": {
+        "img": "/portraits/Plagueburst Crawler.webp"
+    },
+    "orksRuntherd": {
+        "img": "/portraits/Snotflogga.webp"
+    },
+    "orksBigMek": {
+        "img": "/portraits/Gibbascrapz.webp"
+    },
+    "orksKillaKan": {
+        "img": "/portraits/Snappawrecka.webp"
+    },
+    "orksNob": {
+        "img": "/portraits/Tanksmasha.webp"
+    },
+    "orksWarboss": {
+        "img": "/portraits/Gulgortz.webp"
+    },
+    "orksRukkatrukk": {
+        "img": "/portraits/Rukkatrukk.webp"
+    },
+    "templSwordBrother": {
+        "img": "/portraits/Godswyl.webp"
+    },
+    "templAggressor": {
+        "img": "/portraits/Burchard.webp"
+    },
+    "templAncient": {
+        "img": "/portraits/Thoread.webp"
+    },
+    "templChampion": {
+        "img": "/portraits/Jaeger.webp"
+	},
+    "templHelbrecht": {
+        "img": "/portraits/Helbrecht.webp"
+    },
+    "eldarRanger": {
+        "img": "/portraits/Calandis.webp"
+    },
+    "eldarAutarch": {
+        "img": "/portraits/Aethana.webp"
+    },
+    "eldarFarseer": {
+        "img": "/portraits/Eldryon.webp"
+    },
+    "eldarMauganRa": {
+        "img": "/portraits/Maugan-Ra.webp"
+    },
+    "eldarJainZar": {
+        "img": "/portraits/Jain-Zar.webp"
+    },
+    "tauMarksman": {
+        "img": "/portraits/ShoSyl.webp"
+    },
+    "tauCrisis": {
+        "img": "/portraits/ReVas.webp"
+    },
+    "tauDarkstrider": {
+        "img": "/portraits/Darkstrider.webp"
+    },
+    "tauAunShi": {
+        "img": "/portraits/Aun-Shi.webp"
+    },
+    "tauShadowsun": {
+        "img": "/portraits/Shadowsun.webp"
+    },
+    "tauFarsight": {
+        "img": "/portraits/Farsight.webp"
+    },
+    "tauBroadside": {
+        "img": "/portraits/Tson'ji.webp"
+    },
+    "spaceWulfen": {
+        "img": "/portraits/Ulf.webp"
+    },
+    "spaceHound": {
+        "img": "/portraits/Tjark.webp"
+    },
+    "spaceRockfist": {
+        "img": "/portraits/Arjac.webp"
+    },
+    "spaceStormcaller": {
+        "img": "/portraits/Njal.webp"
+    },
+    "spaceBlackmane": {
+        "img": "/portraits/Ragnar.webp"
+    },
+    "thousTzaangor": {
+        "img": "/portraits/Yazaghor.webp"
+    },
+    "thousTerminator": {
+        "img": "/portraits/Toth.webp"
+    },
+    "thousInfernalMaster": {
+        "img": "/portraits/Abraxas.webp"
+    },
+    "thousSorcerer": {
+        "img": "/portraits/Thaumachus.webp"
+    },
+    "thousAhriman": {
+        "img": "/portraits/Ahriman.webp"
+    },
+    "thousDaemonPrince": {
+        "img": "/portraits/Z'Kar.webp"
+    },
+    "darkaAzrael": {
+        "img": "/portraits/Azrael.webp"
+    },
+    "darkaHellblaster": {
+        "img": "/portraits/Sarquael.webp"
+    },
+    "darkaAsmodai": {
+        "img": "/portraits/Asmodai.webp"
+    },
+    "darkaTerminator": {
+        "img": "/portraits/Baraqiel.webp"
+    },
+    "darkaCompanion": {
+        "img": "/portraits/Forcas.webp"
+    },
+    "tyranNeurothrope": {
+        "img": "/portraits/Neurothrope.webp"
+    },
+    "tyranTyrantGuard": {
+        "img": "/portraits/TyrantGuard.webp"
+    },
+    "tyranWingedPrime": {
+        "img": "/portraits/Winged-Prime.webp"
+    },
+    "tyranDeathleaper": {
+        "img": "/portraits/Deathleaper.webp"
+    },
+    "tyranParasite": {
+        "img": "/portraits/ParasiteOfMortrex.webp"
+    },
+    "tyranBiovore": {
+        "img": "/portraits/Biovore.webp"
+    },
+    "admecDominus": {
+        "img": "/portraits/Vitruvius.webp"
+    },
+    "admecManipulus": {
+        "img": "/portraits/Actus.webp"
+    },
+    "admecMarshall": {
+        "img": "/portraits/TanGida.webp"
+    },
+    "admecRuststalker": {
+        "img": "/portraits/Exitor-Rho.webp"
+    },
+    "admecDestroyer": {
+        "img": "/portraits/Sy-gex.webp"
+    },
+    "worldTerminator": {
+        "img": "/portraits/Wrask.webp"
+    },
+    "worldJakhal": {
+        "img": "/portraits/Macer.webp"
+    },
+    "worldEightbound": {
+        "img": "/portraits/Azkor.webp"
+    },
+    "worldExecutions": {
+        "img": "/portraits/Tarvakh.webp"
+    },
+    "worldKharn": {
+        "img": "/portraits/Kharn.webp"
+    },
+    "bloodIntercessor": {
+        "img": "/portraits/Mataneo.webp"
+    },
+    "bloodDeathCompany": {
+        "img": "/portraits/Lucien.webp"
+    },
+    "bloodSanguinary": {
+        "img": "/portraits/Nicodemus.webp"
+    },
+    "bloodMephiston": {
+		"img": "/portraits/Mephiston.webp"
+    },
+    "bloodDante": {
+        "img": "/portraits/Dante.webp"
+    },
+    "genesBiophagus": {
+        "img": "/portraits/Hollan.webp"
+    },
+    "genesMagus": {
+        "img": "/portraits/Xybia.webp"
+    },
+    "genesPrimus": {
+        "img": "/portraits/Isaak.webp"
+    },
+    "genesKelermorph": {
+        "img": "/portraits/Judh.webp"
+    },
+    "genesPatriarch": {
+        "img": "/portraits/Patermine.webp"
+    },
+    "custoVexilusPraetor": {
+        "img": "/portraits/Aesoth.webp"
+    },
+    "custoAtlacoya": {
+        "img": "/portraits/Atlacoya.webp"
+    },
+    "custoKyrus": {
+        "img": "/portraits/Tyrith.webp"
+    },
+    "custoBladeChampion": {
+        "img": "/portraits/Kariyan.webp"
+    },
+    "custoTrajann": {
+        "img": "/portraits/Trajann.webp"
+    },
+    "emperNoiseMarine": {
+        "img": "/portraits/Shiron.webp"
+    },
+    "emperFlawlessBlade": {
+        "img": "/portraits/Hascule.webp"
+    },
+    "emperKakophonist": {
+        "img": "/portraits/Adamatar.webp"
+    },
+    "emperExultant": {
+        "img": "/portraits/Laviscus.webp"
+    },
+    "emperLucius": {
+        "img": "/portraits/Lucius.webp"
+	}
+}
