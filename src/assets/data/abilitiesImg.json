@@ -1,0 +1,1439 @@
+{
+    "GauntletsOfUltramar": {
+		"img": ""
+},
+    "RitesOfBattle": {
+		"img": ""
+},
+    "PsychicFortress": {
+		"img": ""
+},
+    "CombatRestoratives": {
+		"img": ""
+},
+    "Narthecium": {
+		"img": ""
+},
+    "DeathFromAbove":
+		"img": ""
+ {},
+    "ShockAssault": {
+		"img": ""
+},
+    "MortisRound": {
+		"img": ""
+},
+    "CamoCloak": {
+		"img": ""
+},
+    "AdaptiveStrategy": {
+		"img": ""
+},
+    "RelentlessMarch": {
+		"img": ""
+},
+    "MultiThreatEliminator": {
+		"img": ""
+},
+    "InescapableDeath": {
+		"img": ""
+},
+    "ScarabHive": {
+		"img": ""
+},
+    "FabricatorClawArray": {
+		"img": ""
+},
+    "HarbingerOfDestruction": {
+		"img": ""
+},
+    "LivingLightning": {
+		"img": ""
+},
+    "ResurrectionOrb": {
+		"img": ""
+},
+    "StormOfFlensingBlades": {
+		"img": ""
+},
+    "ReanimationProtocols": {
+		"img": ""
+},
+    "TunnelingHorror": {
+		"img": ""
+},
+    "WhipcoilBody": {
+		"img": ""
+},
+    "ArmoriumCherub": {
+		"img": ""
+},
+    "FireOfAbsolution": {
+		"img": ""
+},
+    "PrecisionShot": {
+		"img": ""
+},
+    "ScarabSummon": {
+		"img": ""
+},
+    "StormOfWrath": {
+		"img": ""
+},
+    "RitesOfRestoration": {
+		"img": ""
+},
+    "SanctorumMissile": {
+		"img": ""
+},
+    "BrazierOfHolyFire": {
+		"img": ""
+},
+    "SkyStrike": {
+		"img": ""
+},
+    "PsychicMaelstrom": {
+		"img": ""
+},
+    "SendInTheNextWave": {
+		"img": ""
+},
+    "FragBomb": {
+		"img": ""
+},
+    "BasiliskBarrage": {
+		"img": ""
+},
+    "SupremeCommander": {
+		"img": ""
+},
+    "ValkyrieStrike": {
+		"img": ""
+},
+    "BringerOfDespair": {
+		"img": ""
+},
+    "FrenziedFiring": {
+		"img": ""
+},
+    "Incursion": {
+		"img": ""
+},
+    "HeraldOfTheApocalypse": {
+		"img": ""
+},
+    "Drachnyen": {
+		"img": ""
+},
+    "PlagueWind": {
+		"img": ""
+},
+    "FlailSwing": {
+		"img": ""
+},
+    "RevitalizingMalignancy": {
+		"img": ""
+},
+    "FoulInfusion": {
+		"img": ""
+},
+    "Poxwalkers": {
+		"img": ""
+},
+    "MedicusMinistorum": {
+		"img": ""
+},
+    "RighteousRepugnance": {
+		"img": ""
+},
+    "CondemnorStake": {
+		"img": ""
+},
+    "GeminaeSuperia": {
+		"img": ""
+},
+    "Lifewards": {
+		"img": ""
+},
+    "Nightshroud": {
+		"img": ""
+},
+    "SummaryExecution": {
+		"img": ""
+},
+    "AvalancheOfMuscle": {
+		"img": ""
+},
+    "Spotter": {
+		"img": ""
+},
+    "SpotterReworked": {
+		"img": ""
+},
+    "SwornProtector": {
+		"img": ""
+},
+    "SwornProtector_Protect": {
+		"img": ""
+},
+    "ListenUpMaggots": {
+		"img": ""
+},
+    "CallInReinforcements": {
+		"img": ""
+},
+    "Shrapnel": {
+		"img": ""
+},
+    "HatefulAssault": {
+		"img": ""
+},
+    "FleshmetalGuns": {
+		"img": ""
+},
+    "Possession": {
+		"img": ""
+},
+    "HeadClaimer": {
+		"img": ""
+},
+    "FirstAmongTraitors": {
+		"img": ""
+},
+    "UnstoppableFerocity": {
+		"img": ""
+},
+    "DestroyerHive": {
+		"img": ""
+},
+    "HazeOfCorruption": {
+		"img": ""
+},
+    "TaintedNarthecium": {
+		"img": ""
+},
+    "ExplosiveMaladies": {
+		"img": ""
+},
+    "CursedPlagueBell": {
+		"img": ""
+},
+    "CursedOfTheWalkingPox": {
+		"img": ""
+},
+    "Burrowers": {
+		"img": ""
+},
+    "AdrenalGlands": {
+		"img": ""
+},
+    "HungeringSwarm": {
+		"img": ""
+},
+    "HailOfLivingAmmunition": {
+		"img": ""
+},
+    "MartialApotheosis": {
+		"img": ""
+},
+    "SpawnTermagants": {
+		"img": ""
+},
+    "SpawnTermagants2": {
+		"img": ""
+},
+    "SpawnTermagants3": {
+		"img": ""
+},
+    "Catalyst": {
+		"img": ""
+},
+    "BroodProgenitor": {
+		"img": ""
+},
+    "MassiveScythingTalons": {
+		"img": ""
+},
+    "SynapticBacklash": {
+		"img": ""
+},
+    "SynapticImperative": {
+		"img": ""
+},
+    "BioBarrage": {
+		"img": ""
+},
+    "LethalMiasma": {
+		"img": ""
+},
+    "GuildBossRunAway": {
+		"img": ""
+},
+    "CrusadeOfWrath": {
+		"img": ""
+},
+    "HolyDuel": {
+		"img": ""
+},
+    "UnbreakableDuty": {
+		"img": ""
+},
+    "ThunderousAssault": {
+		"img": ""
+},
+    "FragstormGrenadeLauncher": {
+		"img": ""
+},
+    "IncendiaryShells": {
+		"img": ""
+},
+    "DestroyTheWitch": {
+		"img": ""
+},
+    "MartialSuperiority": {
+		"img": ""
+},
+    "AstartesBanner": {
+		"img": ""
+},
+    "ChampionOfTheFeast": {
+		"img": ""
+},
+    "Boltstorm": {
+		"img": ""
+},
+    "HeavyBoltPistol": {
+		"img": ""
+},
+    "Waaagh": {
+		"img": ""
+},
+    "GrotTank": {
+		"img": ""
+},
+    "RammingSpeed": {
+		"img": ""
+},
+    "DakkaDakkaDakka": {
+		"img": ""
+},
+    "GetEmRuntz": {
+		"img": ""
+},
+    "UnstoppableMomentumReworked": {
+		"img": ""
+},
+    "Stikkbomb": {
+		"img": ""
+},
+    "StormboyzStrike": {
+		"img": ""
+},
+    "LightImUp": {
+		"img": ""
+},
+    "KustomForceField": {
+		"img": ""
+},
+    "KanOpener": {
+		"img": ""
+},
+    "PowerTrip": {
+		"img": ""
+},
+    "SquigHound": {
+		"img": ""
+},
+    "SmashaEad": {
+		"img": ""
+},
+    "PileIn": {
+		"img": ""
+},
+    "ItsGonnaBlow": {
+		"img": ""
+},
+    "OiWatchIt": {
+		"img": ""
+},
+    "Ramshackle": {
+		"img": ""
+},
+    "FullThrottle": {
+		"img": ""
+},
+    "Volatile": {
+		"img": ""
+},
+    "Explosive": {
+		"img": ""
+},
+    "Detonation": {
+		"img": ""
+},
+    "RunsAway": {
+		"img": ""
+},
+    "RunsAround": {
+		"img": ""
+},
+    "DevoutPush": {
+		"img": ""
+},
+    "Pyreblaster": {
+		"img": ""
+},
+    "CallRipperSwarms": {
+		"img": ""
+},
+    "CallRipperSwarms2": {
+		"img": ""
+},
+    "CallRipperSwarms3": {
+		"img": ""
+},
+    "StranglethornCannon": {
+		"img": ""
+},
+    "PrehensilePincerTail": {
+		"img": ""
+},
+    "SoulHunger": {
+		"img": ""
+},
+    "AdaptiveToxins": {
+		"img": ""
+},
+    "DrawFire": {
+		"img": ""
+},
+    "CrazedFocus": {
+		"img": ""
+},
+    "FireAndReposition": {
+		"img": ""
+},
+    "WireweaveNet": {
+		"img": ""
+},
+    "Loki_SwoopingHawk": {
+		"img": ""
+},
+    "PathOfCommand": {
+		"img": ""
+},
+    "Executioner": {
+		"img": ""
+},
+    "Doom": {
+		"img": ""
+},
+    "HarvesterOfSouls": {
+		"img": ""
+},
+    "InescapableAccuracy": {
+		"img": ""
+},
+    "SilentDeath": {
+		"img": ""
+},
+    "TerrorsLament": {
+		"img": ""
+},
+    "ScythingTalons": {
+		"img": ""
+},
+    "ReinforcedHiveNode": {
+		"img": ""
+},
+    "BreathOfSilence": {
+		"img": ""
+},
+    "AnnihilatorBeam": {
+		"img": ""
+},
+    "MyWillBeDone": {
+		"img": ""
+},
+    "ScytheOfDust": {
+		"img": ""
+},
+    "StaffOfStars": {
+		"img": ""
+},
+    "TargetingProtocols": {
+		"img": ""
+},
+    "ObeisanceGenerators": {
+		"img": ""
+},
+    "NoctilithBeacons": {
+		"img": ""
+},
+    "PhaeronOfTheBlades": {
+		"img": ""
+},
+    "PhaeronOfTheStars": {
+		"img": ""
+},
+    "IntegratedCircuits": {
+		"img": ""
+},
+    "SeekerMissileFrequencyLock": {
+		"img": ""
+},
+    "MV71SniperDroneSquad": {
+		"img": ""
+},
+    "SaviorProtocols": {
+		"img": ""
+},
+    "EarlyWarningOverride": {
+		"img": ""
+},
+    "CyclicIonBlaster": {
+		"img": ""
+},
+    "FightingRetreat": {
+		"img": ""
+},
+    "StructuralAnalyser": {
+		"img": ""
+},
+    "InspiredToGreatness": {
+		"img": ""
+},
+    "SereneUnifier": {
+		"img": ""
+},
+    "ExemplarOfTheKauyon": {
+		"img": ""
+},
+    "DefenderOfTheGreaterGood": {
+		"img": ""
+},
+    "Fragstorm": {
+		"img": ""
+},
+    "RapidFire": {
+		"img": ""
+},
+    "PowerUp_Armor": {
+		"img": ""
+},
+    "PowerUp_Damage": {
+		"img": ""
+},
+    "PowerUp_Health": {
+		"img": ""
+},
+    "PowerUp_Hits": {
+		"img": ""
+},
+    "PowerUp_ReactivateAbility": {
+		"img": ""
+},
+    "PowerUp_Healing": {
+		"img": ""
+},
+    "PowerUp_MeleeHits": {
+		"img": ""
+},
+    "PowerUp_Reinforcement": {
+		"img": ""
+},
+    "PowerUp_ReinforcementShield": {
+		"img": ""
+},
+    "PowerUp_Resurrect": {
+		"img": ""
+},
+    "PowerUp_Bomb": {
+		"img": ""
+},
+    "PowerUp_HeroSpawn_VexilusPraetor": {
+		"img": ""
+},
+    "PowerUp_HeroSpawn_BladeChampion": {
+		"img": ""
+},
+    "EnvCapturePointShield": {
+		"img": ""
+},
+    "HellfireShells": {
+		"img": ""
+},
+    "FiringPosition": {
+		"img": ""
+},
+    "NeedsMoreDakka": {
+		"img": ""
+},
+    "DaGreatWaaagh": {
+		"img": ""
+},
+    "EreWeGo": {
+		"img": ""
+},
+    "ProperKilly": {
+		"img": ""
+},
+    "ProphetOfGorkAndMork": {
+		"img": ""
+},
+    "DaBossIsWatchin": {
+		"img": ""
+},
+    "UnbridledCarnageReworked": {
+		"img": ""
+},
+    "BigBadaBoomReworked": {
+		"img": ""
+},
+    "Split": {
+		"img": ""
+},
+    "FlamesOfMutation": {
+		"img": ""
+},
+    "TimeFlux": {
+		"img": ""
+},
+    "AllIsDust": {
+		"img": ""
+},
+    "HellfyreMissileRack": {
+		"img": ""
+},
+    "SlashingDive": {
+		"img": ""
+},
+    "MasterOfTheTutelaries": {
+		"img": ""
+},
+    "InfernalPacts": {
+		"img": ""
+},
+    "SorcerousFacade": {
+		"img": ""
+},
+    "RealityUnbound": {
+		"img": ""
+},
+    "AttemptedPossession": {
+		"img": ""
+},
+    "ArcaneShield": {
+		"img": ""
+},
+    "Doombolt": {
+		"img": ""
+},
+    "PsychicStalk": {
+		"img": ""
+},
+    "TzeentchsFirestorm": {
+		"img": ""
+},
+    "TreasonOfTzeentch": {
+		"img": ""
+},
+    "BladeOfMagnus": {
+		"img": ""
+},
+    "GazeOfMagnus": {
+		"img": ""
+},
+    "PsychicDominion": {
+		"img": ""
+},
+    "ImpossibleForm": {
+		"img": ""
+},
+    "IllusionsOfTzeentch": {
+		"img": ""
+},
+    "ScreamerInvocation": {
+		"img": ""
+},
+    "GreatFrostAxe": {
+		"img": ""
+},
+    "SavageKiller": {
+		"img": ""
+},
+    "GrapnelLauncher": {
+		"img": ""
+},
+    "HuntersBeyondDeath": {
+		"img": ""
+},
+    "Foehammer": {
+		"img": ""
+},
+    "AnvilShield": {
+		"img": ""
+},
+    "WarHowl": {
+		"img": ""
+},
+    "SagaOfTheWarriorBorn": {
+		"img": ""
+},
+    "Stormcaller": {
+		"img": ""
+},
+    "LordOfTempests": {
+		"img": ""
+},
+    "MortarionsPlagueWind": {
+		"img": ""
+},
+    "TheLantern": {
+		"img": ""
+},
+    "ReapingScythe": {
+		"img": ""
+},
+    "ArchContaminator": {
+		"img": ""
+},
+    "HostOfPlagues": {
+		"img": ""
+},
+    "RevoltinglyResilient": {
+		"img": ""
+},
+    "TheWrathfulDead": {
+		"img": ""
+},
+    "DarkTalonStrike": {
+		"img": ""
+},
+    "LionHelm": {
+		"img": ""
+},
+    "Supercharge": {
+		"img": ""
+},
+    "GrimRetribution": {
+		"img": ""
+},
+    "ExemplarOfHate": {
+		"img": ""
+},
+    "FearedInterrogator": {
+		"img": ""
+},
+    "PlasmaCannon": {
+		"img": ""
+},
+    "Deathwing": {
+		"img": ""
+},
+    "PlasmaGrenade": {
+		"img": ""
+},
+    "BattleFocus": {
+		"img": ""
+},
+    "Reveal": {
+		"img": ""
+},
+    "Conceal": {
+		"img": ""
+},
+    "KissOfDeath": {
+		"img": ""
+},
+    "HarlequinsPanoply": {
+		"img": ""
+},
+    "CrushingClaws": {
+		"img": ""
+},
+    "GuardianOrganism": {
+		"img": ""
+},
+    "AlphaWarrior": {
+		"img": ""
+},
+    "SynapticLinchpin": {
+		"img": ""
+},
+    "SynapticInsight": {
+		"img": ""
+},
+    "SpiritLeech": {
+		"img": ""
+},
+    "Neuroparasite": {
+		"img": ""
+},
+    "DeathScream": {
+		"img": ""
+},
+    "UnparalleledFerocity": {
+		"img": ""
+},
+    "LivingBatteringRam": {
+		"img": ""
+},
+    "AdrenalSurge": {
+		"img": ""
+},
+    "BlisteringAssault": {
+		"img": ""
+},
+    "HyperAggression": {
+		"img": ""
+},
+    "VulnerableToMelee": {
+		"img": ""
+},
+    "VulnerableToFlameAndBlast": {
+		"img": ""
+},
+    "FeederTendrils": {
+		"img": ""
+},
+    "FearOfTheUnseen": {
+		"img": ""
+},
+    "ItItches": {
+		"img": ""
+},
+    "BarbedOvipositor": {
+		"img": ""
+},
+    "DefendTheDivineWork": {
+		"img": ""
+},
+    "GalvanicField": {
+		"img": ""
+},
+    "RadBombardment": {
+		"img": ""
+},
+    "MasterAnnihilator": {
+		"img": ""
+},
+    "DoctrinaImperatives": {
+		"img": ""
+},
+    "ControlEdict": {
+		"img": ""
+},
+    "RadSaturation": {
+		"img": ""
+},
+    "CordClaw": {
+		"img": ""
+},
+    "OptimizedGait": {
+		"img": ""
+},
+    "SentinelDirectives": {
+		"img": ""
+},
+    "HeavyGravCannon": {
+		"img": ""
+},
+    "PoundThemToDust": {
+		"img": ""
+},
+    "GunnersKillOnSight": {
+		"img": ""
+},
+    "ArmouredMight": {
+		"img": ""
+},
+    "WeakerRearArmour": {
+		"img": ""
+},
+    "AblativePlating": {
+		"img": ""
+},
+    "Reinforcements": {
+		"img": ""
+},
+    "FieldsOfFire": {
+		"img": ""
+},
+    "BloodyFury": {
+		"img": ""
+},
+    "WrathfulDevotion": {
+		"img": ""
+},
+    "JakhalStimms": {
+		"img": ""
+},
+    "Skullsmasher": {
+		"img": ""
+},
+    "KillMaimBurn": {
+		"img": ""
+},
+    "TheBetrayer": {
+		"img": ""
+},
+    "MurderousSwing": {
+		"img": ""
+},
+    "TrophyTaker": {
+		"img": ""
+},
+    "OverwhelmingWrath": {
+		"img": ""
+},
+    "BeaconOfRage": {
+		"img": ""
+},
+    "EchoesFromTheWarp": {
+		"img": ""
+},
+    "WarConstruct": {
+		"img": ""
+},
+    "Wraithcannon": {
+		"img": ""
+},
+    "TheWailingDoomSweeps": {
+		"img": ""
+},
+    "TheWailingDoomStrikes": {
+		"img": ""
+},
+    "TheWrathOfKhaineUnleashed": {
+		"img": ""
+},
+    "MoltenForm": {
+		"img": ""
+},
+    "TheBloodyHanded": {
+		"img": ""
+},
+    "BloodRunsAngerRisesWarCalls": {
+		"img": ""
+},
+    "TheWildHost": {
+		"img": ""
+},
+    "Phantasm": {
+		"img": ""
+},
+    "MalleusRocketLauncher": {
+		"img": ""
+},
+    "ForwardSpotter": {
+		"img": ""
+},
+    "HadesAutocannons": {
+		"img": ""
+},
+    "DaemonicOrdnance": {
+		"img": ""
+},
+    "BioMinefield": {
+		"img": ""
+},
+    "SporeMineLauncher": {
+		"img": ""
+},
+    "BossAdjutant": {
+		"img": ""
+},
+    "FloatingDeath": {
+		"img": ""
+},
+    "TheQuickening": {
+		"img": ""
+},
+    "FuryOfTheAncients": {
+		"img": ""
+},
+    "HammerOfWrath": {
+		"img": ""
+},
+    "AggressiveOnslaught": {
+		"img": ""
+},
+    "BlackRage": {
+		"img": ""
+},
+    "VisionsOfHeresy": {
+		"img": ""
+},
+    "RedThirst": {
+		"img": ""
+},
+    "BloodChalice": {
+		"img": ""
+},
+    "SanguinaryPriest": {
+		"img": ""
+},
+    "LightOfSanguinius": {
+		"img": ""
+},
+    "LordOfTheHost": {
+		"img": ""
+},
+    "DutyEternal": {
+		"img": ""
+},
+    "MacroPlasmaIncinerator": {
+		"img": ""
+},
+    "AncientFury": {
+		"img": ""
+},
+    "TacticalPrecision": {
+		"img": ""
+},
+    "FuelledByFury": {
+		"img": ""
+},
+    "HeavyRailRifle": {
+		"img": ""
+},
+    "TwinSmartMissileSystem": {
+		"img": ""
+},
+    "MindControl": {
+		"img": ""
+},
+    "SpiritualLeader": {
+		"img": ""
+},
+    "MightFromBelow": {
+		"img": ""
+},
+    "CosmicHorror": {
+		"img": ""
+},
+    "Hypermorph": {
+		"img": ""
+},
+    "AberrantHypermorph": {
+		"img": ""
+},
+    "TwistedScience": {
+		"img": ""
+},
+    "CultDemagogue": {
+		"img": ""
+},
+    "DecoysAndMisdirection": {
+		"img": ""
+},
+    "HeroicFusillade": {
+		"img": ""
+},
+    "HypersensoryAbilities": {
+		"img": ""
+},
+    "EntropyCannons": {
+		"img": ""
+},
+    "PlagueburstMortar": {
+		"img": ""
+},
+    "VengeanceForTheOmnissiah": {
+		"img": ""
+},
+    "OmnissiahsBlessing": {
+		"img": ""
+},
+    "VoltagheistField": {
+		"img": ""
+},
+    "ElectroShock": {
+		"img": ""
+},
+    "ExplosivePresents": {
+		"img": ""
+},
+    "DaRevolushun": {
+		"img": ""
+},
+    "Bounce": {
+		"img": ""
+},
+    "PriorityReclamation": {
+		"img": ""
+},
+    "RadZoneCorps": {
+		"img": ""
+},
+    "InvocationOfMachineVengeance": {
+		"img": ""
+},
+    "ArcScourge": {
+		"img": ""
+},
+    "SolarAtomizer": {
+		"img": ""
+},
+    "SelfRepairMechanism": {
+		"img": ""
+},
+    "SelfRepairMechanismReworked": {
+		"img": ""
+},
+    "ShroudPsalm": {
+		"img": ""
+},
+    "PreCalibratedPurgeSolution": {
+		"img": ""
+},
+    "EnvSquigSmash": {
+		"img": ""
+},
+    "BlightGrenades": {
+		"img": ""
+},
+    "CloudOfFlies": {
+		"img": ""
+},
+    "VexillaMagnifica": {
+		"img": ""
+},
+    "StandVigil": {
+		"img": ""
+},
+    "MomentShackle": {
+		"img": ""
+},
+    "LegendaryCommander": {
+		"img": ""
+},
+    "EnhancementLifeSteal": {
+		"img": ""
+},
+    "EnhancementHitBoost": {
+		"img": ""
+},
+    "EnhancementDamageBoost": {
+		"img": ""
+},
+    "EnhancementSummonHarlequin": {
+		"img": ""
+},
+    "EnhancementSummonHavoc": {
+		"img": ""
+},
+    "EnhancementSummonWarrior": {
+		"img": ""
+},
+    "EnhancementRegeneration": {
+		"img": ""
+},
+    "EnhancementAddTrait:MkXGravis": {
+		"img": ""
+},
+    "EnhancementAddTrait:RapidAssault": {
+		"img": ""
+},
+    "EnhancementAddTrait:Resilient": {
+		"img": ""
+},
+    "EnhancementSummon:Harlequin": {
+		"img": ""
+},
+    "EnhancementSummon:Havoc": {
+		"img": ""
+},
+    "EnhancementSummon:Warrior": {
+		"img": ""
+},
+    "EnhancementSummon:Electropriest": {
+		"img": ""
+},
+    "EnhancementSummon:Eliminator": {
+		"img": ""
+},
+    "EnhancementPierceBoost": {
+		"img": ""
+},
+    "ForwardObservers": {
+		"img": ""
+},
+    "WallOfMirrors": {
+		"img": ""
+},
+    "EnvFactionSummons:AdeptusMechanicus": {
+		"img": ""
+},
+    "EnvFactionSummons:Aeldari": {
+		"img": ""
+},
+    "EnvFactionSummons:AstraMilitarum": {
+		"img": ""
+},
+    "EnvFactionSummons:BlackLegion": {
+		"img": ""
+},
+    "EnvFactionSummons:BlackTemplars": {
+		"img": ""
+},
+    "EnvFactionSummons:DarkAngels": {
+		"img": ""
+},
+    "EnvFactionSummons:Genestealers": {
+		"img": ""
+},
+    "EnvFactionSummons:Necrons": {
+		"img": ""
+},
+    "EnvFactionSummons:Sisterhood": {
+		"img": ""
+},
+    "EnvFactionSummons:SpaceWolves": {
+		"img": ""
+},
+    "EnvFactionSummons:DeathGuard": {
+		"img": ""
+},
+    "EnvFactionSummons:ThousandSons": {
+		"img": ""
+},
+    "EnvFactionSummons:Tyranids": {
+		"img": ""
+},
+    "EnvFactionSummons:Ultramarines": {
+		"img": ""
+},
+    "EnvFactionSummons:WorldEaters": {
+		"img": ""
+},
+    "ThriceBlessedConflagration": {
+		"img": ""
+},
+    "DevastatingRefrain": {
+		"img": ""
+},
+    "CalibaniteGreatsword": {
+		"img": ""
+},
+    "EnmityForTheUnworthy": {
+		"img": ""
+},
+    "TalonsOfTheEmperor": {
+		"img": ""
+},
+    "DaughterOfTheAbyss": {
+		"img": ""
+},
+    "MartialInspiration": {
+		"img": ""
+},
+    "LegacyOfCombat": {
+		"img": ""
+},
+    "EnvAllyAndEnemyNpcs:WarpSurge": {
+		"img": ""
+},
+    "EnvStatBoost:WarpSurge": {
+		"img": ""
+},
+    "LashOfTorment": {
+		"img": ""
+},
+    "ArmourOfShriekingSouls": {
+		"img": ""
+},
+    "ExcruciatingFrequencies": {
+		"img": ""
+},
+    "TerrifyingCrescendo": {
+		"img": ""
+},
+    "EuphoricStrikes": {
+		"img": ""
+},
+    "RefusalToBeOutdone": {
+		"img": ""
+},
+    "DoomSiren": {
+		"img": ""
+},
+    "ObsessiveAnnunciation": {
+		"img": ""
+},
+    "DaemonicPatrons": {
+		"img": ""
+},
+    "EcstaticSlaughter": {
+		"img": ""
+},
+    "NovaBoost": {
+		"img": ""
+},
+    "NovaCharge": {
+		"img": ""
+},
+    "NovaShield": {
+		"img": ""
+},
+    "MultiTracker": {
+		"img": ""
+},
+    "TargetLock": {
+		"img": ""
+},
+    "ATemptingTrap": {
+		"img": ""
+},
+    "PinpointCounterOffensive": {
+		"img": ""
+},
+    "MischiefMakers": {
+		"img": ""
+},
+    "EmbodiedProphecy": {
+		"img": ""
+},
+    "HuntersInstincts": {
+		"img": ""
+},
+    "testRelicAbility": {
+		"img": ""
+},
+    "KardiocoreGalvanus": {
+		"img": ""
+},
+    "PhoenixGem": {
+		"img": ""
+},
+    "RelicOfLostCadia": {
+		"img": ""
+},
+    "BookOfFate": {
+		"img": ""
+},
+    "TalismanOfRage": {
+		"img": ""
+},
+    "NetherRealmCasket": {
+		"img": ""
+},
+    "IntoxicatingElixir": {
+		"img": ""
+},
+    "AmuletOfTheVoidwyrm": {
+		"img": ""
+},
+    "OrbsOfDecay": {
+		"img": ""
+},
+    "RelicPowerFist": {
+		"img": ""
+},
+    "RelicBoltPistol": {
+		"img": ""
+},
+    "SupaCyborkBody": {
+		"img": ""
+},
+    "MawClawsOfThyrax": {
+		"img": ""
+},
+    "DaemonfleshPlate": {
+		"img": ""
+},
+    "SabreOfSacrifice": {
+		"img": ""
+},
+    "Vitarus": {
+		"img": ""
+},
+    "TheArdentBlade": {
+		"img": ""
+},
+    "Dw02AdvancedBurstCannon": {
+		"img": ""
+},
+    "TalonOfHorus": {
+		"img": ""
+},
+    "Maugetar": {
+		"img": ""
+},
+    "ParagonSpear": {
+		"img": ""
+},
+    "NornCrown": {
+		"img": ""
+},
+    "DawnBlade": {
+		"img": ""
+},
+    "BlightedLand": {
+		"img": ""
+},
+    "ContemptuousDisregard": {
+		"img": ""
+},
+    "WisdomOfTheAncients": {
+		"img": ""
+},
+    "ShieldOfFaith": {
+		"img": ""
+},
+    "OnMyPosition": {
+		"img": ""
+},
+    "MoreGitzOverEre": {
+		"img": ""
+},
+    "ElectrochaffBackups": {
+		"img": ""
+},
+    "HyperCorrosiveAcid": {
+		"img": ""
+},
+    "CabalOfSorcerers": {
+		"img": ""
+},
+    "SquigLaunchas": {
+		"img": ""
+},
+    "SquigMine": {
+		"img": ""
+},
+    "VigilanceEternal": {
+		"img": ""
+},
+    "UnwaveringSentinel": {
+		"img": ""
+},
+    "LeadingTheCharge": {
+		"img": ""
+},
+    "ToughToKill": {
+		"img": ""
+},
+    "FragLance": {
+		"img": ""
+},
+    "BossEndFightUndefeated": {
+		"img": ""
+},
+    "ExemplarOfTheMontka": {
+		"img": ""
+},
+    "WayOfTheShortBlade": {
+		"img": ""
+},
+    "AetherStride": {
+		"img": ""
+},
+    "InfernalCannon": {
+		"img": ""
+},
+    "HunterOfSouls": {
+		"img": ""
+	}
+}

@@ -4,7 +4,7 @@ import { Play, RotateCcw, Trash2 } from 'lucide-react';
 import { useTeamStore } from '../stores/teamStore';
 import { useBattleStore } from '../stores/battleStore';
 import { TeamSlot } from '../components/battle';
-import type { ActionType, BattleCharacter } from '../types';
+import type { ActionType, BattleCharacter, DamageTotals } from '../types';
 import {
   BattleCharacterCard,
   BattleLog,
@@ -12,6 +12,30 @@ import {
   BattleSummary,
 } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
+
+// Helper to calculate damage bounds from log entries
+function calculateBoundsFromEntries(entries: TurnLogEntry[]): DamageTotals {
+  return entries.reduce(
+    (totals, entry) => {
+      if (entry.damageBreakdown) {
+        return {
+          lower: totals.lower + entry.damageBreakdown.lowerBound,
+          upper: totals.upper + entry.damageBreakdown.upperBound,
+          average: totals.average + entry.damageBreakdown.average,
+        };
+      } else if (entry.damage) {
+        // Fallback for entries without breakdown
+        return {
+          lower: totals.lower + entry.damage,
+          upper: totals.upper + entry.damage,
+          average: totals.average + entry.damage,
+        };
+      }
+      return totals;
+    },
+    { lower: 0, upper: 0, average: 0 }
+  );
+}
 
 export function CalculatorPage() {
   const { team, removeCharacter, clearTeam } = useTeamStore();
@@ -92,13 +116,14 @@ export function CalculatorPage() {
 
     const currentTurn = battleState.turn;
 
-    // Calculate damage to subtract from this character's actions this turn
-    const characterDamage = battleLog
-      .filter(entry => entry.characterId === characterId && entry.turn === currentTurn && entry.damage)
-      .reduce((total, entry) => total + (entry.damage || 0), 0);
+    // Calculate damage bounds to subtract from this character's actions this turn
+    const characterEntries = battleLog.filter(
+      entry => entry.characterId === characterId && entry.turn === currentTurn
+    );
+    const boundsToSubtract = calculateBoundsFromEntries(characterEntries);
 
-    // Reset character turn in store (resets flags and subtracts damage)
-    resetCharacterTurn(characterId, characterDamage);
+    // Reset character turn in store (resets flags and subtracts damage bounds)
+    resetCharacterTurn(characterId, boundsToSubtract);
 
     // Remove this character's log entries for the current turn
     setBattleLog(prev => prev.filter(
@@ -109,13 +134,14 @@ export function CalculatorPage() {
   const handleUndoCharacterTurn = (characterId: string, turn: number) => {
     if (!battleState) return;
 
-    // Calculate damage to subtract from this character's actions in the specified turn
-    const characterDamage = battleLog
-      .filter(entry => entry.characterId === characterId && entry.turn === turn && entry.damage)
-      .reduce((total, entry) => total + (entry.damage || 0), 0);
+    // Calculate damage bounds to subtract from this character's actions in the specified turn
+    const characterEntries = battleLog.filter(
+      entry => entry.characterId === characterId && entry.turn === turn
+    );
+    const boundsToSubtract = calculateBoundsFromEntries(characterEntries);
 
     // Reset character turn in store (handles both current and past turns)
-    resetCharacterTurnAtTurn(characterId, turn, characterDamage);
+    resetCharacterTurnAtTurn(characterId, turn, boundsToSubtract);
 
     // Remove this character's log entries for the specified turn
     setBattleLog(prev => prev.filter(
@@ -367,6 +393,7 @@ export function CalculatorPage() {
         <BattleSummary
           team={battleState.team}
           totalDamage={battleState.totalDamageDealt}
+          totalDamageBounds={battleState.totalDamageBounds}
           onReset={handleResetBattle}
         />
       ) : (

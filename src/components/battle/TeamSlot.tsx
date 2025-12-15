@@ -1,3 +1,4 @@
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, X, User, Pencil } from 'lucide-react';
 import type { TeamMember } from '../../types';
@@ -7,6 +8,11 @@ import {
   getAllProgressionSteps,
   getRankImageUrl,
   getRarityImageUrl,
+  getAbilityDisplayLevel,
+  getAbilityInfo,
+  ensureAbilitiesLoaded,
+  DEFAULT_ABILITY_LEVEL,
+  calculateEquipmentStats,
 } from '../../services/dataService';
 
 interface TeamSlotProps {
@@ -17,6 +23,11 @@ interface TeamSlotProps {
 
 export function TeamSlot({ character, slotIndex, onRemove }: TeamSlotProps) {
   const progressionSteps = getAllProgressionSteps();
+  const [abilitiesLoaded, setAbilitiesLoaded] = useState(false);
+
+  useEffect(() => {
+    ensureAbilitiesLoaded().then(() => setAbilitiesLoaded(true));
+  }, []);
 
   if (!character) {
     return (
@@ -105,7 +116,106 @@ export function TeamSlot({ character, slotIndex, onRemove }: TeamSlotProps) {
           <StatBadge stat="health" value={calculatedStats.health} size="sm" />
           <StatBadge stat="damage" value={calculatedStats.damage} size="sm" />
         </div>
+
+        {/* Equipment Bonuses - shown prominently under stats */}
+        <EquipmentBonuses character={character} />
+
+        {/* Ability Levels */}
+        {abilitiesLoaded && (character.activeAbilities.length > 0 || character.passiveAbilities.length > 0) && (
+          <div className="mt-2 pt-2 border-t border-gray-700/50 w-full">
+            <div className="space-y-1">
+              {character.activeAbilities.map((abilityId) => {
+                const level = character.abilityLevels?.[abilityId] ?? DEFAULT_ABILITY_LEVEL;
+                const info = getAbilityInfo(abilityId, level);
+                if (!info) return null;
+                return (
+                  <div key={abilityId} className="flex items-center justify-between text-xs">
+                    <span className="text-amber-400 truncate max-w-[80px]" title={info.name}>
+                      {info.name}
+                    </span>
+                    <span className="text-gray-500 ml-1">
+                      Lv{getAbilityDisplayLevel(level)}
+                    </span>
+                  </div>
+                );
+              })}
+              {character.passiveAbilities.map((abilityId) => {
+                const level = character.abilityLevels?.[abilityId] ?? DEFAULT_ABILITY_LEVEL;
+                const info = getAbilityInfo(abilityId, level);
+                if (!info) return null;
+                return (
+                  <div key={abilityId} className="flex items-center justify-between text-xs">
+                    <span className="text-blue-400 truncate max-w-[80px]" title={info.name}>
+                      {info.name}
+                    </span>
+                    <span className="text-gray-500 ml-1">
+                      Lv{getAbilityDisplayLevel(level)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+// Equipment bonuses shown prominently under character stats
+function EquipmentBonuses({ character }: { character: TeamMember }) {
+  const equipmentStats = useMemo(
+    () => calculateEquipmentStats(character.equipment),
+    [character.equipment]
+  );
+
+  // Check if there are any non-zero stats
+  const hasStats = Object.values(equipmentStats).some(v => v !== undefined && v !== 0);
+
+  if (!hasStats) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-1 justify-center text-xs">
+      {equipmentStats.critChance !== undefined && equipmentStats.critChance > 0 && (
+        <span className="px-1.5 py-0.5 bg-orange-900/40 text-orange-300 rounded">
+          +{equipmentStats.critChance}% Crit
+        </span>
+      )}
+      {equipmentStats.critDmg !== undefined && equipmentStats.critDmg > 0 && (
+        <span className="px-1.5 py-0.5 bg-orange-900/40 text-orange-300 rounded">
+          +{equipmentStats.critDmg} CritDmg
+        </span>
+      )}
+      {equipmentStats.blockChance !== undefined && equipmentStats.blockChance > 0 && (
+        <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 rounded">
+          +{equipmentStats.blockChance}% Block
+        </span>
+      )}
+      {equipmentStats.blockDmg !== undefined && equipmentStats.blockDmg > 0 && (
+        <span className="px-1.5 py-0.5 bg-blue-900/40 text-blue-300 rounded">
+          +{equipmentStats.blockDmg} BlockDmg
+        </span>
+      )}
+      {equipmentStats.hp !== undefined && equipmentStats.hp > 0 && (
+        <span className="px-1.5 py-0.5 bg-green-900/40 text-green-300 rounded">
+          +{equipmentStats.hp} HP
+        </span>
+      )}
+      {equipmentStats.fixedArmor !== undefined && equipmentStats.fixedArmor > 0 && (
+        <span className="px-1.5 py-0.5 bg-gray-700/60 text-gray-300 rounded">
+          +{equipmentStats.fixedArmor} Armor
+        </span>
+      )}
+      {equipmentStats.critChanceBonus !== undefined && equipmentStats.critChanceBonus > 0 && (
+        <span className="px-1.5 py-0.5 bg-yellow-900/40 text-yellow-300 rounded">
+          +{equipmentStats.critChanceBonus}% CritBonus
+        </span>
+      )}
+      {equipmentStats.blockChanceBonus !== undefined && equipmentStats.blockChanceBonus > 0 && (
+        <span className="px-1.5 py-0.5 bg-cyan-900/40 text-cyan-300 rounded">
+          +{equipmentStats.blockChanceBonus}% BlockBonus
+        </span>
+      )}
     </div>
   );
 }

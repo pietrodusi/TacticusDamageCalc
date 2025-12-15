@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Check, User } from 'lucide-react';
 import { useCharacter } from '../hooks/useCharacters';
-import { CharacterStats, DEFAULT_PROGRESSION_STEP, DEFAULT_RANK } from '../components/character';
+import { CharacterStats, DEFAULT_PROGRESSION_STEP, DEFAULT_RANK, AbilitySection, EquipmentSection } from '../components/character';
 import { LoadingSpinner } from '../components/ui';
 import { useTeamStore } from '../stores/teamStore';
+import { getDefaultEquipment, calculateEquipmentStats } from '../services/dataService';
+import type { EquippedItem, ItemStats } from '../types';
 
 export function CharacterDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: character, isLoading, error } = useCharacter(id || '');
-  const { addCharacter, updateCharacterProgression, team, canAddCharacter } = useTeamStore();
+  const { addCharacter, updateCharacterProgression, updateCharacterAbilityLevels, updateCharacterEquipment, team, canAddCharacter } = useTeamStore();
 
   // Find if character is already in team (use id from params for initial state)
   const existingTeamMember = team.find((c) => c.id === id);
@@ -21,19 +23,46 @@ export function CharacterDetailPage() {
   const [selectedRank, setSelectedRank] = useState(
     () => existingTeamMember?.rank ?? DEFAULT_RANK
   );
+  const [abilityLevels, setAbilityLevels] = useState<Record<string, number>>(
+    () => existingTeamMember?.abilityLevels ?? {}
+  );
+  const [equipment, setEquipment] = useState<Record<number, EquippedItem>>(
+    () => existingTeamMember?.equipment ?? {}
+  );
 
   // Re-check team membership with loaded character
   const teamMember = team.find((c) => c.id === character?.id);
   const isInTeam = !!teamMember;
+
+  // Calculate default equipment for this character
+  const defaultEquipment = useMemo(() => {
+    if (!character) return {};
+    return getDefaultEquipment(character.id, character.faction, character.itemSlots);
+  }, [character]);
+
+  // Initialize equipment with defaults when character loads and not in team
+  useEffect(() => {
+    if (character && !existingTeamMember && Object.keys(equipment).length === 0) {
+      setEquipment(defaultEquipment);
+    }
+  }, [character, existingTeamMember, defaultEquipment, equipment]);
 
   const handleProgressionChange = (progressionStepIndex: number, rank: number) => {
     setSelectedProgressionStep(progressionStepIndex);
     setSelectedRank(rank);
   };
 
+  const handleAbilityLevelsChange = useCallback((levels: Record<string, number>) => {
+    setAbilityLevels(levels);
+  }, []);
+
+  const handleEquipmentChange = useCallback((newEquipment: Record<number, EquippedItem>) => {
+    setEquipment(newEquipment);
+  }, []);
+
   const handleAddToTeam = () => {
     if (character && canAddCharacter()) {
-      addCharacter(character, selectedProgressionStep, selectedRank);
+      addCharacter(character, selectedProgressionStep, selectedRank, abilityLevels, equipment);
       navigate('/calculator');
     }
   };
@@ -41,6 +70,8 @@ export function CharacterDetailPage() {
   const handleUpdateTeam = () => {
     if (character && isInTeam) {
       updateCharacterProgression(character.id, selectedProgressionStep, selectedRank);
+      updateCharacterAbilityLevels(character.id, abilityLevels);
+      updateCharacterEquipment(character.id, equipment);
       navigate('/calculator');
     }
   };
@@ -142,38 +173,65 @@ export function CharacterDetailPage() {
           rank={selectedRank}
           onProgressionChange={handleProgressionChange}
         />
+
+        {/* Equipment Stats Summary */}
+        <EquipmentStatsSummary equipment={equipment} />
       </div>
 
       {/* Abilities Section */}
-      {(character.activeAbilities.length > 0 || character.passiveAbilities.length > 0) && (
-        <div>
-          <h2 className="text-2xl font-display font-semibold text-imperial-gold mb-4">
-            Abilities
-          </h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            {character.activeAbilities.length > 0 && (
-              <div className="rounded-lg border p-4 bg-amber-900/20 border-amber-700/50">
-                <h3 className="text-lg font-semibold text-amber-500 mb-2">Active Abilities</h3>
-                <ul className="space-y-1">
-                  {character.activeAbilities.map((ability) => (
-                    <li key={ability} className="text-gray-300">{ability}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {character.passiveAbilities.length > 0 && (
-              <div className="rounded-lg border p-4 bg-blue-900/20 border-blue-700/50">
-                <h3 className="text-lg font-semibold text-blue-500 mb-2">Passive Abilities</h3>
-                <ul className="space-y-1">
-                  {character.passiveAbilities.map((ability) => (
-                    <li key={ability} className="text-gray-300">{ability}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <AbilitySection
+        character={character}
+        initialAbilityLevels={abilityLevels}
+        onAbilityLevelsChange={handleAbilityLevelsChange}
+      />
+
+      {/* Equipment Section */}
+      <EquipmentSection
+        character={character}
+        initialEquipment={equipment}
+        onEquipmentChange={handleEquipmentChange}
+      />
+    </div>
+  );
+}
+
+// Stat display config
+const statConfig: Record<keyof ItemStats, { name: string; isPercent: boolean }> = {
+  critChance: { name: 'Crit Chance', isPercent: true },
+  critDmg: { name: 'Crit Damage', isPercent: false },
+  critChanceBonus: { name: 'Crit Chance Bonus', isPercent: true },
+  critDmgBonus: { name: 'Crit Damage Bonus', isPercent: false },
+  hp: { name: 'HP', isPercent: false },
+  fixedArmor: { name: 'Armor', isPercent: false },
+  blockChance: { name: 'Block Chance', isPercent: true },
+  blockDmg: { name: 'Block Damage', isPercent: false },
+  blockChanceBonus: { name: 'Block Chance Bonus', isPercent: true },
+  blockDmgBonus: { name: 'Block Damage Bonus', isPercent: false },
+};
+
+function EquipmentStatsSummary({ equipment }: { equipment: Record<number, EquippedItem> }) {
+  const stats = useMemo(() => calculateEquipmentStats(equipment), [equipment]);
+
+  const activeStats = Object.entries(stats).filter(([, value]) => value !== undefined && value !== 0);
+
+  if (activeStats.length === 0) return null;
+
+  return (
+    <div className="mt-6 pt-6 border-t border-gray-700">
+      <h3 className="text-lg font-semibold text-imperial-gold mb-3">Equipment Bonuses</h3>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {activeStats.map(([key, value]) => {
+          const config = statConfig[key as keyof ItemStats];
+          return (
+            <div key={key} className="flex items-center justify-between bg-gray-800/50 rounded-lg px-3 py-2">
+              <span className="text-gray-400">{config.name}</span>
+              <span className="text-green-400 font-semibold">
+                +{config.isPercent ? `${value}%` : value}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

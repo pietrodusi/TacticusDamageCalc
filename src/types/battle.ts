@@ -2,6 +2,13 @@ import type { Character, TeamMember } from './character';
 
 export type ActionType = 'move' | 'attack' | 'meleeAttack' | 'rangedAttack' | 'ability' | 'wait';
 
+// Damage totals with bounds
+export interface DamageTotals {
+  lower: number;
+  upper: number;
+  average: number;
+}
+
 export interface BattleCharacter extends TeamMember {
   currentHealth: number;
   position: { x: number; y: number };
@@ -13,8 +20,10 @@ export interface BattleCharacter extends TeamMember {
   calculatedDamage: number;
   calculatedHealth: number;
   calculatedArmour: number;
-  // Track total damage dealt by this character
+  // Track total damage dealt by this character (average for backwards compat)
   totalDamageDealt: number;
+  // Track damage bounds
+  damageTotals: DamageTotals;
 }
 
 export interface Buff {
@@ -63,6 +72,21 @@ export interface Turn {
   log: BattleLogEntry[];
 }
 
+// Damage breakdown for attacks
+export interface DamageBreakdown {
+  lowerBound: number;
+  upperBound: number;
+  average: number;
+  perHitAverage: number;
+  hits: number;
+  // Stats used in calculation
+  baseDamage: number;
+  critChance: number;
+  critDamage: number;
+  targetArmor: number;
+  pierceRatio: number;
+}
+
 export interface BattleLogEntry {
   timestamp: number;
   characterId: string;
@@ -70,6 +94,7 @@ export interface BattleLogEntry {
   action: ActionType;
   target?: string;
   damage?: number;
+  damageBreakdown?: DamageBreakdown;
   healing?: number;
   message: string;
 }
@@ -81,6 +106,8 @@ export interface BattleState {
   boss?: BattleCharacter;
   turnHistory: Turn[];
   totalDamageDealt: number;
+  // Track total damage bounds
+  totalDamageBounds: DamageTotals;
   isComplete: boolean;
 }
 

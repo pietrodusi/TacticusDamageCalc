@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Character, TeamMember } from '../types';
+import type { Character, TeamMember, EquippedItem } from '../types';
+import { getDefaultEquipment } from '../services/dataService';
 
 const MAX_TEAM_SIZE = 5;
 
@@ -10,9 +11,11 @@ const DEFAULT_RANK = 18;
 
 interface TeamState {
   team: TeamMember[];
-  addCharacter: (character: Character, progressionStepIndex?: number, rank?: number) => void;
+  addCharacter: (character: Character, progressionStepIndex?: number, rank?: number, abilityLevels?: Record<string, number>, equipment?: Record<number, EquippedItem>) => void;
   removeCharacter: (characterId: string) => void;
   updateCharacterProgression: (characterId: string, progressionStepIndex: number, rank: number) => void;
+  updateCharacterAbilityLevels: (characterId: string, abilityLevels: Record<string, number>) => void;
+  updateCharacterEquipment: (characterId: string, equipment: Record<number, EquippedItem>) => void;
   clearTeam: () => void;
   canAddCharacter: () => boolean;
   reorderTeam: (fromIndex: number, toIndex: number) => void;
@@ -23,15 +26,20 @@ export const useTeamStore = create<TeamState>()(
     (set, get) => ({
       team: [],
 
-      addCharacter: (character, progressionStepIndex = DEFAULT_PROGRESSION_STEP, rank = DEFAULT_RANK) => {
+      addCharacter: (character, progressionStepIndex = DEFAULT_PROGRESSION_STEP, rank = DEFAULT_RANK, abilityLevels, equipment) => {
         const { team } = get();
         if (team.length >= MAX_TEAM_SIZE) return;
         if (team.some((c) => c.id === character.id)) return;
+
+        // Use default equipment if not provided
+        const finalEquipment = equipment ?? getDefaultEquipment(character.id, character.faction, character.itemSlots);
 
         const teamMember: TeamMember = {
           ...character,
           progressionStepIndex,
           rank,
+          abilityLevels,
+          equipment: finalEquipment,
         };
 
         set({ team: [...team, teamMember] });
@@ -48,6 +56,26 @@ export const useTeamStore = create<TeamState>()(
           team: state.team.map((c) =>
             c.id === characterId
               ? { ...c, progressionStepIndex, rank }
+              : c
+          ),
+        }));
+      },
+
+      updateCharacterAbilityLevels: (characterId, abilityLevels) => {
+        set((state) => ({
+          team: state.team.map((c) =>
+            c.id === characterId
+              ? { ...c, abilityLevels }
+              : c
+          ),
+        }));
+      },
+
+      updateCharacterEquipment: (characterId, equipment) => {
+        set((state) => ({
+          team: state.team.map((c) =>
+            c.id === characterId
+              ? { ...c, equipment }
               : c
           ),
         }));

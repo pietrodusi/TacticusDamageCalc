@@ -9,12 +9,21 @@ import type {
   Rarity,
   Alliance,
   DamageType,
+  AbilitiesDisplayData,
+  AbilitiesStatsData,
+  ResolvedAbility,
+  ItemSlotType,
+  ItemsData,
+  Item,
+  ItemStats,
+  EquippedItem,
 } from '../types';
 
 // Import static JSON data
 import rawCharactersData from '../assets/data/characters.json';
-import charactersInfoData from '../assets/data/charactersInfo.json';
+import charactersImgData from '../assets/data/charactersImg.json';
 import progressionData from '../assets/data/progression.json';
+import itemsData from '../assets/data/items.json';
 
 // Import all portrait images using Vite's glob import
 const portraitImages = import.meta.glob<{ default: string }>(
@@ -83,8 +92,63 @@ for (const path in factionImages) {
 
 // Type assertions for imported JSON
 const characters = rawCharactersData as RawCharactersData;
-const charactersInfo = charactersInfoData as CharactersInfoData;
+const charactersInfo = charactersImgData as CharactersInfoData;
 const progression = progressionData as ProgressionData;
+const items = itemsData as ItemsData;
+
+// Ability data - loaded lazily to handle JSON with non-standard escapes
+let abilitiesDisplay: AbilitiesDisplayData | null = null;
+let abilitiesStats: AbilitiesStatsData | null = null;
+let abilitiesLoadPromise: Promise<void> | null = null;
+
+// Fix invalid escape sequences in JSON strings
+function fixJsonEscapes(raw: string): string {
+  let result = raw;
+
+  // Replace \' with ' (invalid in JSON - backslash + single quote)
+  result = result.replace(/\\'/g, "'");
+
+  // Convert \xNN to \u00NN (JSON only supports \u escapes, not \x)
+  result = result.replace(/\\x([0-9a-fA-F]{2})/g, '\\u00$1');
+
+  // Fix unescaped quotes in style tags: <style=\" value "> should be <style=\" value \">
+  // The pattern matches: two spaces + unescaped quote + >
+  // We need to escape the closing quote in style attributes
+  result = result.replace(/ {2}">/g, '  \\">')
+
+  return result;
+}
+
+async function loadAbilitiesData(): Promise<void> {
+  if (abilitiesDisplay && abilitiesStats) return;
+
+  if (!abilitiesLoadPromise) {
+    abilitiesLoadPromise = (async () => {
+      try {
+        // Fetch as text to avoid JSON parse issues
+        const [displayRes, statsRes] = await Promise.all([
+          fetch(new URL('../assets/data/abilitiesData.json', import.meta.url).href),
+          fetch(new URL('../assets/data/abilities.json', import.meta.url).href),
+        ]);
+
+        const displayText = await displayRes.text();
+        const statsText = await statsRes.text();
+
+        abilitiesDisplay = JSON.parse(fixJsonEscapes(displayText));
+        abilitiesStats = JSON.parse(fixJsonEscapes(statsText));
+      } catch (e) {
+        console.error('Failed to load abilities data:', e);
+        abilitiesDisplay = {};
+        abilitiesStats = {};
+      }
+    })();
+  }
+
+  await abilitiesLoadPromise;
+}
+
+// Preload abilities data
+loadAbilitiesData();
 
 // Helper to resolve portrait URL from charactersInfo img path
 function resolvePortraitUrl(imgPath: string | undefined): string | undefined {
@@ -108,12 +172,25 @@ function mapAlliance(grandAllianceId: string): Alliance {
 function mapDamageType(damageProfile: string): DamageType {
   const typeMap: Record<string, DamageType> = {
     'Physical': 'Physical',
+    'Chain': 'Chain',
     'Piercing': 'Piercing',
     'Power': 'Power',
+    'Eviscerate': 'Eviscerate',
     'Bolter': 'Bolter',
-    'Psychic': 'Psychic',
+    'HeavyRound': 'HeavyRound',
+    'Projectile': 'Projectile',
+    'Las': 'Las',
+    'Plasma': 'Plasma',
     'Melta': 'Melta',
     'Flame': 'Flame',
+    'Energy': 'Energy',
+    'Blast': 'Blast',
+    'Psychic': 'Psychic',
+    'Bio': 'Bio',
+    'Toxic': 'Toxic',
+    'Gauss': 'Gauss',
+    'Particle': 'Particle',
+    'Pulse': 'Pulse',
   };
   return typeMap[damageProfile] || 'Physical';
 }
@@ -164,6 +241,8 @@ function rawToCharacter(id: string, raw: RawCharactersData[string]): Character {
     passiveAbilities: raw.passiveAbilities || [],
 
     upgradesStatIncrease: raw.upgradesStatIncrease || [],
+
+    itemSlots: (raw.itemSlots || []) as ItemSlotType[],
 
     iconUrl: resolvePortraitUrl(info?.img),
   };
@@ -433,4 +512,274 @@ export function getFactionsByAlliance(): Record<Alliance, string[]> {
 // Get alliance display order
 export function getAllianceOrder(): Alliance[] {
   return allianceOrder;
+}
+
+// ============ Ability Functions ============
+
+// Default ability level (0-indexed, so 54 = level 55)
+export const DEFAULT_ABILITY_LEVEL = 54;
+
+// Get ability level index from display level (1-65 -> 0-64)
+export function getAbilityLevelIndex(displayLevel: number): number {
+  return Math.max(0, Math.min(64, displayLevel - 1));
+}
+
+// Get display level from index (0-64 -> 1-65)
+export function getAbilityDisplayLevel(index: number): number {
+  return index + 1;
+}
+
+// Replace variables in ability description with actual values
+// Variables are marked with {{VAR:value}} and constants with {{CONST:value}} for highlighting
+function replaceAbilityVariables(
+  description: string,
+  abilityId: string,
+  levelIndex: number
+): string {
+  if (!abilitiesStats) return description;
+  const stats = abilitiesStats[abilityId];
+  if (!stats) return description;
+
+  let result = description;
+
+  // Replace variables like {[variableName]} with marked values for highlighting
+  result = result.replace(/\{\[(\w+)\]\}/g, (match, varName) => {
+    // First check variables (level-dependent)
+    if (stats.variables && stats.variables[varName]) {
+      const values = stats.variables[varName];
+      const index = Math.min(levelIndex, values.length - 1);
+      const value = values[index]?.toString() ?? match;
+      return `{{VAR:${value}}}`;
+    }
+    // Then check constants (fixed values)
+    if (stats.constants && stats.constants[varName]) {
+      return `{{CONST:${stats.constants[varName]}}}`;
+    }
+    return match;
+  });
+
+  // Clean up style tags for plain text display
+  // Remove <style=...>...</style> tags, keeping inner content
+  result = result.replace(/<style=[^>]*>([^<]*)<\/style>/g, '$1');
+  // Remove any remaining unclosed style tags
+  result = result.replace(/<style=[^>]*>/g, '');
+  result = result.replace(/<\/style>/g, '');
+  // Replace \n (backslash + n) with actual newlines
+  // Using split/join to avoid regex escaping confusion
+  result = result.split('\\n').join('\n');
+  // Replace <i>...</i> with the content
+  result = result.replace(/<i>([^<]*)<\/i>/g, '$1');
+
+  return result;
+}
+
+// Get ability display info (name and description with variables replaced)
+export function getAbilityInfo(
+  abilityId: string,
+  levelIndex: number = DEFAULT_ABILITY_LEVEL
+): { name: string; description: string } | null {
+  if (!abilitiesDisplay) return null;
+  const displayData = abilitiesDisplay[abilityId];
+  if (!displayData) {
+    return null;
+  }
+
+  return {
+    name: displayData.name,
+    description: replaceAbilityVariables(displayData.description, abilityId, levelIndex),
+  };
+}
+
+// Ensure abilities data is loaded (call this before using ability functions)
+export async function ensureAbilitiesLoaded(): Promise<void> {
+  await loadAbilitiesData();
+}
+
+// Get resolved abilities for a character
+export function getCharacterAbilities(
+  character: Character,
+  levelIndex: number = DEFAULT_ABILITY_LEVEL
+): ResolvedAbility[] {
+  const abilities: ResolvedAbility[] = [];
+
+  // Add active abilities
+  for (const abilityId of character.activeAbilities) {
+    const info = getAbilityInfo(abilityId, levelIndex);
+    if (info) {
+      abilities.push({
+        id: abilityId,
+        name: info.name,
+        description: info.description,
+        type: 'active',
+      });
+    }
+  }
+
+  // Add passive abilities
+  for (const abilityId of character.passiveAbilities) {
+    const info = getAbilityInfo(abilityId, levelIndex);
+    if (info) {
+      abilities.push({
+        id: abilityId,
+        name: info.name,
+        description: info.description,
+        type: 'passive',
+      });
+    }
+  }
+
+  return abilities;
+}
+
+// ============ Equipment Functions ============
+
+// Get all items
+export function getAllItems(): ItemsData {
+  return items;
+}
+
+// Get a single item by ID
+export function getItem(itemId: string): Item | null {
+  return items[itemId] || null;
+}
+
+// Get items available for a specific slot type, faction, and character
+export function getItemsForSlot(slotType: ItemSlotType, faction: string, characterId: string): { id: string; item: Item }[] {
+  return Object.entries(items)
+    .filter(([, item]) => {
+      // Match slot type
+      if (item.itemType !== slotType) return false;
+      // Check faction restriction (if no allowedFactions, item is available to all)
+      if (item.allowedFactions && !item.allowedFactions.includes(faction)) return false;
+      // Check unit restriction (if allowedUnits exists, character must be in the list)
+      if (item.allowedUnits && !item.allowedUnits.includes(characterId)) return false;
+      return true;
+    })
+    .map(([id, item]) => ({ id, item }))
+    .sort((a, b) => {
+      // Sort by rarity (Common -> Legendary, Mythic at end), then by name
+      const rarityOrder: Record<string, number> = {
+        'Common': 0,
+        'Uncommon': 1,
+        'Rare': 2,
+        'Epic': 3,
+        'Legendary': 4,
+        'Mythic': 5,
+      };
+      const rarityDiff = (rarityOrder[a.item.rarity] || 0) - (rarityOrder[b.item.rarity] || 0);
+      if (rarityDiff !== 0) return rarityDiff;
+      return a.item.name.localeCompare(b.item.name);
+    });
+}
+
+// Get item stats at a specific level
+export function getItemStats(itemId: string, level: number): ItemStats | null {
+  const item = items[itemId];
+  if (!item) return null;
+  const levelData = item.levels[level];
+  if (!levelData) return null;
+  return levelData.stats;
+}
+
+// Calculate total equipment stats from equipped items
+export function calculateEquipmentStats(equipment: Record<number, EquippedItem> | undefined): ItemStats {
+  const totalStats: ItemStats = {};
+
+  if (!equipment) return totalStats;
+
+  for (const equipped of Object.values(equipment)) {
+    const stats = getItemStats(equipped.itemId, equipped.level);
+    if (stats) {
+      // Add each stat
+      if (stats.critChance) totalStats.critChance = (totalStats.critChance || 0) + stats.critChance;
+      if (stats.critDmg) totalStats.critDmg = (totalStats.critDmg || 0) + stats.critDmg;
+      if (stats.critChanceBonus) totalStats.critChanceBonus = (totalStats.critChanceBonus || 0) + stats.critChanceBonus;
+      if (stats.critDmgBonus) totalStats.critDmgBonus = (totalStats.critDmgBonus || 0) + stats.critDmgBonus;
+      if (stats.hp) totalStats.hp = (totalStats.hp || 0) + stats.hp;
+      if (stats.fixedArmor) totalStats.fixedArmor = (totalStats.fixedArmor || 0) + stats.fixedArmor;
+      if (stats.blockChance) totalStats.blockChance = (totalStats.blockChance || 0) + stats.blockChance;
+      if (stats.blockDmg) totalStats.blockDmg = (totalStats.blockDmg || 0) + stats.blockDmg;
+      if (stats.blockChanceBonus) totalStats.blockChanceBonus = (totalStats.blockChanceBonus || 0) + stats.blockChanceBonus;
+      if (stats.blockDmgBonus) totalStats.blockDmgBonus = (totalStats.blockDmgBonus || 0) + stats.blockDmgBonus;
+    }
+  }
+
+  return totalStats;
+}
+
+// Get slot type display name
+export function getSlotTypeDisplayName(slotType: ItemSlotType): string {
+  const names: Record<ItemSlotType, string> = {
+    'I_Crit': 'Crit',
+    'I_Booster_Crit': 'Crit Booster',
+    'I_Defensive': 'Defensive',
+    'I_Block': 'Block',
+    'I_Booster_Block': 'Block Booster',
+  };
+  return names[slotType] || slotType;
+}
+
+// Score an item based on slot type priority
+function scoreItemForSlot(item: Item, slotType: ItemSlotType): number {
+  // Get max level stats
+  const maxLevel = item.levels.length - 1;
+  const stats = item.levels[maxLevel]?.stats;
+  if (!stats) return 0;
+
+  switch (slotType) {
+    case 'I_Crit':
+      // Prioritize critChance, then critDmg
+      return (stats.critChance || 0) * 1000 + (stats.critDmg || 0);
+
+    case 'I_Booster_Crit':
+      // Prioritize critChanceBonus, then blockChanceBonus
+      return (stats.critChanceBonus || 0) * 1000 + (stats.blockChanceBonus || 0) * 100 + (stats.critDmgBonus || 0);
+
+    case 'I_Defensive':
+      // Prioritize blockChance, then hp, then armor
+      return (stats.blockChance || 0) * 1000 + (stats.hp || 0) + (stats.fixedArmor || 0) * 10;
+
+    case 'I_Block':
+      // Prioritize blockChance, then blockDmg
+      return (stats.blockChance || 0) * 1000 + (stats.blockDmg || 0);
+
+    case 'I_Booster_Block':
+      // Prioritize blockChanceBonus, then blockDmgBonus
+      return (stats.blockChanceBonus || 0) * 1000 + (stats.blockDmgBonus || 0);
+
+    default:
+      return 0;
+  }
+}
+
+// Get the best default equipment for a character
+export function getDefaultEquipment(characterId: string, faction: string, itemSlots: ItemSlotType[]): Record<number, EquippedItem> {
+  const equipment: Record<number, EquippedItem> = {};
+
+  itemSlots.forEach((slotType, slotIndex) => {
+    const availableItems = getItemsForSlot(slotType, faction, characterId);
+
+    if (availableItems.length === 0) return;
+
+    // Score and sort items by priority
+    const scoredItems = availableItems.map(({ id, item }) => ({
+      id,
+      item,
+      score: scoreItemForSlot(item, slotType),
+    }));
+
+    // Sort by score descending (best first)
+    scoredItems.sort((a, b) => b.score - a.score);
+
+    // Pick the best item at max level
+    const best = scoredItems[0];
+    if (best) {
+      equipment[slotIndex] = {
+        itemId: best.id,
+        level: best.item.levels.length - 1, // Max level
+      };
+    }
+  });
+
+  return equipment;
 }

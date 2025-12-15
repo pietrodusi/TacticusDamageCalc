@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry } from '../types';
-import { calculateStats } from '../services/dataService';
+import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, DamageTotals } from '../types';
+import { calculateStats, calculateEquipmentStats } from '../services/dataService';
+import { DamageCalculator, type AttackerStats, type DefenderStats, PIERCE_RATIOS } from '../services/damage';
 
 const MAX_TURNS = 6;
 
@@ -20,6 +21,7 @@ function createBattleCharacter(character: TeamMember, index: number): BattleChar
     calculatedHealth: stats.health,
     calculatedArmour: stats.armour,
     totalDamageDealt: 0,
+    damageTotals: { lower: 0, upper: 0, average: 0 },
   };
 }
 
@@ -43,8 +45,8 @@ interface BattleStore {
   addAction: (characterId: string, action: Action) => void;
   removeAction: (characterId: string, actionIndex: number) => void;
   clearCharacterActions: (characterId: string) => void;
-  resetCharacterTurn: (characterId: string, damageToSubtract: number) => void;
-  resetCharacterTurnAtTurn: (characterId: string, turn: number, damageToSubtract: number) => void;
+  resetCharacterTurn: (characterId: string, boundsToSubtract: DamageTotals) => void;
+  resetCharacterTurnAtTurn: (characterId: string, turn: number, boundsToSubtract: DamageTotals) => void;
 
   // Character state
   updateCharacterHealth: (characterId: string, newHealth: number) => void;
@@ -73,6 +75,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         team: battleCharacters,
         turnHistory: [],
         totalDamageDealt: 0,
+        totalDamageBounds: { lower: 0, upper: 0, average: 0 },
         isComplete: false,
       },
       currentTurnActions: [],
@@ -206,7 +209,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }));
   },
 
-  resetCharacterTurn: (characterId, damageToSubtract) => {
+  resetCharacterTurn: (characterId, boundsToSubtract) => {
     set((state) => {
       if (!state.battleState) return state;
 
@@ -219,11 +222,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                   ...char,
                   hasMoved: false,
                   hasActed: false,
-                  totalDamageDealt: Math.max(0, char.totalDamageDealt - damageToSubtract),
+                  totalDamageDealt: Math.max(0, char.totalDamageDealt - boundsToSubtract.average),
+                  damageTotals: {
+                    lower: Math.max(0, char.damageTotals.lower - boundsToSubtract.lower),
+                    upper: Math.max(0, char.damageTotals.upper - boundsToSubtract.upper),
+                    average: Math.max(0, char.damageTotals.average - boundsToSubtract.average),
+                  },
                 }
               : char
           ),
-          totalDamageDealt: Math.max(0, state.battleState.totalDamageDealt - damageToSubtract),
+          totalDamageDealt: Math.max(0, state.battleState.totalDamageDealt - boundsToSubtract.average),
+          totalDamageBounds: {
+            lower: Math.max(0, state.battleState.totalDamageBounds.lower - boundsToSubtract.lower),
+            upper: Math.max(0, state.battleState.totalDamageBounds.upper - boundsToSubtract.upper),
+            average: Math.max(0, state.battleState.totalDamageBounds.average - boundsToSubtract.average),
+          },
         },
         currentTurnActions: state.currentTurnActions.filter(
           (ta) => ta.characterId !== characterId
@@ -232,7 +245,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     });
   },
 
-  resetCharacterTurnAtTurn: (characterId, turn, damageToSubtract) => {
+  resetCharacterTurnAtTurn: (characterId, turn, boundsToSubtract) => {
     set((state) => {
       if (!state.battleState) return state;
 
@@ -249,11 +262,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                     ...char,
                     hasMoved: false,
                     hasActed: false,
-                    totalDamageDealt: Math.max(0, char.totalDamageDealt - damageToSubtract),
+                    totalDamageDealt: Math.max(0, char.totalDamageDealt - boundsToSubtract.average),
+                    damageTotals: {
+                      lower: Math.max(0, char.damageTotals.lower - boundsToSubtract.lower),
+                      upper: Math.max(0, char.damageTotals.upper - boundsToSubtract.upper),
+                      average: Math.max(0, char.damageTotals.average - boundsToSubtract.average),
+                    },
                   }
                 : char
             ),
-            totalDamageDealt: Math.max(0, state.battleState.totalDamageDealt - damageToSubtract),
+            totalDamageDealt: Math.max(0, state.battleState.totalDamageDealt - boundsToSubtract.average),
+            totalDamageBounds: {
+              lower: Math.max(0, state.battleState.totalDamageBounds.lower - boundsToSubtract.lower),
+              upper: Math.max(0, state.battleState.totalDamageBounds.upper - boundsToSubtract.upper),
+              average: Math.max(0, state.battleState.totalDamageBounds.average - boundsToSubtract.average),
+            },
           },
           currentTurnActions: state.currentTurnActions.filter(
             (ta) => ta.characterId !== characterId
@@ -269,7 +292,12 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             char.id === characterId
               ? {
                   ...char,
-                  totalDamageDealt: Math.max(0, char.totalDamageDealt - damageToSubtract),
+                  totalDamageDealt: Math.max(0, char.totalDamageDealt - boundsToSubtract.average),
+                  damageTotals: {
+                    lower: Math.max(0, char.damageTotals.lower - boundsToSubtract.lower),
+                    upper: Math.max(0, char.damageTotals.upper - boundsToSubtract.upper),
+                    average: Math.max(0, char.damageTotals.average - boundsToSubtract.average),
+                  },
                 }
               : char
           ),
@@ -282,7 +310,12 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
               ),
             };
           }),
-          totalDamageDealt: Math.max(0, state.battleState.totalDamageDealt - damageToSubtract),
+          totalDamageDealt: Math.max(0, state.battleState.totalDamageDealt - boundsToSubtract.average),
+          totalDamageBounds: {
+            lower: Math.max(0, state.battleState.totalDamageBounds.lower - boundsToSubtract.lower),
+            upper: Math.max(0, state.battleState.totalDamageBounds.upper - boundsToSubtract.upper),
+            average: Math.max(0, state.battleState.totalDamageBounds.average - boundsToSubtract.average),
+          },
         },
       };
     });
@@ -335,7 +368,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     });
   },
 
-  // Damage calculation: calculatedDamage * hits based on attack type
+  // Damage calculation using the new damage calculator
   calculateDamage: (attackerId, _targetId, attackType = 'melee') => {
     const { battleState } = get();
     if (!battleState) return 0;
@@ -343,20 +376,45 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const attacker = battleState.team.find((c) => c.id === attackerId);
     if (!attacker) return 0;
 
-    // Use calculated damage (based on rarity/rank)
-    const damage = attacker.calculatedDamage;
+    // Get equipment stats for crit bonuses
+    const equipmentStats = calculateEquipmentStats(attacker.equipment);
 
-    // Calculate damage based on attack type
-    if (attackType === 'ranged' && attacker.rangedHits) {
-      return damage * attacker.rangedHits;
-    }
+    // Determine hits and damage type based on attack type
+    const hits = attackType === 'ranged' && attacker.rangedHits
+      ? attacker.rangedHits
+      : attacker.meleeHits;
 
-    // Default to melee
-    return damage * attacker.meleeHits;
+    const damageType = attackType === 'ranged' && attacker.rangedDamageType
+      ? attacker.rangedDamageType
+      : attacker.meleeDamageType;
+
+    // Build attacker stats for calculator
+    const attackerStats: AttackerStats = {
+      baseDamage: attacker.calculatedDamage,
+      damageType,
+      hits,
+      critChance: equipmentStats.critChance || 0,
+      critDamage: equipmentStats.critDmg || 0,
+      critChanceBonus: equipmentStats.critChanceBonus || 0,
+      critDmgBonus: equipmentStats.critDmgBonus || 0,
+    };
+
+    // For now, use 0 armor (no enemy defined yet)
+    const defenderStats: DefenderStats = {
+      armor: 0,
+      blockChance: 0,
+      blockDamage: 0,
+      maxHealth: 100000,
+    };
+
+    const calculator = new DamageCalculator(false);
+    const result = calculator.calculate(attackerStats, defenderStats);
+
+    return result.average;
   },
 
   executeAttack: (attackerId, targetId, attackType = 'melee') => {
-    const { battleState, calculateDamage } = get();
+    const { battleState } = get();
     if (!battleState) {
       return {
         timestamp: Date.now(),
@@ -368,34 +426,115 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     const attacker = battleState.team.find((c) => c.id === attackerId);
-    const damage = calculateDamage(attackerId, targetId, attackType);
+    if (!attacker) {
+      return {
+        timestamp: Date.now(),
+        characterId: attackerId,
+        characterName: 'Unknown',
+        action: 'attack',
+        message: 'Attacker not found',
+      };
+    }
 
-    // Update total damage dealt (both global and per-character)
+    // Get equipment stats for crit bonuses
+    const equipmentStats = calculateEquipmentStats(attacker.equipment);
+
+    // Determine hits and damage type based on attack type
+    const hits = attackType === 'ranged' && attacker.rangedHits
+      ? attacker.rangedHits
+      : attacker.meleeHits;
+
+    const damageType = attackType === 'ranged' && attacker.rangedDamageType
+      ? attacker.rangedDamageType
+      : attacker.meleeDamageType;
+
+    // Build attacker stats for calculator
+    const attackerStats: AttackerStats = {
+      baseDamage: attacker.calculatedDamage,
+      damageType,
+      hits,
+      critChance: equipmentStats.critChance || 0,
+      critDamage: equipmentStats.critDmg || 0,
+      critChanceBonus: equipmentStats.critChanceBonus || 0,
+      critDmgBonus: equipmentStats.critDmgBonus || 0,
+    };
+
+    // For now, use 0 armor (no enemy defined yet)
+    const defenderStats: DefenderStats = {
+      armor: 0,
+      blockChance: 0,
+      blockDamage: 0,
+      maxHealth: 100000,
+    };
+
+    // Calculate damage with logging enabled
+    const calculator = new DamageCalculator(true);
+    const result = calculator.calculate(attackerStats, defenderStats);
+
+    // Print detailed calculation log to console
+    const currentTurn = battleState.turn;
+    console.group(`=== TURN ${currentTurn}: ${attacker.name} ${attackType.toUpperCase()} ATTACK ===`);
+    calculator.printLogs();
+    console.log('\n--- SUMMARY ---');
+    console.log(`Lower Bound: ${result.lowerBound.toLocaleString()}`);
+    console.log(`Upper Bound: ${result.upperBound.toLocaleString()}`);
+    console.log(`Average:     ${result.average.toLocaleString()}`);
+    console.groupEnd();
+
+    // Use average damage for totals
+    const damage = result.average;
+
+    // Build damage breakdown for UI
+    const damageBreakdown: DamageBreakdown = {
+      lowerBound: result.lowerBound,
+      upperBound: result.upperBound,
+      average: result.average,
+      perHitAverage: result.perHitAverage,
+      hits,
+      baseDamage: attacker.calculatedDamage,
+      critChance: result.effectiveCritChance * 100,
+      critDamage: result.effectiveCritDamage,
+      targetArmor: 0,
+      pierceRatio: PIERCE_RATIOS[damageType] * 100,
+    };
+
+    // Update total damage dealt (both global and per-character) with bounds
     set((state) => ({
       battleState: state.battleState
         ? {
             ...state.battleState,
             totalDamageDealt: state.battleState.totalDamageDealt + damage,
+            totalDamageBounds: {
+              lower: state.battleState.totalDamageBounds.lower + damageBreakdown.lowerBound,
+              upper: state.battleState.totalDamageBounds.upper + damageBreakdown.upperBound,
+              average: state.battleState.totalDamageBounds.average + damageBreakdown.average,
+            },
             team: state.battleState.team.map((char) =>
               char.id === attackerId
-                ? { ...char, totalDamageDealt: char.totalDamageDealt + damage }
+                ? {
+                    ...char,
+                    totalDamageDealt: char.totalDamageDealt + damage,
+                    damageTotals: {
+                      lower: char.damageTotals.lower + damageBreakdown.lowerBound,
+                      upper: char.damageTotals.upper + damageBreakdown.upperBound,
+                      average: char.damageTotals.average + damageBreakdown.average,
+                    },
+                  }
                 : char
             ),
           }
         : null,
     }));
 
-    const hits = attackType === 'ranged' ? attacker?.rangedHits : attacker?.meleeHits;
-    const unitDamage = attacker?.calculatedDamage || 0;
-
     return {
       timestamp: Date.now(),
       characterId: attackerId,
-      characterName: attacker?.name || 'Unknown',
+      characterName: attacker.name,
       action: 'attack' as const,
       target: targetId,
       damage,
-      message: `${attacker?.name} ${attackType} attacks (${unitDamage} × ${hits})`,
+      damageBreakdown,
+      message: `${attacker.name} ${attackType} attacks`,
     };
   },
 }));

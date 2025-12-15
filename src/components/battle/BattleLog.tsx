@@ -1,10 +1,45 @@
-import type { BattleLogEntry } from '../../types';
+import type { BattleLogEntry, DamageBreakdown } from '../../types';
 import { Sword, Move, Sparkles, Clock, RotateCcw, Crosshair, Pencil, X } from 'lucide-react';
 
 // Extended entry with turn number
 export interface TurnLogEntry extends BattleLogEntry {
   turn: number;
   attackType?: 'melee' | 'ranged';
+}
+
+// Component to display damage breakdown
+function DamageBreakdownDisplay({ breakdown }: { breakdown: DamageBreakdown }) {
+  return (
+    <div className="mt-1 text-xs space-y-0.5 bg-gray-900/50 rounded p-1.5">
+      {/* Damage range */}
+      <div className="flex justify-between">
+        <span className="text-gray-500">Range:</span>
+        <span className="text-gray-300">
+          {breakdown.lowerBound.toLocaleString()} - {breakdown.upperBound.toLocaleString()}
+        </span>
+      </div>
+      {/* Average */}
+      <div className="flex justify-between">
+        <span className="text-gray-500">Average:</span>
+        <span className="text-amber-400 font-medium">{breakdown.average.toLocaleString()}</span>
+      </div>
+      {/* Stats breakdown */}
+      <div className="flex justify-between text-gray-500">
+        <span>Base:</span>
+        <span>{breakdown.baseDamage} × {breakdown.hits} hits</span>
+      </div>
+      {breakdown.critChance > 0 && (
+        <div className="flex justify-between text-orange-400/70">
+          <span>Crit:</span>
+          <span>{breakdown.critChance.toFixed(0)}% / +{breakdown.critDamage}</span>
+        </div>
+      )}
+      <div className="flex justify-between text-gray-500">
+        <span>Pierce:</span>
+        <span>{breakdown.pierceRatio.toFixed(0)}%</span>
+      </div>
+    </div>
+  );
 }
 
 interface BattleLogProps {
@@ -120,11 +155,13 @@ export function BattleLog({ entries, currentTurn, editingTurn, onUndoCharacterTu
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-gray-200 text-xs">{entry.message}</p>
-                                  {entry.damage !== undefined && entry.damage > 0 && (
+                                  {entry.damageBreakdown ? (
+                                    <DamageBreakdownDisplay breakdown={entry.damageBreakdown} />
+                                  ) : entry.damage !== undefined && entry.damage > 0 ? (
                                     <p className="text-red-400 text-xs">
                                       -{entry.damage.toLocaleString()} damage
                                     </p>
-                                  )}
+                                  ) : null}
                                 </div>
                               </div>
                             );
