@@ -467,14 +467,28 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       ? attacker.rangedDamageType
       : attacker.meleeDamageType;
 
+    // Calculate combined modifiers from active buffs (like WarHowl)
+    const buffCritChanceBonus = attacker.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critChanceBonus || 0), 0
+    );
+    const buffDamageMultiplier = attacker.activeBuffs.reduce(
+      (mult, buff) => mult * (buff.baseDamageMultiplier || 1), 1
+    );
+    const buffDamageBonus = attacker.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.baseDamageBonus || 0), 0
+    );
+
+    // Apply buff damage multiplier and bonus to base damage
+    const buffedBaseDamage = Math.round(attacker.calculatedDamage * buffDamageMultiplier) + buffDamageBonus;
+
     // Build attacker stats for calculator
     const attackerStats: AttackerStats = {
-      baseDamage: attacker.calculatedDamage,
+      baseDamage: buffedBaseDamage,
       damageType,
       hits,
       critChance: equipmentStats.critChance || 0,
       critDamage: equipmentStats.critDmg || 0,
-      critChanceBonus: equipmentStats.critChanceBonus || 0,
+      critChanceBonus: (equipmentStats.critChanceBonus || 0) + buffCritChanceBonus,
       critDmgBonus: equipmentStats.critDmgBonus || 0,
       traits: attacker.traits,
       hasMoved: attacker.hasMoved,
@@ -589,17 +603,36 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       ? attacker.rangedDamageType
       : attacker.meleeDamageType;
 
+    // Calculate combined modifiers from active buffs (like WarHowl)
+    const buffCritChanceBonus = attacker.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critChanceBonus || 0), 0
+    );
+    const buffDamageMultiplier = attacker.activeBuffs.reduce(
+      (mult, buff) => mult * (buff.baseDamageMultiplier || 1), 1
+    );
+    const buffDamageBonus = attacker.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.baseDamageBonus || 0), 0
+    );
+
+    // Apply buff damage multiplier and bonus to base damage
+    const buffedBaseDamage = Math.round(attacker.calculatedDamage * buffDamageMultiplier) + buffDamageBonus;
+
+    // Log buff effects if any are active
+    if (attacker.activeBuffs.length > 0) {
+      console.log(`[Active Buffs: +${buffCritChanceBonus}% crit, x${buffDamageMultiplier.toFixed(2)} dmg, +${buffDamageBonus} flat]`);
+    }
+
     // Build attacker stats for calculator
     // If ignoreCrit is enabled, set all crit stats to 0
     const ignoreCrit = battleState.ignoreCrit;
     const currentTurn = battleState.turn;
     const attackerStats: AttackerStats = {
-      baseDamage: attacker.calculatedDamage,
+      baseDamage: buffedBaseDamage,
       damageType,
       hits,
       critChance: ignoreCrit ? 0 : (equipmentStats.critChance || 0),
       critDamage: ignoreCrit ? 0 : (equipmentStats.critDmg || 0),
-      critChanceBonus: ignoreCrit ? 0 : (equipmentStats.critChanceBonus || 0),
+      critChanceBonus: ignoreCrit ? 0 : ((equipmentStats.critChanceBonus || 0) + buffCritChanceBonus),
       critDmgBonus: ignoreCrit ? 0 : (equipmentStats.critDmgBonus || 0),
       traits: attacker.traits,
       hasMoved: attacker.hasMoved,
@@ -1337,8 +1370,27 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             }
           : null,
       }));
+    } else if (result.buffResult) {
+      // Buff ability - store the buff effect and mark ability as used
+      set((state) => ({
+        battleState: state.battleState
+          ? {
+              ...state.battleState,
+              team: state.battleState.team.map((char) =>
+                char.id === characterId
+                  ? {
+                      ...char,
+                      hasUsedAbilityThisTurn: true,
+                      activeBuffs: [...char.activeBuffs, result.buffResult!.effect],
+                    }
+                  : char
+              ),
+            }
+          : null,
+      }));
+      console.log(`[Buff applied: ${abilityName}]`, result.buffResult.effect);
     } else {
-      // Non-damage ability - just mark ability as used
+      // Other non-damage ability - just mark ability as used
       set((state) => ({
         battleState: state.battleState
           ? {
