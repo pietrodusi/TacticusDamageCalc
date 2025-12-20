@@ -65,6 +65,27 @@ export function useAbility(
 }
 
 /**
+ * Undo ability use (for when character turn is reset)
+ * Resets the ability back to ready state
+ */
+export function unuseAbility(
+  cooldowns: Record<string, AbilityCooldownState>,
+  abilityId: string
+): Record<string, AbilityCooldownState> {
+  const current = cooldowns[abilityId];
+  if (!current) return cooldowns;
+
+  return {
+    ...cooldowns,
+    [abilityId]: {
+      ...current,
+      usedThisBattle: false,
+      currentCooldown: 0,
+    },
+  };
+}
+
+/**
  * Advance cooldowns at the start of a new turn
  * Decrements all positive cooldowns by 1
  */

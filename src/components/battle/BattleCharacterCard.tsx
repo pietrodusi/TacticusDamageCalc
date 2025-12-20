@@ -152,34 +152,38 @@ export function BattleCharacterCard({
             <Sparkles size={12} className="text-purple-400" />
             <span className="text-xs font-medium text-gray-400">Passive Ability</span>
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="space-y-1">
             {passiveBonuses.map((bonus) => (
               <div
                 key={bonus.abilityId}
                 className="flex items-center gap-1"
               >
                 {bonus.requiresToggle && onToggleAbility ? (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!character.turnEnded) {
-                        onToggleAbility(bonus.abilityId);
-                      }
-                    }}
-                    disabled={character.turnEnded}
-                    className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                      character.turnEnded
-                        ? 'opacity-50 cursor-not-allowed'
-                        : ''
-                    } ${
-                      bonus.isActive
-                        ? 'bg-purple-900/50 text-purple-300'
-                        : 'bg-gray-800/50 text-gray-500'
+                  <label
+                    className={`flex items-center gap-2 group ${
+                      character.turnEnded ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
                     }`}
-                    title={bonus.abilityDescription || `${bonus.abilityName}: ${bonus.reason}`}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {bonus.abilityName}
-                  </button>
+                    <input
+                      type="checkbox"
+                      checked={bonus.isActive}
+                      onChange={() => !character.turnEnded && onToggleAbility(bonus.abilityId)}
+                      disabled={character.turnEnded}
+                      className={`w-3.5 h-3.5 rounded border-gray-600 bg-gray-700 text-purple-500 focus:ring-purple-500 focus:ring-offset-0 ${
+                        character.turnEnded ? 'cursor-not-allowed' : 'cursor-pointer'
+                      }`}
+                    />
+                    <span
+                      className={`text-xs ${bonus.isActive ? 'text-purple-300' : 'text-gray-500'}`}
+                      title={bonus.abilityDescription || `${bonus.abilityName}: ${bonus.reason}`}
+                    >
+                      <span className="font-medium">{bonus.abilityName}</span>
+                      {bonus.toggleLabel && (
+                        <span className="text-gray-500 ml-1">({bonus.toggleLabel})</span>
+                      )}
+                    </span>
+                  </label>
                 ) : (
                   <div
                     className={`px-2 py-0.5 rounded text-xs ${

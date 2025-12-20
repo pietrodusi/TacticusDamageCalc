@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, DamageTotals, FollowUpAttackLog } from '../types';
 import { calculateStats, calculateEquipmentStats } from '../services/dataService';
 import { DamageCalculator, type AttackerStats, type DefenderStats, PIERCE_RATIOS } from '../services/damage';
-import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
+import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, resetCooldowns, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
 
 const MAX_TURNS = 6;
 
@@ -285,6 +285,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                   hasMoved: false,
                   hasActed: false,
                   turnEnded: false,
+                  hasUsedAbilityThisTurn: false,
+                  activeBuffs: [], // Clear any active buffs from abilities
+                  // Reset ability cooldowns (unuse all active abilities)
+                  abilityCooldowns: resetCooldowns(char.abilityCooldowns),
                   totalDamageDealt: Math.max(0, char.totalDamageDealt - boundsToSubtract.average),
                   damageTotals: {
                     lower: Math.max(0, char.damageTotals.lower - boundsToSubtract.lower),
@@ -326,6 +330,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                     hasMoved: false,
                     hasActed: false,
                     turnEnded: false,
+                    hasUsedAbilityThisTurn: false,
+                    activeBuffs: [], // Clear any active buffs from abilities
+                    // Reset ability cooldowns (unuse all active abilities)
+                    abilityCooldowns: resetCooldowns(char.abilityCooldowns),
                     totalDamageDealt: Math.max(0, char.totalDamageDealt - boundsToSubtract.average),
                     damageTotals: {
                       lower: Math.max(0, char.damageTotals.lower - boundsToSubtract.lower),

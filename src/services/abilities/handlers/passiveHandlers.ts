@@ -8,7 +8,7 @@ import { getAbilityNameSync } from '../abilityDataLoader';
 
 /**
  * SagaOfTheWarriorBorn (Ragnar)
- * Grants extra hits and crit damage when the character has killed an enemy
+ * Grants extra hits and crit damage when charging
  * Variables: extraHits (1-3), extraCritDmg
  */
 export const SagaOfTheWarriorBornHandler: AbilityHandler = {
@@ -18,19 +18,19 @@ export const SagaOfTheWarriorBornHandler: AbilityHandler = {
   cooldown: -1,
 
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
-    const hasKilled = context.abilityToggles['SagaOfTheWarriorBorn'] ?? false;
+    const isCharging = context.abilityToggles['SagaOfTheWarriorBorn'] ?? false;
 
     return {
       abilityId: 'SagaOfTheWarriorBorn',
       abilityName: getAbilityNameSync('SagaOfTheWarriorBorn'),
-      modifiers: hasKilled ? {
+      modifiers: isCharging ? {
         extraHits: values.extraHits as number || 0,
         critDamageBonus: values.extraCritDmg as number || 0,
       } : {},
-      applicable: hasKilled,
-      reason: hasKilled ? 'Killed enemy this battle' : 'No kills yet',
+      applicable: isCharging,
+      reason: isCharging ? 'Charging' : 'Not charging',
       requiresToggle: true,
-      toggleLabel: 'Killed enemy',
+      toggleLabel: 'Charging',
     };
   },
 };

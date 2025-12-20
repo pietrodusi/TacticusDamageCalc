@@ -67,6 +67,7 @@ export {
   initializeCooldowns,
   isAbilityReady,
   useAbility,
+  unuseAbility,
   advanceCooldowns,
   resetCooldowns,
   getCooldownRemaining,
