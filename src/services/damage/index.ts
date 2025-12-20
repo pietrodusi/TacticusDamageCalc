@@ -28,7 +28,17 @@ export {
   type HitResult,
   type DamageResult,
   type CalculationLog,
+  type TraitModifier,
 } from './types';
+
+// Trait evaluation
+export {
+  evaluateTraitModifiers,
+  getTraitName,
+  getDamageModifierTraits,
+  type TraitEvaluation,
+  type TraitContext,
+} from './traits';
 
 // Formulas (for direct use or testing)
 export {

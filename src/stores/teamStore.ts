@@ -16,6 +16,7 @@ interface TeamState {
   updateCharacterProgression: (characterId: string, progressionStepIndex: number, rank: number) => void;
   updateCharacterAbilityLevels: (characterId: string, abilityLevels: Record<string, number>) => void;
   updateCharacterEquipment: (characterId: string, equipment: Record<number, EquippedItem>) => void;
+  clearAllEquipment: () => void;
   clearTeam: () => void;
   canAddCharacter: () => boolean;
   reorderTeam: (fromIndex: number, toIndex: number) => void;
@@ -78,6 +79,12 @@ export const useTeamStore = create<TeamState>()(
               ? { ...c, equipment }
               : c
           ),
+        }));
+      },
+
+      clearAllEquipment: () => {
+        set((state) => ({
+          team: state.team.map((c) => ({ ...c, equipment: {} })),
         }));
       },
 

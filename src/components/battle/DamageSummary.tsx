@@ -1,5 +1,6 @@
 import { TrendingUp, Target, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import type { BattleState } from '../../types';
+import { DamageBar } from './DamageBar';
 
 interface DamageSummaryProps {
   battleState: BattleState;
@@ -13,8 +14,29 @@ export function DamageSummary({ battleState }: DamageSummaryProps) {
     ? Math.round(totalDamageBounds.average / completedTurns)
     : 0;
 
+  // Calculate max scale from all characters' upper bounds
+  const maxUpperBound = Math.max(
+    ...battleState.team.map(c => c.damageTotals.upper),
+    totalDamageBounds.upper,
+    1
+  );
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="space-y-4">
+      {/* Visual Damage Bar */}
+      <div className="bg-gray-800/50 rounded-lg p-4">
+        <h3 className="text-sm font-medium text-gray-400 mb-3">Total Damage Range</h3>
+        <DamageBar
+          lowerBound={totalDamageBounds.lower}
+          average={totalDamageBounds.average}
+          upperBound={totalDamageBounds.upper}
+          maxScale={maxUpperBound}
+          height={12}
+        />
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Lower Bound */}
       <div className="bg-gray-800/50 rounded-lg p-4">
         <div className="flex items-center gap-2 text-gray-400 mb-2">
@@ -57,6 +79,7 @@ export function DamageSummary({ battleState }: DamageSummaryProps) {
         <p className="text-2xl font-bold text-imperial-gold">
           {avgDamagePerTurn.toLocaleString()}
         </p>
+      </div>
       </div>
     </div>
   );

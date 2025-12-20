@@ -1,6 +1,6 @@
 {
     "AberrantHypermorph": {
-        "description": "Summons an <style=Summon><style=Faction_Genestealers>Aberrant Hypermorph</style></style> in a free adjacent hex. The Aberrant Hypermorph can immediately attack, but cannot move this turn.\\n\\nAberrant Hypermorph's stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons an <style=Summon><style=Faction_Genestealers>Aberrant Hypermorph</style></style> in a free adjacent hex. The Aberrant Hypermorph can immediately attack, but cannot move this turn.\n\nAberrant Hypermorph's stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Aberrant Hypermorph"
     },
     "AblativePlating": {
@@ -24,11 +24,11 @@
         "name": "Adrenal Surge"
     },
     "AetherStride": {
-        "description": "Summons <style=Summon><style=Faction_ThousandSons>Z'Kar</style></style> as a stationary unit in a 3 hex area on the battlefield. If he is summoned adjacent to a friendly <style=Psyker>Psyker</style>, he immediately performs a <style=NormalAttack>normal attack</style> against a target in range. When <style=Summon><style=Faction_ThousandSons>Z'Kar</style></style> is defeated or leaves the battlefield via his <i>Hunter of Souls</i> battlefield ability, he returns as <style=MoW>Machine of War</style>.\\n\\nZ'Kar Stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \\nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.",
+        "description": "Summons <style=Summon><style=Faction_ThousandSons>Z'Kar</style></style> as a stationary unit in a 3 hex area on the battlefield. If he is summoned adjacent to a friendly <style=Psyker>Psyker</style>, he immediately performs a <style=NormalAttack>normal attack</style> against a target in range. When <style=Summon><style=Faction_ThousandSons>Z'Kar</style></style> is defeated or leaves the battlefield via his <i>Hunter of Souls</i> battlefield ability, he returns as <style=MoW>Machine of War</style>.\n\nZ'Kar Stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.",
         "name": "Aether Stride"
     },
     "AggressiveOnslaught": {
-        "description": "When <style=Charging>charging</style>, <style=Faction_BloodAngels>Mataneo</style> summons {[nrOfSummons]} <style=Summon><style=Faction_BloodAngels>Jump Pack Intercessors</style></style> adjacent to and immediately attacking his target. At the beginning of each of Mataneo's turns, if he is still on the battlefield, all Jump Pack Intercessors summoned this way leave the battlefield.\\n\\nJump Pack Intercessor stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "When <style=Charging>charging</style>, <style=Faction_BloodAngels>Mataneo</style> summons {[nrOfSummons]} <style=Summon><style=Faction_BloodAngels>Jump Pack Intercessors</style></style> adjacent to and immediately attacking his target. At the beginning of each of Mataneo's turns, if he is still on the battlefield, all Jump Pack Intercessors summoned this way leave the battlefield.\n\nJump Pack Intercessor stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Aggressive Onslaught"
     },
     "AllIsDust": {
@@ -36,7 +36,7 @@
         "name": "All is Dust"
     },
     "AlphaWarrior": {
-        "description": "If the <style=Faction_Tyranids>Winged Prime</style> has not moved this turn, summons a <style=Summon><style=Faction_Tyranids>Tyranid Warrior</style></style> on a free hex within <style=Synapse>Synapse</style> range. The <style=Summon><style=Faction_Tyranids>Tyranid Warrior</style></style> cannot move this turn, but can immediately perform a <style=NormalAttack>normal attack</style> against an enemy in range.\\n\\nTyranid Warrior stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "If the <style=Faction_Tyranids>Winged Prime</style> has not moved this turn, summons a <style=Summon><style=Faction_Tyranids>Tyranid Warrior</style></style> on a free hex within <style=Synapse>Synapse</style> range. The <style=Summon><style=Faction_Tyranids>Tyranid Warrior</style></style> cannot move this turn, but can immediately perform a <style=NormalAttack>normal attack</style> against an enemy in range.\n\nTyranid Warrior stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Alpha Warrior"
     },
     "AmuletOfTheVoidwyrm": {
@@ -56,11 +56,11 @@
         "name": "Anvil Shield"
     },
     "ArcaneShield": {
-        "description": "After moving, <style=Faction_ThousandSons>Thaumachus</style> applies a <style=Buff_Shield>Shield</style> to the closest friendly unit within {[range]} hexes, preferring <style=Faction_ThousandSons>Thousand Sons</style> units, then other <style=Aliance_Chaos>Chaos</style> units, then other friendly units, and lastly casting it on himself if there is no other valid target. The shield has <style=Stat_Health>{[shieldHp]} Health</style> and lasts one round.\\n\\nIf <style=Faction_ThousandSons>Thaumachus</style> does not move, then this ability triggers at the end of his turn.",
+        "description": "After moving, <style=Faction_ThousandSons>Thaumachus</style> applies a <style=Buff_Shield>Shield</style> to the closest friendly unit within {[range]} hexes, preferring <style=Faction_ThousandSons>Thousand Sons</style> units, then other <style=Aliance_Chaos>Chaos</style> units, then other friendly units, and lastly casting it on himself if there is no other valid target. The shield has <style=Stat_Health>{[shieldHp]} Health</style> and lasts one round.\n\nIf <style=Faction_ThousandSons>Thaumachus</style> does not move, then this ability triggers at the end of his turn.",
         "name": "Arcane Shield"
     },
     "ArchContaminator": {
-        "description": "At the beginning of his turn all adjacent enemies take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> plus each <style=Stat_Hits>hit</style> also deals extra <style=Stat_Damage>Damage</style> equal to {[extraDmgPct]}-{[extraDmgPct_2]}% of the unit's max <style=Stat_Health>Health</style>. <style=Summon>Summons</style> take double damage.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "At the beginning of his turn all adjacent enemies take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> plus each <style=Stat_Hits>hit</style> also deals extra <style=Stat_Damage>Damage</style> equal to {[extraDmgPct]}-{[extraDmgPct_2]}% of the unit's max <style=Stat_Health>Health</style>. <style=Summon>Summons</style> take double damage.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Arch-Contaminator"
     },
     "ArcScourge": {
@@ -68,7 +68,7 @@
         "name": "Arc Scourge"
     },
     "ArmoriumCherub": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Flame>{[minDmg]}-{[maxDmg]} Flame Damage</style> to a target within range {[range]}. \\n\\nUsing <i>Armorium Cherub</i> does not end <style=Faction_Sisterhood>Vindicta</style>'s turn.",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Flame>{[minDmg]}-{[maxDmg]} Flame Damage</style> to a target within range {[range]}. \n\nUsing <i>Armorium Cherub</i> does not end <style=Faction_Sisterhood>Vindicta</style>'s turn.",
         "name": "Armorium Cherub"
     },
     "ArmouredMight": {
@@ -84,7 +84,7 @@
         "name": "Astartes Banner"
     },
     "ATemptingTrap": {
-        "description": "<style=Faction_Tau>Sho'Syl</style> receives <style=Stat_Damage>-{[dmgReductionPct]}% Damage</style> from all attacks, but loses <style=Stat_Health>{[hp]} Health</style> each time he is damaged by a melee attack. At the start of his third turn, he summons <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_Tau>Stealth Battlesuits</style></style> plus an additional Battlesuit for each enemy unit on the battlefield. The summoned units immediately take a turn.\\n\\nStealth Battlesuit stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "<style=Faction_Tau>Sho'Syl</style> receives <style=Stat_Damage>-{[dmgReductionPct]}% Damage</style> from all attacks, but loses <style=Stat_Health>{[hp]} Health</style> each time he is damaged by a melee attack. At the start of his third turn, he summons <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_Tau>Stealth Battlesuits</style></style> plus an additional Battlesuit for each enemy unit on the battlefield. The summoned units immediately take a turn.\n\nStealth Battlesuit stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "A Tempting Trap"
     },
     "AttemptedPossession": {
@@ -96,11 +96,11 @@
         "name": "Avalanche of Muscle"
     },
     "BarbedOvipositor": {
-        "description": "When the <style=Faction_Tyranids>Parasite of Mortrex</style> defeats a unit it targeted that is not <style=Mechanical>Mechanical</style> it summons a <style=Summon><style=Faction_Tyranids>Ripper Swarm</style></style> in the defeated unit's hex. \\n\\nRipper Swarm stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "When the <style=Faction_Tyranids>Parasite of Mortrex</style> defeats a unit it targeted that is not <style=Mechanical>Mechanical</style> it summons a <style=Summon><style=Faction_Tyranids>Ripper Swarm</style></style> in the defeated unit's hex. \n\nRipper Swarm stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Barbed Ovipositor"
     },
     "BasiliskBarrage": {
-        "description": "If <style=Faction_AstraMilitarum>Thaddeus Noble</style> has not moved, unleashes a barrage of {[nrOfProjectiles]} shells on any target on the battlefield, each dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style>. {[nrOfProjectiles_2]} randomly hit the target hex or surrounding hexes and the remaining 2 hit the hexes surrounding those. For each round that has ended, 1 more of the shells hits the target hex, starting with the shells hitting the outer hexes. The <style=Suppressive_Fire>Suppressive Fire</style> trait applies also to this ability.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "If <style=Faction_AstraMilitarum>Thaddeus Noble</style> has not moved, unleashes a barrage of {[nrOfProjectiles]} shells on any target on the battlefield, each dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style>. {[nrOfProjectiles_2]} randomly hit the target hex or surrounding hexes and the remaining 2 hit the hexes surrounding those. For each round that has ended, 1 more of the shells hits the target hex, starting with the shells hitting the outer hexes. The <style=Suppressive_Fire>Suppressive Fire</style> trait applies also to this ability.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Basilisk Barrage"
     },
     "BattleFocus": {
@@ -120,7 +120,7 @@
         "name": "Bio Barrage"
     },
     "BioMinefield": {
-        "description": "Targets an enemy on the battlefield. If there are {[nrOfSummons]} or more <style=Summon><style=Faction_Tyranids>Spore Mines</style></style> on the battlefield, all Spore Mines immediately take a turn, moving towards the target, if possible. Otherwise, summon {[nrOfSummons_2]} Spore Mines in free hexes adjacent to the target. Spore Mines have <style=Stat_Health>{[summonHp]} Health</style> and deal <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> with <i><style=FloatingDeath>Floating Death</style></i>.\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} rounds</style>. \\nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.",
+        "description": "Targets an enemy on the battlefield. If there are {[nrOfSummons]} or more <style=Summon><style=Faction_Tyranids>Spore Mines</style></style> on the battlefield, all Spore Mines immediately take a turn, moving towards the target, if possible. Otherwise, summon {[nrOfSummons_2]} Spore Mines in free hexes adjacent to the target. Spore Mines have <style=Stat_Health>{[summonHp]} Health</style> and deal <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> with <i><style=FloatingDeath>Floating Death</style></i>.\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} rounds</style>. \nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.",
         "name": "Bio-Minefield"
     },
     "BlackRage": {
@@ -136,7 +136,7 @@
         "name": "Blighted Land"
     },
     "BlightGrenades": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> to an enemy unit within range {[range]} that is not on a hex with <style=Tile_Contamination>Contamination</style>, and up to two enemy units behind the target. This ability benefits from <style=Indirect_Fire>Indirect Fire</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> to an enemy unit within range {[range]} that is not on a hex with <style=Tile_Contamination>Contamination</style>, and up to two enemy units behind the target. This ability benefits from <style=Indirect_Fire>Indirect Fire</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Blight Grenades"
     },
     "BlisteringAssault": {
@@ -148,7 +148,7 @@
         "name": "Blood Chalice"
     },
     "BloodRunsAngerRisesWarCalls": {
-        "description": "At the end of the <style=Faction_Aeldari>Avatar of Khaine</style>'s turn, summons <style=Stat>2</style> <style=Summon><style=Faction_Aeldari>Guardian Defenders</style></style> at one of the battlefield corners. \\n\\nGuardian Defender stats\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "At the end of the <style=Faction_Aeldari>Avatar of Khaine</style>'s turn, summons <style=Stat>2</style> <style=Summon><style=Faction_Aeldari>Guardian Defenders</style></style> at one of the battlefield corners. \n\nGuardian Defender stats\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Blood Runs! Anger Rises! War Calls!"
     },
     "BloodyFury": {
@@ -196,23 +196,23 @@
         "name": "Cabal of Sorcerers"
     },
     "CalibaniteGreatsword": {
-        "description": "<style=Faction_DarkAngels>Forcas</style> can switch between two stances.\\n\\nStrike Stance: At the end of his turn, Forcas starts <style=Buff_Overwatching>Overwatching</style>, even if he attacked in his turn. When defeating a unit while Overwatching, he remains in Overwatch, retaining <style=Stat>{[nrOfHits]}</style> fewer <style=Stat_Hits>hits</style> compared to the previous attack.\\n\\nSweep Stance: Forcas' <style=NormalAttack>normal attacks</style> also deal <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Power>{[minDmg]}-{[maxDmg]} Power Damage</style> to each enemy adjacent to both Forcas and the initial target.\\n\\n<i>This ability can be used once per turn; each use switches the active Stance and does not end Forcas' turn. Only the first use of this ability in each battle counts for missions.</i>",
+        "description": "<style=Faction_DarkAngels>Forcas</style> can switch between two stances.\n\nStrike Stance: At the end of his turn, Forcas starts <style=Buff_Overwatching>Overwatching</style>, even if he attacked in his turn. When defeating a unit while Overwatching, he remains in Overwatch, retaining <style=Stat>{[nrOfHits]}</style> fewer <style=Stat_Hits>hits</style> compared to the previous attack.\n\nSweep Stance: Forcas' <style=NormalAttack>normal attacks</style> also deal <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Power>{[minDmg]}-{[maxDmg]} Power Damage</style> to each enemy adjacent to both Forcas and the initial target.\n\n<i>This ability can be used once per turn; each use switches the active Stance and does not end Forcas' turn. Only the first use of this ability in each battle counts for missions.</i>",
         "name": "Calibanite Greatsword"
     },
     "CallInReinforcements": {
-        "description": "At the end of the Vox-caster’s action, a <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsman</style></style> is summoned in a nearby free edge hex and immediately takes a turn. \\n\\nCadian Guardsman’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "At the end of the Vox-caster’s action, a <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsman</style></style> is summoned in a nearby free edge hex and immediately takes a turn. \n\nCadian Guardsman’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Call In Reinforcements"
     },
     "CallRipperSwarms": {
-        "description": "Summons <style=Stat>{[nrOfSummons]}</style> burrowing <style=Summon>Ripper Swarms</style>, who emerge from the ground at the beginning of the Hive Tyrant's next turn, unless their hex is occupied by another unit\\n\\nRipper Swarms' stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons <style=Stat>{[nrOfSummons]}</style> burrowing <style=Summon>Ripper Swarms</style>, who emerge from the ground at the beginning of the Hive Tyrant's next turn, unless their hex is occupied by another unit\n\nRipper Swarms' stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Call Ripper Swarms"
     },
     "CallRipperSwarms2": {
-        "description": "Summons <style=Stat>{[nrOfSummons]}</style> burrowing <style=Summon>Ripper Swarms</style>, who emerge from the ground at the beginning of the Hive Tyrant's next turn, unless their hex is occupied by another unit\\n\\nRipper Swarms' stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons <style=Stat>{[nrOfSummons]}</style> burrowing <style=Summon>Ripper Swarms</style>, who emerge from the ground at the beginning of the Hive Tyrant's next turn, unless their hex is occupied by another unit\n\nRipper Swarms' stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Call Ripper Swarms"
     },
     "CallRipperSwarms3": {
-        "description": "Summons <style=Stat>{[nrOfSummons]}</style> burrowing <style=Summon>Ripper Swarms</style>, who emerge from the ground at the beginning of the Hive Tyrant's next turn, unless their hex is occupied by another unit\\n\\nRipper Swarms' stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons <style=Stat>{[nrOfSummons]}</style> burrowing <style=Summon>Ripper Swarms</style>, who emerge from the ground at the beginning of the Hive Tyrant's next turn, unless their hex is occupied by another unit\n\nRipper Swarms' stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Call Ripper Swarms"
     },
     "CamoCloak": {
@@ -256,7 +256,7 @@
         "name": "Contemptuous Disregard"
     },
     "ControlEdict": {
-        "description": "While Protector Imperative is active: After <style=Faction_AdeptusMechanicus>Tan Gi’da</style> attacks, summon a <style=Summon><style=Faction_AdeptusMechanicus>Skitarii Vanguard</style></style> in a free adjacent hex. Cannot have more than <style=Stat>{[maxSummons]}</style> <style=Summon><style=Faction_AdeptusMechanicus>Skitarii Vanguards</style></style> summoned this way at the same time.\\n\\nWhile Conqueror Imperative is active: After <style=Faction_AdeptusMechanicus>Tan Gi’da</style> attacks, all friendly adjacent <style=Mechanical>Mechanical</style> <style=Summon>Summons</style> also immediately attack his target if it is within range.\\n\\nSkitarii Vanguard stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "While Protector Imperative is active: After <style=Faction_AdeptusMechanicus>Tan Gi’da</style> attacks, summon a <style=Summon><style=Faction_AdeptusMechanicus>Skitarii Vanguard</style></style> in a free adjacent hex. Cannot have more than <style=Stat>{[maxSummons]}</style> <style=Summon><style=Faction_AdeptusMechanicus>Skitarii Vanguards</style></style> summoned this way at the same time.\n\nWhile Conqueror Imperative is active: After <style=Faction_AdeptusMechanicus>Tan Gi’da</style> attacks, all friendly adjacent <style=Mechanical>Mechanical</style> <style=Summon>Summons</style> also immediately attack his target if it is within range.\n\nSkitarii Vanguard stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Control Edict"
     },
     "CordClaw": {
@@ -280,7 +280,7 @@
         "name": "Crushing Claws"
     },
     "CultDemagogue": {
-        "description": "Targets an enemy unit within {[range]} hexes and places <style=Decoy>decoys</style> on up to <style=Stat>{[nrOfSummons]}</style> random free hexes within {[range_2]} hexes around the target. Then summons <style=Summon><style=Faction_Genestealers>Neophyte Hybrids</style></style> on half of all the friendly <style=Decoy>decoys</style> in that area and all <style=Faction_Genestealers>Neophyte Hybrids</style> in that area immediately take a turn.\\n\\nNeophyte Hybrid stats:\\n<style=Stat_Health>{[summonHp_2]} Health</style>\\n<style=Stat_Damage>{[summonDmg_2]} Damage</style>\\n<style=Stat_Armor>{[summonArmor_2]} Armour</style>",
+        "description": "Targets an enemy unit within {[range]} hexes and places <style=Decoy>decoys</style> on up to <style=Stat>{[nrOfSummons]}</style> random free hexes within {[range_2]} hexes around the target. Then summons <style=Summon><style=Faction_Genestealers>Neophyte Hybrids</style></style> on half of all the friendly <style=Decoy>decoys</style> in that area and all <style=Faction_Genestealers>Neophyte Hybrids</style> in that area immediately take a turn.\n\nNeophyte Hybrid stats:\n<style=Stat_Health>{[summonHp_2]} Health</style>\n<style=Stat_Damage>{[summonDmg_2]} Damage</style>\n<style=Stat_Armor>{[summonArmor_2]} Armour</style>",
         "name": "Cult Demagogue"
     },
     "CursedOfTheWalkingPox": {
@@ -292,7 +292,7 @@
         "name": "Cursed Plague Bell"
     },
     "CyclicIonBlaster": {
-        "description": "All attacks deal an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Particle>{[minDmg]}-{[maxDmg]} Particle Damage</style>.\\nIf the target has a <style=Debuff_Markerlight>Markerlight</style> or the <style=Mechanical>Mechanical</style> trait these hits deal <style=Stat_Damage>+{[extraDmg]} Damage</style>.",
+        "description": "All attacks deal an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Particle>{[minDmg]}-{[maxDmg]} Particle Damage</style>.\nIf the target has a <style=Debuff_Markerlight>Markerlight</style> or the <style=Mechanical>Mechanical</style> trait these hits deal <style=Stat_Damage>+{[extraDmg]} Damage</style>.",
         "name": "Cyclic Ion Blaster"
     },
     "DaBossIsWatchin": {
@@ -304,7 +304,7 @@
         "name": "Daemonflesh Plate"
     },
     "DaemonicOrdnance": {
-        "description": "Sets a target hex and the two hexes behind it on <style=Effect_Fire>Fire</style>. If one of these hexes is already on fire, deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Plasma>{[minDmg]}-{[maxDmg]} Plasma Damage</style> to enemies on it. Can deal <style=Stat_CritDamage>{[extraCritDmg]} Crit Damage</style>.\\n\\nThe <style=MoW><style=Faction_BlackLegion>Forgefiend</style></style>'s <style=Stat_CritChance>Crit Chance</style> for both its abilities is increased by <style=Stat>{[extraCritChance]}%</style> for each time <i>Daemonic Ordnance</i> is used during a battle, but after the Forgefiend causes {[nrOfHits_2]} or more critical hits during its turn, it cannot cause any critical hits anymore for the remainder of the battle.\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>.",
+        "description": "Sets a target hex and the two hexes behind it on <style=Effect_Fire>Fire</style>. If one of these hexes is already on fire, deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Plasma>{[minDmg]}-{[maxDmg]} Plasma Damage</style> to enemies on it. Can deal <style=Stat_CritDamage>{[extraCritDmg]} Crit Damage</style>.\n\nThe <style=MoW><style=Faction_BlackLegion>Forgefiend</style></style>'s <style=Stat_CritChance>Crit Chance</style> for both its abilities is increased by <style=Stat>{[extraCritChance]}%</style> for each time <i>Daemonic Ordnance</i> is used during a battle, but after the Forgefiend causes {[nrOfHits_2]} or more critical hits during its turn, it cannot cause any critical hits anymore for the remainder of the battle.\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>.",
         "name": "Daemonic Ordnance"
     },
     "DaemonicPatrons": {
@@ -320,11 +320,11 @@
         "name": "Dakka! Dakka! Dakka!"
     },
     "DaRevolushun": {
-        "description": "Whenever an adjacent unit is defeated, <style=Faction_Orks>Da Red Gobbo</style> summons a <style=Summon><style=Faction_Orks>Grot</style></style> in its hex, unless the defeated unit was a Grot. The summoned Grot can immediately attack an adjacent enemy. Whenever a friendly Grot is defeated anywhere on the battlefield, it explodes and deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to all adjacent Grots and all adjacent enemies.\\n\\nGrot’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Whenever an adjacent unit is defeated, <style=Faction_Orks>Da Red Gobbo</style> summons a <style=Summon><style=Faction_Orks>Grot</style></style> in its hex, unless the defeated unit was a Grot. The summoned Grot can immediately attack an adjacent enemy. Whenever a friendly Grot is defeated anywhere on the battlefield, it explodes and deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to all adjacent Grots and all adjacent enemies.\n\nGrot’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Da Revolushun!"
     },
     "DarkTalonStrike": {
-        "description": "<style=Faction_DarkAngels>Azrael</style> calls in a Ravenwing Dark Talon to deal <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Direct>{[minDmg]}-{[maxDmg]} Direct Damage</style> to a target enemy within {[range]} hexes and <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Bolter>{[minDmg_2]}-{[maxDmg_2]} Bolter Damage</style> to all enemies in an uninterrupted straight line originating from the initial target. All enemies hit are <style=Debuff_Pinned>Suppressed</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "<style=Faction_DarkAngels>Azrael</style> calls in a Ravenwing Dark Talon to deal <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Direct>{[minDmg]}-{[maxDmg]} Direct Damage</style> to a target enemy within {[range]} hexes and <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Bolter>{[minDmg_2]}-{[maxDmg_2]} Bolter Damage</style> to all enemies in an uninterrupted straight line originating from the initial target. All enemies hit are <style=Debuff_Pinned>Suppressed</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Dark Talon Strike"
     },
     "DaughterOfTheAbyss": {
@@ -336,7 +336,7 @@
         "name": "Dawn Blade"
     },
     "DeathFromAbove": {
-        "description": "Summons 1 <style=Summon><style=Faction_Ultramarines>Inceptor</style></style> for each round that has started. The <style=Summon><style=Faction_Ultramarines>Inceptors</style></style> land adjacent to the target, whom they attack immediately.\\n<i>Note: if not enough hexes around the target are free, fewer <style=Summon><style=Faction_Ultramarines>Inceptors</style></style> will be summoned.</i>\\n\\nInceptor stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons 1 <style=Summon><style=Faction_Ultramarines>Inceptor</style></style> for each round that has started. The <style=Summon><style=Faction_Ultramarines>Inceptors</style></style> land adjacent to the target, whom they attack immediately.\n<i>Note: if not enough hexes around the target are free, fewer <style=Summon><style=Faction_Ultramarines>Inceptors</style></style> will be summoned.</i>\n\nInceptor stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Death From Above"
     },
     "DeathScream": {
@@ -368,7 +368,7 @@
         "name": "Destroy The Witch"
     },
     "DevastatingRefrain": {
-        "description": "Marks a hex on the battlefield and 3 additional hexes adjacent to it but not to each other. At the beginning of its next turn, deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to all enemies on marked hexes. Each enemy unit hit has a <style=Stat>{[chance]}%</style> chance to increase the <style=Stat_Chance>Crit Chance</style> and <style=Stat_CritDamage>Crit Damage</style> of friendly units with <style=Act_Of_Faith>Act of Faith</style> as if a friendly <style=Aliance_Imperial>Imperial</style> unit had killed an enemy unit.\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Marks a hex on the battlefield and 3 additional hexes adjacent to it but not to each other. At the beginning of its next turn, deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to all enemies on marked hexes. Each enemy unit hit has a <style=Stat>{[chance]}%</style> chance to increase the <style=Stat_Chance>Crit Chance</style> and <style=Stat_CritDamage>Crit Damage</style> of friendly units with <style=Act_Of_Faith>Act of Faith</style> as if a friendly <style=Aliance_Imperial>Imperial</style> unit had killed an enemy unit.\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Devastating Refrain"
     },
     "DevoutPush": {
@@ -376,7 +376,7 @@
         "name": "Devout Push"
     },
     "DoctrinaImperatives": {
-        "description": "<style=Faction_AdeptusMechanicus>Tan Gi’da</style> switches between two Imperatives that affect him and all friendly adjacent <style=Mechanical>Mechanical</style> units:\\n\\nProtector Imperative: Affected units have <style=Stat_Armor>+{[extraArmor]} Armour</style>.\\nConqueror Imperative: Affected units deal <style=Stat_Damage>+{[extraDmg]} Damage</style> against units with reduced <style=Stat_Armor>Armour</style>.\\n\\n<i>This ability can be used once per turn instead of once per battle; each use switches the active Imperative. <style=Faction_AdeptusMechanicus>Tan Gi’da</style> can attack after using this ability. Only the first use of this ability each battle counts for missions.</i>",
+        "description": "<style=Faction_AdeptusMechanicus>Tan Gi’da</style> switches between two Imperatives that affect him and all friendly adjacent <style=Mechanical>Mechanical</style> units:\n\nProtector Imperative: Affected units have <style=Stat_Armor>+{[extraArmor]} Armour</style>.\nConqueror Imperative: Affected units deal <style=Stat_Damage>+{[extraDmg]} Damage</style> against units with reduced <style=Stat_Armor>Armour</style>.\n\n<i>This ability can be used once per turn instead of once per battle; each use switches the active Imperative. <style=Faction_AdeptusMechanicus>Tan Gi’da</style> can attack after using this ability. Only the first use of this ability each battle counts for missions.</i>",
         "name": "Doctrina Imperatives"
     },
     "Doom": {
@@ -384,11 +384,11 @@
         "name": "Doom"
     },
     "Doombolt": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style>, evenly distributing the <style=Stat_Hits>hits</style> between all enemies within {[range]} hexes. Adds <style=Stat_Hits>+1 hit</style> for each hex on the battlefield that is currently on <style=Effect_Fire>Fire</style>. Cannot exceed <style=Stat_Hits>9 hits</style>.\\n\\nWhen <style=Faction_ThousandSons>Ahriman</style> defeats an enemy with his <style=NormalAttack>normal ranged attack</style> and <i>Doombolt</i> has already been used, then <i>Doombolt</i> can be used again in this battle.",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style>, evenly distributing the <style=Stat_Hits>hits</style> between all enemies within {[range]} hexes. Adds <style=Stat_Hits>+1 hit</style> for each hex on the battlefield that is currently on <style=Effect_Fire>Fire</style>. Cannot exceed <style=Stat_Hits>9 hits</style>.\n\nWhen <style=Faction_ThousandSons>Ahriman</style> defeats an enemy with his <style=NormalAttack>normal ranged attack</style> and <i>Doombolt</i> has already been used, then <i>Doombolt</i> can be used again in this battle.",
         "name": "Doombolt"
     },
     "DoomSiren": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Direct>{[minDmg]}-{[maxDmg]} Direct Damage</style> to an adjacent enemy and up to {[nrOfUnits]} other random enemies adjacent to the target. For the rest of the battle, <style=Faction_EmperorsChildren>Adamatar</style>'s <style=NormalAttack>normal attacks</style> score an additional <style=Stat_Hits>hit</style> for each enemy <style=Overkill>Overkilled</style> by <i>Doom Siren</i>.\\n",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Direct>{[minDmg]}-{[maxDmg]} Direct Damage</style> to an adjacent enemy and up to {[nrOfUnits]} other random enemies adjacent to the target. For the rest of the battle, <style=Faction_EmperorsChildren>Adamatar</style>'s <style=NormalAttack>normal attacks</style> score an additional <style=Stat_Hits>hit</style> for each enemy <style=Overkill>Overkilled</style> by <i>Doom Siren</i>.\n",
         "name": "Doom Siren"
     },
     "Drachnyen": {
@@ -400,7 +400,7 @@
         "name": "Draw Fire"
     },
     "DutyEternal": {
-        "description": "Summons <style=Summon><style=Faction_Ultramarines>Galatian</style></style> as a stationary unit in a 3 hex area on the battlefield. \\nAfter using this ability, <style=Faction_Ultramarines>Galatian</style> can no longer be used as a <style=MoW>Machine of War</style> for the rest of the battle.\\n\\nGalatian stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} rounds</style>. \\nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.",
+        "description": "Summons <style=Summon><style=Faction_Ultramarines>Galatian</style></style> as a stationary unit in a 3 hex area on the battlefield. \nAfter using this ability, <style=Faction_Ultramarines>Galatian</style> can no longer be used as a <style=MoW>Machine of War</style> for the rest of the battle.\n\nGalatian stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} rounds</style>. \nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.",
         "name": "Duty Eternal"
     },
     "Dw02AdvancedBurstCannon": {
@@ -408,7 +408,7 @@
         "name": "DW-02 Advanced Burst Cannon"
     },
     "EarlyWarningOverride": {
-        "description": "Summons 2 <style=Summon><style=Faction_Tau>Shield Drones</style></style> into free adjacent hexes. Newly summoned <style=Summon><style=Faction_Tau>Shield Drones</style></style> can immediately attack an enemy in <style=Stat_Melee>melee</style>, but cannot move this turn.\\n<style=Faction_Tau>Re'vas</style> also starts <style=Buff_Overwatching>Overwatching</style> until the start of her next turn, ignoring the <style=Combat_Weakness>Close Combat Weakness</style> trait and dealing <style=Stat_Damage>+{[extraDmg]} Damage</style>. When defeating a unit while <style=Buff_Overwatching>Overwatching</style>, she remains in <style=Buff_Overwatching>Overwatch</style>, retaining {[hitsReduction]} fewer <style=Stat_Hits>hits</style> compared to the previous attack. \\n\\nShield Drones' stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons 2 <style=Summon><style=Faction_Tau>Shield Drones</style></style> into free adjacent hexes. Newly summoned <style=Summon><style=Faction_Tau>Shield Drones</style></style> can immediately attack an enemy in <style=Stat_Melee>melee</style>, but cannot move this turn.\n<style=Faction_Tau>Re'vas</style> also starts <style=Buff_Overwatching>Overwatching</style> until the start of her next turn, ignoring the <style=Combat_Weakness>Close Combat Weakness</style> trait and dealing <style=Stat_Damage>+{[extraDmg]} Damage</style>. When defeating a unit while <style=Buff_Overwatching>Overwatching</style>, she remains in <style=Buff_Overwatching>Overwatch</style>, retaining {[hitsReduction]} fewer <style=Stat_Hits>hits</style> compared to the previous attack. \n\nShield Drones' stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Early Warning Override"
     },
     "EchoesFromTheWarp": {
@@ -436,7 +436,7 @@
         "name": "Enmity for the Unworthy"
     },
     "EntropyCannons": {
-        "description": "Targets an enemy unit that has their <style=Stat_Armor>Armour</style> reduced or is within a friendly <style=ContagionsOfNurgle>Contagion</style> aura. Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Energy>{[minDmg]}-{[maxDmg]} Energy Damage</style> to the target.\\n\\nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Targets an enemy unit that has their <style=Stat_Armor>Armour</style> reduced or is within a friendly <style=ContagionsOfNurgle>Contagion</style> aura. Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Energy>{[minDmg]}-{[maxDmg]} Energy Damage</style> to the target.\n\nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Entropy Cannons"
     },
     "EnvAngelsOfDeath": {
@@ -487,7 +487,7 @@
         "name": "Thin Veil"
     },
     "EnvValkyrieStrike": {
-        "description": "At the end of the first, third and fifth defender turn, marks a hex anywhere on the battlefield. At the beginning of the defender's next turn, the target hex and all surrounding hexes are hit with Hellstrike Missiles, each dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>Blast Damage</style>. The amount of damage depends on the rarity cap of the defenders.\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "At the end of the first, third and fifth defender turn, marks a hex anywhere on the battlefield. At the beginning of the defender's next turn, the target hex and all surrounding hexes are hit with Hellstrike Missiles, each dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>Blast Damage</style>. The amount of damage depends on the rarity cap of the defenders.\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Valkyrie Strike"
     },
     "EreWeGo": {
@@ -495,7 +495,7 @@
         "name": "'Ere We Go!"
     },
     "EuphoricStrikes": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Power>{[minDmg]}-{[maxDmg]} Power Damage</style> to an adjacent enemy. The next attack against that enemy this turn has <style=Stat>+{[extraCritChance]}% Crit Chance</style>. \\n\\nUsing <i>Euphoric Strikes</i> does not end <style=Faction_EmperorsChildren>Laviscus'</style> turn.",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Power>{[minDmg]}-{[maxDmg]} Power Damage</style> to an adjacent enemy. The next attack against that enemy this turn has <style=Stat>+{[extraCritChance]}% Crit Chance</style>. \n\nUsing <i>Euphoric Strikes</i> does not end <style=Faction_EmperorsChildren>Laviscus'</style> turn.",
         "name": "Euphoric Strikes"
     },
     "ExcruciatingFrequencies": {
@@ -511,15 +511,15 @@
         "name": "Exemplar of Hate"
     },
     "ExemplarOfTheKauyon": {
-        "description": "<style=Faction_Tau>Commander Shadowsun</style> disappears, then reappears on a target hex adjacent to an allied unit and immediately performs a <style=NormalAttack>normal attack</style> against the closest enemy target. This attack deals an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[dmg]} Blast Damage</style>. A stationary <style=Summon><style=Faction_Tau>Command-Link Drone</style></style> is summoned in the hex she previously occupied.\\n\\n<style=Cooldown>Initial cooldown: {[initialCooldownTurns]} round</style>.\\n\\nCommand-Link Drone stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "<style=Faction_Tau>Commander Shadowsun</style> disappears, then reappears on a target hex adjacent to an allied unit and immediately performs a <style=NormalAttack>normal attack</style> against the closest enemy target. This attack deals an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[dmg]} Blast Damage</style>. A stationary <style=Summon><style=Faction_Tau>Command-Link Drone</style></style> is summoned in the hex she previously occupied.\n\n<style=Cooldown>Initial cooldown: {[initialCooldownTurns]} round</style>.\n\nCommand-Link Drone stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Exemplar of the Kauyon"
     },
     "ExemplarOfTheMontka": {
-        "description": "Until the end of this turn, <style=Faction_Tau>Commander Farsight</style> and all other friendly <style=Character>Characters</style> with a <style=NormalAttack>normal ranged attack</style> gain <style=Unstoppable>Unstoppable</style> and all their <style=NormalAttack>normal attacks</style> deal <style=Stat_Damage>+{[extraDmg]} Damage</style>. When attacking a <style=Big_Target>Big Target</style>, they deal <style=Stat_Damage>+{[extraDmg_2]} Damage</style> instead.\\n\\nUsing <i>Exemplar of the Mont'ka</i> does not end Commander Farsight's turn.",
+        "description": "Until the end of this turn, <style=Faction_Tau>Commander Farsight</style> and all other friendly <style=Character>Characters</style> with a <style=NormalAttack>normal ranged attack</style> gain <style=Unstoppable>Unstoppable</style> and all their <style=NormalAttack>normal attacks</style> deal <style=Stat_Damage>+{[extraDmg]} Damage</style>. When attacking a <style=Big_Target>Big Target</style>, they deal <style=Stat_Damage>+{[extraDmg_2]} Damage</style> instead.\n\nUsing <i>Exemplar of the Mont'ka</i> does not end Commander Farsight's turn.",
         "name": "Exemplar of the Mont'ka"
     },
     "Explosive": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to all adjacent hexes when destroyed.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to all adjacent hexes when destroyed.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Explosive"
     },
     "ExplosiveMaladies": {
@@ -527,11 +527,11 @@
         "name": "Explosive Maladies"
     },
     "ExplosivePresents": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to an enemy unit or friendly <style=Faction_Orks>Grot</style> within range {[range]} and all units adjacent to the target, except <style=Faction_Orks>Da Red Gobbo</style> itself. This ability can be used multiple times per battle but has a <style=Cooldown>cooldown of {[cooldownTurns]} rounds</style>. This cooldown is reduced by {[cooldownReduction]} round whenever a Grot is defeated.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to an enemy unit or friendly <style=Faction_Orks>Grot</style> within range {[range]} and all units adjacent to the target, except <style=Faction_Orks>Da Red Gobbo</style> itself. This ability can be used multiple times per battle but has a <style=Cooldown>cooldown of {[cooldownTurns]} rounds</style>. This cooldown is reduced by {[cooldownReduction]} round whenever a Grot is defeated.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Explosive Presents"
     },
     "FabricatorClawArray": {
-        "description": "After moving, <style=Repairing>repairs</style> one random adjacent friendly <style=Mechanical>Mechanical</style> unit for <style=Stat_Health>{[hpToRepair]} Health</style>.\\nIf <style=Faction_Necrons>Aleph-Null</style> does not move, then this ability triggers at the end of its turn.",
+        "description": "After moving, <style=Repairing>repairs</style> one random adjacent friendly <style=Mechanical>Mechanical</style> unit for <style=Stat_Health>{[hpToRepair]} Health</style>.\nIf <style=Faction_Necrons>Aleph-Null</style> does not move, then this ability triggers at the end of its turn.",
         "name": "Fabricator Claw Array"
     },
     "FearedInterrogator": {
@@ -551,7 +551,7 @@
         "name": "Fields of Fire"
     },
     "FightingRetreat": {
-        "description": "Adjacent enemies gain a <style=Debuff_Markerlight>Markerlight</style>. They also have <style=Stat_Hits>{[hitsReduction]}</style> fewer hits, to a minimum of one, and deal <style=Stat_Damage>-{[dmgReduction]} Damage</style> for one round. <style=Faction_Tau>Darkstrider</style> and adjacent allied units ignore their <style=Combat_Weakness>Close Combat Weakness</style> trait for ranged attacks until the end of this turn.\\n\\nUsing <i>Fighting Retreat</i> does not end <style=Faction_Tau>Darkstrider</style>'s turn if he is adjacent to an enemy, and he can move again if already moved in this turn.",
+        "description": "Adjacent enemies gain a <style=Debuff_Markerlight>Markerlight</style>. They also have <style=Stat_Hits>{[hitsReduction]}</style> fewer hits, to a minimum of one, and deal <style=Stat_Damage>-{[dmgReduction]} Damage</style> for one round. <style=Faction_Tau>Darkstrider</style> and adjacent allied units ignore their <style=Combat_Weakness>Close Combat Weakness</style> trait for ranged attacks until the end of this turn.\n\nUsing <i>Fighting Retreat</i> does not end <style=Faction_Tau>Darkstrider</style>'s turn if he is adjacent to an enemy, and he can move again if already moved in this turn.",
         "name": "Fighting Retreat"
     },
     "FireAndReposition": {
@@ -583,11 +583,11 @@
         "name": "Flames of Mutation"
     },
     "FleshmetalGuns": {
-        "description": "At the start of his turn, <style=Faction_BlackLegion>Volk</style> gains one of three effects until the start of his next turn. The effects are granted one after the other, repeating every three turns.\\n\\nVolk's ranged attacks score additional <style=Stat_Hits>hits</style>, based on the current effect:\\n<style=BUFF_no_underscore>Focused Malice</style>: <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Melta>{[minDmg]}-{[maxDmg]} Melta Damage</style>\\n<style=BUFF_no_underscore>Ruinous Salvo</style>: <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Flame>{[minDmg_2]}-{[maxDmg_2]} Flame Damage</style>\\n<style=BUFF_no_underscore>Warp Hail</style>: <style=Stat_Hits>{[nrOfHits_3]}x</style> <style=DMG_Heavy>{[minDmg_3]}-{[maxDmg_3]} Heavy Round Damage</style>, and these hits add <style=Tile_DespoiledGround>Despoiled Ground</style> to the hexes of attacked units.",
+        "description": "At the start of his turn, <style=Faction_BlackLegion>Volk</style> gains one of three effects until the start of his next turn. The effects are granted one after the other, repeating every three turns.\n\nVolk's ranged attacks score additional <style=Stat_Hits>hits</style>, based on the current effect:\n<style=BUFF_no_underscore>Focused Malice</style>: <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Melta>{[minDmg]}-{[maxDmg]} Melta Damage</style>\n<style=BUFF_no_underscore>Ruinous Salvo</style>: <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Flame>{[minDmg_2]}-{[maxDmg_2]} Flame Damage</style>\n<style=BUFF_no_underscore>Warp Hail</style>: <style=Stat_Hits>{[nrOfHits_3]}x</style> <style=DMG_Heavy>{[minDmg_3]}-{[maxDmg_3]} Heavy Round Damage</style>, and these hits add <style=Tile_DespoiledGround>Despoiled Ground</style> to the hexes of attacked units.",
         "name": "Fleshmetal Guns"
     },
     "FloatingDeath": {
-        "description": "Has +1 <style=Stat_Movement>Movement</style> when starting its turn within <style=Synapse>Synapse</style> range. This unit explodes when it attacks or if it or an adjacent friendly <style=Faction_Tyranids>Spore Mine</style> is defeated, and deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> to all adjacent enemies. Does not explode when <style=Overkill>overkilled</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Has +1 <style=Stat_Movement>Movement</style> when starting its turn within <style=Synapse>Synapse</style> range. This unit explodes when it attacks or if it or an adjacent friendly <style=Faction_Tyranids>Spore Mine</style> is defeated, and deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> to all adjacent enemies. Does not explode when <style=Overkill>overkilled</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Floating Death"
     },
     "Foehammer": {
@@ -599,7 +599,7 @@
         "name": "Forward Observers"
     },
     "ForwardSpotter": {
-        "description": "Summons a <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsman</style></style> in a hex adjacent to the targeted friendly unit. The Cadian Guardsman immediately takes a turn.\\n \\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} rounds</style>. \\n\\n<style=Summon><style=Faction_AstraMilitarum>Cadian Guardsman</style></style> stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons a <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsman</style></style> in a hex adjacent to the targeted friendly unit. The Cadian Guardsman immediately takes a turn.\n \nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} rounds</style>. \n\n<style=Summon><style=Faction_AstraMilitarum>Cadian Guardsman</style></style> stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Forward Spotter"
     },
     "FoulInfusion": {
@@ -635,7 +635,7 @@
         "name": "Full Throttle"
     },
     "FuryOfTheAncients": {
-        "description": "After moving, deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to an adjacent enemy and an additional enemy adjacent to the initial one. For 2 rounds, affected units cannot be revived, <style=Healing>healed</style>, <style=Repairing>repaired</style>, nor otherwise restore <style=\" Stat_Health  ">Health</style>. If <style=Faction_BloodAngels>Mephiston</style> does not move, this ability triggers at the end of his turn.\\n",
+        "description": "After moving, deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to an adjacent enemy and an additional enemy adjacent to the initial one. For 2 rounds, affected units cannot be revived, <style=Healing>healed</style>, <style=Repairing>repaired</style>, nor otherwise restore <style=\" Stat_Health  ">Health</style>. If <style=Faction_BloodAngels>Mephiston</style> does not move, this ability triggers at the end of his turn.\n",
         "name": "Fury of the Ancients"
     },
     "GalvanicField": {
@@ -647,15 +647,15 @@
         "name": "Gauntlets of Ultramar"
     },
     "GazeOfMagnus": {
-        "description": "At the end of each of his turns, <style=Faction_ThousandSons>Magnus</style> turns his Gaze upon an enemy <style=Character>Character</style>, choosing a <style=Psyker>Psyker</style> if possible. At the beginning of Magnus' next turn, if that character is a Psyker or attacked Magnus while under the Gaze, it takes <style=Stat_Hits>{[nrOfHits]}x </style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> and if it is a Psyker, it is <style=Debuff_Stunned>Stunned</style> for 1 round. Scores <style=Stat_Hits>+{[extraHit]}x hit</style> for each turn in a row that Magnus targets the same character with the Gaze.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "At the end of each of his turns, <style=Faction_ThousandSons>Magnus</style> turns his Gaze upon an enemy <style=Character>Character</style>, choosing a <style=Psyker>Psyker</style> if possible. At the beginning of Magnus' next turn, if that character is a Psyker or attacked Magnus while under the Gaze, it takes <style=Stat_Hits>{[nrOfHits]}x </style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> and if it is a Psyker, it is <style=Debuff_Stunned>Stunned</style> for 1 round. Scores <style=Stat_Hits>+{[extraHit]}x hit</style> for each turn in a row that Magnus targets the same character with the Gaze.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Gaze of Magnus"
     },
     "GeminaeSuperia": {
-        "description": "When attacked, summons a <style=Summon><style=Faction_Sisterhood>Geminae Superia</style></style> in a free adjacent hex, and immediately triggers its passive ability <style=Lifewards>Lifewards</style>. Can do this twice per battle.\\n\\nGeminae Superia’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "When attacked, summons a <style=Summon><style=Faction_Sisterhood>Geminae Superia</style></style> in a free adjacent hex, and immediately triggers its passive ability <style=Lifewards>Lifewards</style>. Can do this twice per battle.\n\nGeminae Superia’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Geminae Superia"
     },
     "GetEmRuntz": {
-        "description": "Summons 1 <style=Summon><style=Faction_Orks>Grot</style></style> in each adjacent hex that also has an enemy unit adjacent to it. Newly spawned <style=Summon><style=Faction_Orks>Grots</style></style> can immediately attack an enemy in <style=Stat_Melee>melee</style>, but cannot move this turn. Enemy units attacked by a <style=Summon><style=Faction_Orks>Grot</style></style> this way are <style=Debuff_Taunted>Taunted</style> for 1 round.\\n\\nGrot’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
+        "description": "Summons 1 <style=Summon><style=Faction_Orks>Grot</style></style> in each adjacent hex that also has an enemy unit adjacent to it. Newly spawned <style=Summon><style=Faction_Orks>Grots</style></style> can immediately attack an enemy in <style=Stat_Melee>melee</style>, but cannot move this turn. Enemy units attacked by a <style=Summon><style=Faction_Orks>Grot</style></style> this way are <style=Debuff_Taunted>Taunted</style> for 1 round.\n\nGrot’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
         "name": "Get ’Em Runtz"
     },
     "GrapnelLauncher": {
@@ -671,7 +671,7 @@
         "name": "Grim Retribution"
     },
     "GrotTank": {
-        "description": "Calls in a <style=Summon><style=Faction_Orks>Grot Tank</style></style> in an adjacent free hex. The <style=Summon><style=Faction_Orks>Grot Tank</style></style> cannot move in its first turn, but can immediately attack an enemy in range.\\n\\nGrot Tank’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style> +<style=Stat_Health>{[extraHp]}</style> for each round that has started\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Calls in a <style=Summon><style=Faction_Orks>Grot Tank</style></style> in an adjacent free hex. The <style=Summon><style=Faction_Orks>Grot Tank</style></style> cannot move in its first turn, but can immediately attack an enemy in range.\n\nGrot Tank’s stats:\n<style=Stat_Health>{[summonHp]} Health</style> +<style=Stat_Health>{[extraHp]}</style> for each round that has started\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Grot Tank"
     },
     "GuardianOrganism": {
@@ -683,7 +683,7 @@
         "name": "Gunners, Kill on Sight!"
     },
     "HadesAutocannons": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Flame>{[minDmg]}-{[maxDmg]} Flame Damage</style> to a targeted enemy <style=Summon>summon</style> and all other enemy summons within 2 hexes of the target. Can deal <style=Stat_CritDamage>{[extraCritDmg]} Crit Damage</style>.\\n\\nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Flame>{[minDmg]}-{[maxDmg]} Flame Damage</style> to a targeted enemy <style=Summon>summon</style> and all other enemy summons within 2 hexes of the target. Can deal <style=Stat_CritDamage>{[extraCritDmg]} Crit Damage</style>.\n\nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.",
         "name": "Hades Autocannons"
     },
     "HailOfLivingAmmunition": {
@@ -691,11 +691,11 @@
         "name": "Hail of Living Ammunition"
     },
     "HammerOfWrath": {
-        "description": "If <style=Faction_BloodAngels>Mataneo</style> has not moved, he gains <style=Buff_Infiltrate>Infiltrate</style> until the end of this turn, <style=Charging>charges</style> an enemy target that has a free adjacent hex within movement range {[range]}, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Power>{[minDmg]}-{[maxDmg]} Power Damage</style> to the target and <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Physical>{[minDmg_2]}-{[maxDmg_2]} Physical Damage</style> to all enemies adjacent to it. If Mataneo is at or below <style=Stat_Health>{[healthPct]}% Health</style>, doubles the damage dealt by this ability.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "If <style=Faction_BloodAngels>Mataneo</style> has not moved, he gains <style=Buff_Infiltrate>Infiltrate</style> until the end of this turn, <style=Charging>charges</style> an enemy target that has a free adjacent hex within movement range {[range]}, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Power>{[minDmg]}-{[maxDmg]} Power Damage</style> to the target and <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Physical>{[minDmg_2]}-{[maxDmg_2]} Physical Damage</style> to all enemies adjacent to it. If Mataneo is at or below <style=Stat_Health>{[healthPct]}% Health</style>, doubles the damage dealt by this ability.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Hammer of Wrath"
     },
     "HarbingerOfDestruction": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Direct>{[minDmg]}-{[maxDmg]} Direct Damage</style> to a target and up to two other random enemies within {[range]} hexes.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Direct>{[minDmg]}-{[maxDmg]} Direct Damage</style> to a target and up to two other random enemies within {[range]} hexes.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Harbinger of Destruction"
     },
     "HarlequinsPanoply": {
@@ -715,7 +715,7 @@
         "name": "Haze of Corruption"
     },
     "HeadClaimer": {
-        "description": "For each enemy unit that <style=Faction_BlackLegion>Haarken</style> has defeated, his attacks deal <style=Stat_Damage>+{[extraDmg]} Damage</style> for the rest of the battle.\\nFor each enemy <style=Character>Character</style> that he has defeated, his attacks also score <style=Stat_Hits>+{[extraHit]} hit</style> for the rest of the battle.",
+        "description": "For each enemy unit that <style=Faction_BlackLegion>Haarken</style> has defeated, his attacks deal <style=Stat_Damage>+{[extraDmg]} Damage</style> for the rest of the battle.\nFor each enemy <style=Character>Character</style> that he has defeated, his attacks also score <style=Stat_Hits>+{[extraHit]} hit</style> for the rest of the battle.",
         "name": "Head-Claimer"
     },
     "Heal": {
@@ -731,7 +731,7 @@
         "name": "Heavy Grav-Cannon"
     },
     "HeavyRailRifle": {
-        "description": "Targets an enemy and fires the Heavy Rail Rifle at the start of <style=Faction_Tau>Tson'ji's</style> next turn. If targeting a unit, deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Piercing>{[minDmg]}-{[maxDmg]} Piercing Damage</style>. This damage is reduced by <style=Stat>{[dmgPctReduction]}%</style> for each hex the target has traversed during its last turn, to a minimum of 0 damage. Any damage dealt to <style=Vehicle>Vehicles</style> and <style=Big_Target>Big Targets</style> is increased by <style=Stat>{[extraDmgPct]}%</style> each. If targeting <style=MoW>Machines of War</style>, increases the <style=Cooldown>cooldown</style> of the target's secondary ability by {[cooldownIncrease]} round and has a <style=Stat>{[chance]}%</style> chance to also increase the <style=Cooldown>cooldown</style> of the primary ability by {[cooldownIncrease_2]} round.\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \\nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Targets an enemy and fires the Heavy Rail Rifle at the start of <style=Faction_Tau>Tson'ji's</style> next turn. If targeting a unit, deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Piercing>{[minDmg]}-{[maxDmg]} Piercing Damage</style>. This damage is reduced by <style=Stat>{[dmgPctReduction]}%</style> for each hex the target has traversed during its last turn, to a minimum of 0 damage. Any damage dealt to <style=Vehicle>Vehicles</style> and <style=Big_Target>Big Targets</style> is increased by <style=Stat>{[extraDmgPct]}%</style> each. If targeting <style=MoW>Machines of War</style>, increases the <style=Cooldown>cooldown</style> of the target's secondary ability by {[cooldownIncrease]} round and has a <style=Stat>{[chance]}%</style> chance to also increase the <style=Cooldown>cooldown</style> of the primary ability by {[cooldownIncrease_2]} round.\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Heavy Rail Rifle"
     },
     "HellfireShells": {
@@ -739,7 +739,7 @@
         "name": "Hellfire Shells"
     },
     "HellfyreMissileRack": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Heavy>{[minDmg]}-{[maxDmg]} Heavy Round Damage</style> to a target enemy unit within range {[range]} and an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Heavy>{[minDmg]}-{[maxDmg]} Heavy Round Damage</style> to each enemy unit on the map that was dealt <style=DMG_Psychic>Psychic Damage</style> this turn, which can include the initial target again.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Heavy>{[minDmg]}-{[maxDmg]} Heavy Round Damage</style> to a target enemy unit within range {[range]} and an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Heavy>{[minDmg]}-{[maxDmg]} Heavy Round Damage</style> to each enemy unit on the map that was dealt <style=DMG_Psychic>Psychic Damage</style> this turn, which can include the initial target again.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Hellfyre Missile Rack"
     },
     "HeraldOfTheApocalypse": {
@@ -747,7 +747,7 @@
         "name": "Herald of the Apocalypse"
     },
     "HeroicFusillade": {
-        "description": "Targets an enemy unit that has a free surrounding hex within movement range {[range]} of <style=Faction_Genestealers>Judh</style> or is already on a hex surrounding <style=Faction_Genestealers>Judh</style>. She then moves to the free hex and deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Projectile>{[minDmg]}-{[maxDmg]} Projectile Damage</style> to the target and all other enemies surrounding it. Crits deal an additional <style=Stat_CritDamage>+{[extraCritDmg]} Crit Damage</style> for each free hex surrounding the targeted enemy.\\n\\nWhen <style=Faction_Genestealers>Judh</style> is resurrected and <i>Heroic Fusillade</i> has already been used, then it can be used again in this battle.",
+        "description": "Targets an enemy unit that has a free surrounding hex within movement range {[range]} of <style=Faction_Genestealers>Judh</style> or is already on a hex surrounding <style=Faction_Genestealers>Judh</style>. She then moves to the free hex and deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Projectile>{[minDmg]}-{[maxDmg]} Projectile Damage</style> to the target and all other enemies surrounding it. Crits deal an additional <style=Stat_CritDamage>+{[extraCritDmg]} Crit Damage</style> for each free hex surrounding the targeted enemy.\n\nWhen <style=Faction_Genestealers>Judh</style> is resurrected and <i>Heroic Fusillade</i> has already been used, then it can be used again in this battle.",
         "name": "Heroic Fusillade"
     },
     "HolyDuel": {
@@ -767,7 +767,7 @@
         "name": "Hunter of Souls"
     },
     "HuntersBeyondDeath": {
-        "description": "Deals <style=Stat_Damage>+{[extraDmg]} Damage</style> against <style=Psyker>Psykers</style>, and enemy <style=Psyker>Psykers</style> within 2 hexes deal <style=Stat_Damage>-{[dmgReduction]} Damage</style>.\\n\\nUnless they are <style=Immune>Immune</style>, Enemy <style=Psyker>Psykers</style> within 2 hexes will not hit an additional unit with their <style=NormalAttack>normal ranged attacks</style>.",
+        "description": "Deals <style=Stat_Damage>+{[extraDmg]} Damage</style> against <style=Psyker>Psykers</style>, and enemy <style=Psyker>Psykers</style> within 2 hexes deal <style=Stat_Damage>-{[dmgReduction]} Damage</style>.\n\nUnless they are <style=Immune>Immune</style>, Enemy <style=Psyker>Psykers</style> within 2 hexes will not hit an additional unit with their <style=NormalAttack>normal ranged attacks</style>.",
         "name": "Hunters Beyond Death"
     },
     "HuntersInstincts": {
@@ -803,7 +803,7 @@
         "name": "Incendiary Shells"
     },
     "Incursion": {
-        "description": "Summons a <style=Summon><style=Faction_BlackLegion>Bloodletter</style></style> adjacent to an enemy target within range {[range]}. The Bloodletter immediately attacks the target. Keeps summoning Bloodletters up to a max of {[maxSummons]}, as long as the target has not been defeated, is in range and has a free hex adjacent to it. \\n\\nBloodletter’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
+        "description": "Summons a <style=Summon><style=Faction_BlackLegion>Bloodletter</style></style> adjacent to an enemy target within range {[range]}. The Bloodletter immediately attacks the target. Keeps summoning Bloodletters up to a max of {[maxSummons]}, as long as the target has not been defeated, is in range and has a free hex adjacent to it. \n\nBloodletter’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
         "name": "Daemonic Incursion"
     },
     "InescapableAccuracy": {
@@ -811,11 +811,11 @@
         "name": "Inescapable Accuracy"
     },
     "InescapableDeath": {
-        "description": "<style=Faction_Necrons>Imospekh</style>’s <style=Stat_Range>ranged</style> attacks each deal <style=Stat_Damage>+{[extraDmg]} Damage</style> per <style=Stat_Hits>hit</style> when triggered by <style=Overwatch>Overwatch</style>.\\n\\nWhen defeating a unit with an attack triggered by <style=Overwatch>Overwatch</style>, <style=Faction_Necrons>Imospekh</style> stays in <style=Overwatch>Overwatch</style>, retaining {[hitsReduction]} fewer <style=Stat_Hits>hits</style> compared to the previous attack.",
+        "description": "<style=Faction_Necrons>Imospekh</style>’s <style=Stat_Range>ranged</style> attacks each deal <style=Stat_Damage>+{[extraDmg]} Damage</style> per <style=Stat_Hits>hit</style> when triggered by <style=Overwatch>Overwatch</style>.\n\nWhen defeating a unit with an attack triggered by <style=Overwatch>Overwatch</style>, <style=Faction_Necrons>Imospekh</style> stays in <style=Overwatch>Overwatch</style>, retaining {[hitsReduction]} fewer <style=Stat_Hits>hits</style> compared to the previous attack.",
         "name": "Inescapable Death"
     },
     "InfernalCannon": {
-        "description": "Targets a hex on the battlefield. Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Flame>{[minDmg]}-{[maxDmg]} Flame Damage</style> to all enemies that are on <style=Effect_Fire>Fire</style> hexes or have taken <style=DMG_Psychic>Psychic Damage</style> this turn. Then adds <style=Effect_Fire>Fire</style> to the targeted hex.\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Targets a hex on the battlefield. Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Flame>{[minDmg]}-{[maxDmg]} Flame Damage</style> to all enemies that are on <style=Effect_Fire>Fire</style> hexes or have taken <style=DMG_Psychic>Psychic Damage</style> this turn. Then adds <style=Effect_Fire>Fire</style> to the targeted hex.\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Infernal Cannon"
     },
     "InfernalPacts": {
@@ -835,19 +835,19 @@
         "name": "Intoxicating Elixir"
     },
     "InvocationOfMachineVengeance": {
-        "description": "Summons <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_AdeptusMechanicus>Tech-Priest Enginseers</style></style> at the bottom of the map. Then adds <style=Stat>{[effectLevel]}</style> level of <style=Buff_MachineVengeance>Machine Vengeance</style> to all friendly <style=Mechanical>Mechanical</style> units on the battlefield.\\n\\nTech-Priest Enginseer stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_AdeptusMechanicus>Tech-Priest Enginseers</style></style> at the bottom of the map. Then adds <style=Stat>{[effectLevel]}</style> level of <style=Buff_MachineVengeance>Machine Vengeance</style> to all friendly <style=Mechanical>Mechanical</style> units on the battlefield.\n\nTech-Priest Enginseer stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Invocation of Machine Vengeance"
     },
     "ItItches": {
-        "description": "<style=Debuff_Pinned>Suppresses</style> and <style=Displacement>pushes</style> an adjacent enemy unit and all enemy units adjacent to both the target and the <style=Faction_Tyranids>Parasite of Mortrex</style> one hex backwards. Enemy <style=Steppable>steppables</style> on affected hexes are destroyed. Then summons a <style=Summon><style=Faction_Tyranids>Ripper Swarm</style></style> in each hex vacated by this ability. The <style=Summon><style=Faction_Tyranids>Ripper Swarms</style></style> can immediately attack. The <style=Faction_Tyranids>Parasite of Mortrex</style> may move again after activating this ability.\\n\\nRipper Swarm stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "<style=Debuff_Pinned>Suppresses</style> and <style=Displacement>pushes</style> an adjacent enemy unit and all enemy units adjacent to both the target and the <style=Faction_Tyranids>Parasite of Mortrex</style> one hex backwards. Enemy <style=Steppable>steppables</style> on affected hexes are destroyed. Then summons a <style=Summon><style=Faction_Tyranids>Ripper Swarm</style></style> in each hex vacated by this ability. The <style=Summon><style=Faction_Tyranids>Ripper Swarms</style></style> can immediately attack. The <style=Faction_Tyranids>Parasite of Mortrex</style> may move again after activating this ability.\n\nRipper Swarm stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "It Itches!"
     },
     "ItsGonnaBlow": {
-        "description": "If this unit is <style=Overkill>Overkilled</style> the ammo box explodes, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to all adjacent hexes.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "If this unit is <style=Overkill>Overkilled</style> the ammo box explodes, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to all adjacent hexes.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "It’s Gonna Blow"
     },
     "JakhalStimms": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Physical>{[minDmg]}-{[maxDmg]} Physical Damage</style> to an adjacent enemy and all other enemies adjacent to both <style=Faction_WorldEaters>Macer</style> and the target. Then <style=Faction_WorldEaters>Macer</style> loses <style=Stat>{[hpPct]}%</style> of his current <style=Stat_Health>Health</style>. \\n\\nUsing <i>Jakhal Stimms</i> does not end <style=Faction_WorldEaters>Macer</style>'s turn.",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Physical>{[minDmg]}-{[maxDmg]} Physical Damage</style> to an adjacent enemy and all other enemies adjacent to both <style=Faction_WorldEaters>Macer</style> and the target. Then <style=Faction_WorldEaters>Macer</style> loses <style=Stat>{[hpPct]}%</style> of his current <style=Stat_Health>Health</style>. \n\nUsing <i>Jakhal Stimms</i> does not end <style=Faction_WorldEaters>Macer</style>'s turn.",
         "name": "Jakhal Stimms"
     },
     "KardiocoreGalvanus": {
@@ -871,7 +871,7 @@
         "name": "Lash of Torment"
     },
     "LeadingTheCharge": {
-        "description": "If <style=Faction_AstraMilitarum>Dreir</style> has not moved, he gains <style=Buff_Infiltrate>Infiltrate</style> until the end of this turn and <style=Charging>charges</style> an enemy target that has a free adjacent hex within movement range {[range]}, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Power>{[minDmg]}-{[maxDmg]} Power Damage</style> to it. Then, summons up to <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_AstraMilitarum>Death Riders</style></style> in free adjacent hexes that can immediately attack enemies in range. All attacks triggered by this ability have <style=Piercing_Ratio>+{[extraPierceRatio]}% pierce ratio</style> for each friendly unit that has been defeated this battle. \\n\\nDeath Rider stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "If <style=Faction_AstraMilitarum>Dreir</style> has not moved, he gains <style=Buff_Infiltrate>Infiltrate</style> until the end of this turn and <style=Charging>charges</style> an enemy target that has a free adjacent hex within movement range {[range]}, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Power>{[minDmg]}-{[maxDmg]} Power Damage</style> to it. Then, summons up to <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_AstraMilitarum>Death Riders</style></style> in free adjacent hexes that can immediately attack enemies in range. All attacks triggered by this ability have <style=Piercing_Ratio>+{[extraPierceRatio]}% pierce ratio</style> for each friendly unit that has been defeated this battle. \n\nDeath Rider stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Leading the Charge"
     },
     "LegacyOfCombat": {
@@ -911,11 +911,11 @@
         "name": "Living Battering Ram"
     },
     "LivingLightning": {
-        "description": "After moving, deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Direct>{[minDmg]}-{[maxDmg]} Direct Damage</style> to one random adjacent enemy.\\nIf <style=Faction_Necrons>Thutmose</style> does not move, then this ability triggers at the end of his turn.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "After moving, deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Direct>{[minDmg]}-{[maxDmg]} Direct Damage</style> to one random adjacent enemy.\nIf <style=Faction_Necrons>Thutmose</style> does not move, then this ability triggers at the end of his turn.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Living Lightning"
     },
     "Loki_SwoopingHawk": {
-        "description": "Flies over and deals a wave of damage from an initial melee target to targets up to 2 hexes behind. <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Piercing>{[dmg[0]]} Piercing Damage</style> to first target, <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Piercing>{[dmg[1]]} Piercing Damage</style> to the second, and <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Piercing>{[dmg[2]]} Piercing Damage</style> to the third. Lands in the hex directly behind the last target hit, or - in case that hex is occupied - to the closest free hex to it.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Flies over and deals a wave of damage from an initial melee target to targets up to 2 hexes behind. <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Piercing>{[dmg[0]]} Piercing Damage</style> to first target, <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Piercing>{[dmg[1]]} Piercing Damage</style> to the second, and <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Piercing>{[dmg[2]]} Piercing Damage</style> to the third. Lands in the hex directly behind the last target hit, or - in case that hex is occupied - to the closest free hex to it.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Swooping Hawk"
     },
     "LordOfTempests": {
@@ -927,11 +927,11 @@
         "name": "Lord of the Host"
     },
     "MacroPlasmaIncinerator": {
-        "description": "Marks a target hex and the two hexes behind it for 1 round. Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Plasma>{[minDmg]}-{[maxDmg]} Plasma Damage</style> to all enemies in the marked area the first time an enemy unit ends their movement in it.\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Marks a target hex and the two hexes behind it for 1 round. Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Plasma>{[minDmg]}-{[maxDmg]} Plasma Damage</style> to all enemies in the marked area the first time an enemy unit ends their movement in it.\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Macro Plasma Incinerator"
     },
     "MalleusRocketLauncher": {
-        "description": "Marks a hex on the battlefield. At the beginning of the <style=MoW><style=Faction_AstraMilitarum>Field Ordnance Battery</style></style>'s next turn, it unleashes a barrage of missiles. {[nrOfProjectiles]} missiles impact on the marked hex and {[nrOfProjectiles_2]} missiles impact in hexes adjacent to the target with a maximum of {[nrOfProjectiles_3]} impacts per unit. Each impact deals <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> and all units hit get <style=Debuff_Pinned>Suppressed</style>. Enemies hit within {[range]} hexes of a friendly <style=Faction_AstraMilitarum>Astra Militarum</style> unit take <style=Stat>+{[extraDmg]}</style> damage from each hit.\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \\nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Marks a hex on the battlefield. At the beginning of the <style=MoW><style=Faction_AstraMilitarum>Field Ordnance Battery</style></style>'s next turn, it unleashes a barrage of missiles. {[nrOfProjectiles]} missiles impact on the marked hex and {[nrOfProjectiles_2]} missiles impact in hexes adjacent to the target with a maximum of {[nrOfProjectiles_3]} impacts per unit. Each impact deals <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> and all units hit get <style=Debuff_Pinned>Suppressed</style>. Enemies hit within {[range]} hexes of a friendly <style=Faction_AstraMilitarum>Astra Militarum</style> unit take <style=Stat>+{[extraDmg]}</style> damage from each hit.\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Malleus Rocket Barrage"
     },
     "MartialApotheosis": {
@@ -955,7 +955,7 @@
         "name": "Master Annihilator"
     },
     "MasterOfTheTutelaries": {
-        "description": "Summon a <style=Summon><style=Faction_ThousandSons>Pink Horror</style></style> on a free hex adjacent to <style=Faction_ThousandSons>Abraxas</style>. Until the end of this turn, whenever an enemy unit is dealt <style=DMG_Psychic>Psychic Damage</style>, summon a <style=Summon><style=Faction_ThousandSons>Screamer of Tzeentch</style></style> on a free hex adjacent to <style=Faction_ThousandSons>Abraxas</style>, preferring hexes adjacent to enemy units. Newly summoned units can immediately attack an enemy in range but cannot move.\\n\\nPink Horror stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n\\nScreamer of Tzeentch stats:\\n<style=Stat_Health>{[summonHp_2]} Health</style>\\n<style=Stat_Damage>{[summonDmg_2]} Damage</style>",
+        "description": "Summon a <style=Summon><style=Faction_ThousandSons>Pink Horror</style></style> on a free hex adjacent to <style=Faction_ThousandSons>Abraxas</style>. Until the end of this turn, whenever an enemy unit is dealt <style=DMG_Psychic>Psychic Damage</style>, summon a <style=Summon><style=Faction_ThousandSons>Screamer of Tzeentch</style></style> on a free hex adjacent to <style=Faction_ThousandSons>Abraxas</style>, preferring hexes adjacent to enemy units. Newly summoned units can immediately attack an enemy in range but cannot move.\n\nPink Horror stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n\nScreamer of Tzeentch stats:\n<style=Stat_Health>{[summonHp_2]} Health</style>\n<style=Stat_Damage>{[summonDmg_2]} Damage</style>",
         "name": "Malefic Maelstrom"
     },
     "Maugetar": {
@@ -971,7 +971,7 @@
         "name": "Medicus Ministorum"
     },
     "MightFromBelow": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to an adjacent enemy, then summons a <style=Summon><style=Faction_Genestealers>Purestrain Genestealer</style></style> on each <style=Decoy>decoy</style> adjacent to <style=Faction_Genestealers>the Patermine</style>. The Purestrain Genestealers can immediately attack in <style=Stat_Melee>melee</style>, but cannot move this turn.\\n\\nPurestrain Genestealer stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to an adjacent enemy, then summons a <style=Summon><style=Faction_Genestealers>Purestrain Genestealer</style></style> on each <style=Decoy>decoy</style> adjacent to <style=Faction_Genestealers>the Patermine</style>. The Purestrain Genestealers can immediately attack in <style=Stat_Melee>melee</style>, but cannot move this turn.\n\nPurestrain Genestealer stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Might From Below"
     },
     "MindControl": {
@@ -995,11 +995,11 @@
         "name": "More Gitz Over 'Ere!"
     },
     "MortarionsPlagueWind": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to a target within {[range]} hexes. Any enemies adjacent to the initial target take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg_2]}-{[maxDmg_2]} Psychic Damage</style>. Any further enemies adjacent to at least one secondary target take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg_3]}-{[maxDmg_3]} Psychic Damage</style>. <style=Summon>Summons</style> take double damage.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to a target within {[range]} hexes. Any enemies adjacent to the initial target take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg_2]}-{[maxDmg_2]} Psychic Damage</style>. Any further enemies adjacent to at least one secondary target take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg_3]}-{[maxDmg_3]} Psychic Damage</style>. <style=Summon>Summons</style> take double damage.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Mortarion's Plague Wind"
     },
     "MortisRound": {
-        "description": "Deals <style=Stat_Hits>1x</style> <style=DMG_Heavy>{[minDmg]}-{[maxDmg]} Heavy Round Damage</style> to a single target within range 3, which is then <style=Displacement>pushed</style> back 1 hex.\\nThe <style=Heavy_Weapon>Heavy Weapon</style> trait applies double to this ability.",
+        "description": "Deals <style=Stat_Hits>1x</style> <style=DMG_Heavy>{[minDmg]}-{[maxDmg]} Heavy Round Damage</style> to a single target within range 3, which is then <style=Displacement>pushed</style> back 1 hex.\nThe <style=Heavy_Weapon>Heavy Weapon</style> trait applies double to this ability.",
         "name": "Mortis Round"
     },
     "MultiThreatEliminator": {
@@ -1015,7 +1015,7 @@
         "name": "Murderous Swing"
     },
     "MV71SniperDroneSquad": {
-        "description": "Instead of a ranged attack, <style=Faction_Tau>Sho'syl</style> summons a <style=Summon>MV71 Sniper Drone</style> and commands it to attack the target. This attack uses <style=Faction_Tau>Sho'syl's</style> <style=Stat_Damage>Damage</style> stat, while other effects, like buffs, are taken from the Drone. If <style=Faction_Tau>Sho'syl</style> already controls {[maxSummons]} <style=Summon>MV71 Sniper Drones</style>, the one with the lowest <style=Stat_Health>Health</style> is removed before the new Drone is summoned.\\nThe target also gains a <style=Debuff_Markerlight>Markerlight</style> until the end of <style=Faction_Tau>Sho'syl's</style> next turn.\\n\\nMV71 Sniper Drones' stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Instead of a ranged attack, <style=Faction_Tau>Sho'syl</style> summons a <style=Summon>MV71 Sniper Drone</style> and commands it to attack the target. This attack uses <style=Faction_Tau>Sho'syl's</style> <style=Stat_Damage>Damage</style> stat, while other effects, like buffs, are taken from the Drone. If <style=Faction_Tau>Sho'syl</style> already controls {[maxSummons]} <style=Summon>MV71 Sniper Drones</style>, the one with the lowest <style=Stat_Health>Health</style> is removed before the new Drone is summoned.\nThe target also gains a <style=Debuff_Markerlight>Markerlight</style> until the end of <style=Faction_Tau>Sho'syl's</style> next turn.\n\nMV71 Sniper Drones' stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "MV71 Sniper Drone Squad"
     },
     "MyWillBeDone": {
@@ -1035,7 +1035,7 @@
         "name": "Nether-Realm Casket"
     },
     "Neuroparasite": {
-        "description": "Each enemy that is dealt <style=DMG_Psychic>Psychic Damage</style> by the <style=Faction_Tyranids>Neurothrope</style> is infected by a <style=Debuff_Neuroparasite>Neuroparasite</style> until either the unit is healed or the <style=Faction_Tyranids>Neurothrope</style> is defeated. Whenever a unit infected with a <style=Debuff_Neuroparasite>Neuroparasite</style> takes <style=DMG_Psychic>Psychic Damage</style> or becomes affected by an attack or ability that would <style=Debuff_Pinned>Suppress</style> it, the level of the <style=Debuff_Neuroparasite>Neuroparasite</style> increases by 1, up to a maximum of <style=Stat>{[buffMaxLevel]}</style>.\\n\\n<style=DMG_Psychic>Psychic Damage</style> dealt by the <style=Faction_Tyranids>Neurothrope</style> is increased by <style=Stat_Damage>+{[extraDmg]} Damage</style> for each level of a <style=Debuff_Neuroparasite>Neuroparasite</style> on the target.",
+        "description": "Each enemy that is dealt <style=DMG_Psychic>Psychic Damage</style> by the <style=Faction_Tyranids>Neurothrope</style> is infected by a <style=Debuff_Neuroparasite>Neuroparasite</style> until either the unit is healed or the <style=Faction_Tyranids>Neurothrope</style> is defeated. Whenever a unit infected with a <style=Debuff_Neuroparasite>Neuroparasite</style> takes <style=DMG_Psychic>Psychic Damage</style> or becomes affected by an attack or ability that would <style=Debuff_Pinned>Suppress</style> it, the level of the <style=Debuff_Neuroparasite>Neuroparasite</style> increases by 1, up to a maximum of <style=Stat>{[buffMaxLevel]}</style>.\n\n<style=DMG_Psychic>Psychic Damage</style> dealt by the <style=Faction_Tyranids>Neurothrope</style> is increased by <style=Stat_Damage>+{[extraDmg]} Damage</style> for each level of a <style=Debuff_Neuroparasite>Neuroparasite</style> on the target.",
         "name": "Neuroparasite"
     },
     "Nightshroud": {
@@ -1067,7 +1067,7 @@
         "name": "Nova Shield"
     },
     "ObeisanceGenerators": {
-        "description": "Enemy units <style=Charging>charging</style> <style=Faction_Necrons>Szarekh</style> score <style=Stat_Hits>-{[hitsReduction]}</style> hits, to a minimum of 1 hit.\\n<style=Summon>Summons</style> <style=Charging>charging</style> <style=Faction_Necrons>Szarekh</style> score <style=Stat_Hits>-{[hitsReduction_2]}</style> hits, to a minimum of 1 hit.",
+        "description": "Enemy units <style=Charging>charging</style> <style=Faction_Necrons>Szarekh</style> score <style=Stat_Hits>-{[hitsReduction]}</style> hits, to a minimum of 1 hit.\n<style=Summon>Summons</style> <style=Charging>charging</style> <style=Faction_Necrons>Szarekh</style> score <style=Stat_Hits>-{[hitsReduction_2]}</style> hits, to a minimum of 1 hit.",
         "name": "Obeisance Generators"
     },
     "ObsessiveAnnunciation": {
@@ -1123,7 +1123,7 @@
         "name": "Phoenix Gem"
     },
     "PileIn": {
-        "description": "If this unit has full <style=Stat_Health>Health</style> at the end of its turn, it has a {[chance]}% chance to <style=Summon>summon</style> another <style=Faction_Orks>Grot</style> in an adjacent free hex, -{[chance_2]}% for each friendly <style=Faction_Orks>Grot</style> currently on the board. The spawned <style=Faction_Orks>Grot</style> acts as normal on its next turn.\\n\\nGrot’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
+        "description": "If this unit has full <style=Stat_Health>Health</style> at the end of its turn, it has a {[chance]}% chance to <style=Summon>summon</style> another <style=Faction_Orks>Grot</style> in an adjacent free hex, -{[chance_2]}% for each friendly <style=Faction_Orks>Grot</style> currently on the board. The spawned <style=Faction_Orks>Grot</style> acts as normal on its next turn.\n\nGrot’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
         "name": "Pile In"
     },
     "PinpointCounterOffensive": {
@@ -1131,23 +1131,23 @@
         "name": "Pinpoint Counter Offensive"
     },
     "PlagueburstMortar": {
-        "description": "Targets a hex on the battlefield. All enemies on that hex or adjacent hexes that also either have their <style=Stat_Armor>Armour</style> reduced or are within a friendly <style=ContagionsOfNurgle>Contagion</style> aura take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> and become <style=Debuff_Pinned>Suppressed</style> for 1 round. Then adds <style=Tile_Contamination>Contamination</style> to the target hex and random hexes adjacent to it, up to a total of <style=Stat>{[nrOfTiles]}</style> hexes.\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Targets a hex on the battlefield. All enemies on that hex or adjacent hexes that also either have their <style=Stat_Armor>Armour</style> reduced or are within a friendly <style=ContagionsOfNurgle>Contagion</style> aura take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> and become <style=Debuff_Pinned>Suppressed</style> for 1 round. Then adds <style=Tile_Contamination>Contamination</style> to the target hex and random hexes adjacent to it, up to a total of <style=Stat>{[nrOfTiles]}</style> hexes.\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Plagueburst Mortar"
     },
     "PlagueWind": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style><style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to a target within {[range]} hexes. Any enemies adjacent to the initial target take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg_2]}-{[maxDmg_2]} Psychic Damage</style>. Any further enemies adjacent to at least one secondary target take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg_3]}-{[maxDmg_3]} Psychic Damage</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style><style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to a target within {[range]} hexes. Any enemies adjacent to the initial target take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg_2]}-{[maxDmg_2]} Psychic Damage</style>. Any further enemies adjacent to at least one secondary target take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg_3]}-{[maxDmg_3]} Psychic Damage</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Plague Wind"
     },
     "PlasmaCannon": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Plasma>{[minDmg]}-{[maxDmg]} Plasma Damage</style> to an enemy within range {[range]} and up to two enemy units behind the target. This ability can be used multiple times per battle but has a <style=Cooldown>cooldown of {[cooldownTurns]} round.</style> \\n\\n<style=Cooldown>Initial cooldown: {[initialCooldownTurns]} round</style>.",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Plasma>{[minDmg]}-{[maxDmg]} Plasma Damage</style> to an enemy within range {[range]} and up to two enemy units behind the target. This ability can be used multiple times per battle but has a <style=Cooldown>cooldown of {[cooldownTurns]} round.</style> \n\n<style=Cooldown>Initial cooldown: {[initialCooldownTurns]} round</style>.",
         "name": "Plasma Cannon"
     },
     "PlasmaGrenade": {
-        "description": "Throws a grenade at a target within {[range]} hexes, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Plasma>{[minDmg]}-{[maxDmg]} Plasma Damage</style> to it and <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Plasma>{[minDmg]}-{[maxDmg]} Plasma Damage</style> to enemy units in adjacent hexes. This ability benefits from <style=Indirect_Fire>Indirect Fire</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Throws a grenade at a target within {[range]} hexes, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Plasma>{[minDmg]}-{[maxDmg]} Plasma Damage</style> to it and <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Plasma>{[minDmg]}-{[maxDmg]} Plasma Damage</style> to enemy units in adjacent hexes. This ability benefits from <style=Indirect_Fire>Indirect Fire</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Plasma Grenade"
     },
     "Possession": {
-        "description": "Each time <style=Faction_BlackLegion>Archimatos</style> kills an enemy unit with a melee attack, he summons a <style=Summon><style=Faction_BlackLegion>Bloodletter</style></style> in its hex. Each time he kills an enemy unit with a ranged attack, he summons a <style=Summon><style=Faction_ThousandSons>Blue Horror</style></style> in its hex.\\n\\nBloodletter’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n\\nBlue Horror's stats:\\n<style=Stat_Health>{[summonHp_2]} Health</style>\\n<style=Stat_Damage>{[summonDmg_2]} Damage</style>",
+        "description": "Each time <style=Faction_BlackLegion>Archimatos</style> kills an enemy unit with a melee attack, he summons a <style=Summon><style=Faction_BlackLegion>Bloodletter</style></style> in its hex. Each time he kills an enemy unit with a ranged attack, he summons a <style=Summon><style=Faction_ThousandSons>Blue Horror</style></style> in its hex.\n\nBloodletter’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n\nBlue Horror's stats:\n<style=Stat_Health>{[summonHp_2]} Health</style>\n<style=Stat_Damage>{[summonDmg_2]} Damage</style>",
         "name": "Possession"
     },
     "PoundThemToDust": {
@@ -1175,7 +1175,7 @@
         "name": "Healing power-up"
     },
     "PowerUp_Health": {
-        "description": "When picked up by a unit, this power-up increases their <style=Stat_Health>Health</style> by an amount equal to {[healthPct]}% of their max <style=Stat_Health>Health</style>.\\n",
+        "description": "When picked up by a unit, this power-up increases their <style=Stat_Health>Health</style> by an amount equal to {[healthPct]}% of their max <style=Stat_Health>Health</style>.\n",
         "name": "Health power-up"
     },
     "PowerUp_HeroSpawn_BladeChampion": {
@@ -1207,14 +1207,14 @@
         "name": "Shield power-up"
     },
     "PowerUp_Resurrect": {
-        "description": "When picked up by a friendly unit, resurrects a chosen <style=Character>character</style> that has been defeated. The resurrected character spawns in a random free hex and can immediately take a turn. \\n\\nIf there is no eligible character,  it adds 1 Reinforcement point instead.",
+        "description": "When picked up by a friendly unit, resurrects a chosen <style=Character>character</style> that has been defeated. The resurrected character spawns in a random free hex and can immediately take a turn. \n\nIf there is no eligible character,  it adds 1 Reinforcement point instead.",
         "name": "Resurrection power-up"
     },
     "PowerUp_Shield": {
         "name": "Shield power-up"
     },
     "Poxwalkers": {
-        "description": "Summons <style=Summon><style=Faction_DeathGuard>Poxwalkers</style></style> in <style=Stat_Chance>{[chance]}-{[chance_2]}%</style> of free hexes (rounded up) within <style=Faction_DeathGuard>Corrodius'</style> <style=ContagionsOfNurgle>Contagion</style> aura. Newly summoned <style=Summon><style=Faction_DeathGuard>Poxwalkers</style></style> immediately attack in <style=Stat_Melee>melee</style>, but cannot move this turn.\\n\\nPoxwalker’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
+        "description": "Summons <style=Summon><style=Faction_DeathGuard>Poxwalkers</style></style> in <style=Stat_Chance>{[chance]}-{[chance_2]}%</style> of free hexes (rounded up) within <style=Faction_DeathGuard>Corrodius'</style> <style=ContagionsOfNurgle>Contagion</style> aura. Newly summoned <style=Summon><style=Faction_DeathGuard>Poxwalkers</style></style> immediately attack in <style=Stat_Melee>melee</style>, but cannot move this turn.\n\nPoxwalker’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
         "name": "Poxwalkers"
     },
     "PreCalibratedPurgeSolution": {
@@ -1250,11 +1250,11 @@
         "name": "Psychic Fortress"
     },
     "PsychicMaelstrom": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to a target within {[range]} hexes. <style=Stat_Chance>{[chance]}% chance</style> to score another <style=Stat_Hits>hit</style>.\\n\\nIf it does, <style=Stat_Chance>{[chance_2]}% chance</style> to score another <style=Stat_Hits>hit</style>. \\nIf it does, <style=Stat_Chance>{[chance_3]}% chance</style> to score another <style=Stat_Hits>hit</style>. \\nIf it does, <style=Stat_Chance>{[chance_4]}% chance</style> to score another <style=Stat_Hits>hit</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to a target within {[range]} hexes. <style=Stat_Chance>{[chance]}% chance</style> to score another <style=Stat_Hits>hit</style>.\n\nIf it does, <style=Stat_Chance>{[chance_2]}% chance</style> to score another <style=Stat_Hits>hit</style>. \nIf it does, <style=Stat_Chance>{[chance_3]}% chance</style> to score another <style=Stat_Hits>hit</style>. \nIf it does, <style=Stat_Chance>{[chance_4]}% chance</style> to score another <style=Stat_Hits>hit</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Psychic Maelstrom"
     },
     "PsychicStalk": {
-        "description": "Attacks that deal <style=DMG_Flame>Flame Damage</style> and <style=DMG_Psychic>Psychic Damage</style> to enemies that are on hexes with <style=Effect_Fire>Fire</style> deal <style=Stat_Damage>+{[extraDmgPct]}% Damage</style>. Affected attacks from friendly <style=Aliance_Chaos>Chaos</style> units deal an additional <style=Stat_Damage>+{[extraDmg]} Damage</style>.\\n\\nThe hex of each enemy that is hit by <style=Faction_ThousandSons>Ahriman</style>'s <style=NormalAttack>normal ranged attack</style> catches <style=Effect_Fire>Fire</style>.",
+        "description": "Attacks that deal <style=DMG_Flame>Flame Damage</style> and <style=DMG_Psychic>Psychic Damage</style> to enemies that are on hexes with <style=Effect_Fire>Fire</style> deal <style=Stat_Damage>+{[extraDmgPct]}% Damage</style>. Affected attacks from friendly <style=Aliance_Chaos>Chaos</style> units deal an additional <style=Stat_Damage>+{[extraDmg]} Damage</style>.\n\nThe hex of each enemy that is hit by <style=Faction_ThousandSons>Ahriman</style>'s <style=NormalAttack>normal ranged attack</style> catches <style=Effect_Fire>Fire</style>.",
         "name": "Psychic Stalk"
     },
     "Pyreblaster": {
@@ -1262,7 +1262,7 @@
         "name": "Pyreblaster"
     },
     "RadBombardment": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> to all units in a straight line in one of 6 directions and adds <style=Tile_Contamination>Contamination</style> to all hexes in the line. All units hit are <style=Debuff_Pinned>Suppressed</style> for 1 round. The length of the line starts at 2 hexes and increases by 1 hex for each round that has passed and by 1 hex each time a friendly <style=Mechanic>Mechanic</style> restores <style=Stat_Health>Health</style> of a unit.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> to all units in a straight line in one of 6 directions and adds <style=Tile_Contamination>Contamination</style> to all hexes in the line. All units hit are <style=Debuff_Pinned>Suppressed</style> for 1 round. The length of the line starts at 2 hexes and increases by 1 hex for each round that has passed and by 1 hex each time a friendly <style=Mechanic>Mechanic</style> restores <style=Stat_Health>Health</style> of a unit.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Rad-Bombardment"
     },
     "RadSaturation": {
@@ -1270,7 +1270,7 @@
         "name": "Rad-Saturation"
     },
     "RadZoneCorps": {
-        "description": "At the beginning of <style=Faction_AdeptusMechanicus>Tan Gi'Da's</style> turn, he deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> to each enemy that has their <style=Stat_Armor>Armour</style> reduced. At the end of his turn, he summons <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_AdeptusMechanicus>Skitarii Vanguard</style></style> at the top of the map and <style=Tile_Contamination>Contaminates</style> one row of hexes on the battlefield.\\n\\nSkitarii Vanguard stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "At the beginning of <style=Faction_AdeptusMechanicus>Tan Gi'Da's</style> turn, he deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[minDmg]}-{[maxDmg]} Toxic Damage</style> to each enemy that has their <style=Stat_Armor>Armour</style> reduced. At the end of his turn, he summons <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_AdeptusMechanicus>Skitarii Vanguard</style></style> at the top of the map and <style=Tile_Contamination>Contaminates</style> one row of hexes on the battlefield.\n\nSkitarii Vanguard stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Rad-Zone Corps"
     },
     "Ramshackle": {
@@ -1326,11 +1326,11 @@
         "name": "Relic Power Fist"
     },
     "Repair": {
-        "description": "<style=Mechanic>Mechanics</style> can <style=Repairing>repair</style> friendly <style=Mechanical>Mechanical</style> units as their action.\\nThe amount of <style=Stat_Health>Health</style> restored equals the <style=Mechanic>Mechanic</style>'s Damage multiplied by the highest number of <style=Stat_Hits>hits</style> of any of their weapons.",
+        "description": "<style=Mechanic>Mechanics</style> can <style=Repairing>repair</style> friendly <style=Mechanical>Mechanical</style> units as their action.\nThe amount of <style=Stat_Health>Health</style> restored equals the <style=Mechanic>Mechanic</style>'s Damage multiplied by the highest number of <style=Stat_Hits>hits</style> of any of their weapons.",
         "name": "Repair"
     },
     "ResurrectionOrb": {
-        "description": "In a free adjacent hex, summons 1 <style=Summon><style=Faction_Necrons>Necron Warrior</style></style> for each round that has started. Summons 1 more <style=Summon><style=Faction_Necrons>Necron Warrior</style></style> for each friendly unit with the trait <style=Living_Metal>Living Metal</style> that was defeated in this battle.\\n\\nNecron Warrior’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "In a free adjacent hex, summons 1 <style=Summon><style=Faction_Necrons>Necron Warrior</style></style> for each round that has started. Summons 1 more <style=Summon><style=Faction_Necrons>Necron Warrior</style></style> for each friendly unit with the trait <style=Living_Metal>Living Metal</style> that was defeated in this battle.\n\nNecron Warrior’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Resurrection Orb"
     },
     "Reveal": {
@@ -1358,7 +1358,7 @@
         "name": "Rites of Restoration"
     },
     "SagaOfTheWarriorBorn": {
-        "description": "[i2p_Plural]When <style=Charging>charging</style>, <style=Faction_SpaceWolves>Ragnar</style> scores <style=Stat>{[extraHits]}</style> additional <style=Stat_Hits>hits</style> and his critical hits deal an additional <style=Stat_CritDamage>+{[extraCritDmg]} Crit Damage</style>. \\nIf Ragnar has defeated one or more enemy <style=Character>Characters</style> this battle, friendly <style=Faction_SpaceWolves>Space Wolves</style> also gain this ability.[i2p_One]When <style=Charging>charging</style>, <style=Faction_SpaceWolves>Ragnar</style> scores <style=Stat>{[extraHits]}</style> additional <style=Stat_Hits>hit</style> and his critical hits deal an additional <style=Stat_CritDamage>+{[extraCritDmg]} Crit Damage</style>.\\n\\nIf Ragnar has defeated one or more enemy <style=Character>Characters</style> this battle, friendly <style=Faction_SpaceWolves>Space Wolves</style> also gain this ability.",
+        "description": "[i2p_Plural]When <style=Charging>charging</style>, <style=Faction_SpaceWolves>Ragnar</style> scores <style=Stat>{[extraHits]}</style> additional <style=Stat_Hits>hits</style> and his critical hits deal an additional <style=Stat_CritDamage>+{[extraCritDmg]} Crit Damage</style>. \nIf Ragnar has defeated one or more enemy <style=Character>Characters</style> this battle, friendly <style=Faction_SpaceWolves>Space Wolves</style> also gain this ability.[i2p_One]When <style=Charging>charging</style>, <style=Faction_SpaceWolves>Ragnar</style> scores <style=Stat>{[extraHits]}</style> additional <style=Stat_Hits>hit</style> and his critical hits deal an additional <style=Stat_CritDamage>+{[extraCritDmg]} Crit Damage</style>.\n\nIf Ragnar has defeated one or more enemy <style=Character>Characters</style> this battle, friendly <style=Faction_SpaceWolves>Space Wolves</style> also gain this ability.",
         "name": "Saga of the Warrior Born"
     },
     "SanctorumMissile": {
@@ -1374,11 +1374,11 @@
         "name": "Savage Killer"
     },
     "SaviorProtocols": {
-        "description": "If a friendly adjacent <style=Faction_Tau>T'au Empire</style> unit is attacked, there is a <style=Stat_Chance>{[chance]}%</style> chance for each hit to be scored against this Drone instead of the original target.\\n\\nWhen moving, this Drone prioritises hexes adjacent to friendly <style=Faction_Tau>T'au Empire</style> units. \\n\\nWhen attacking, this Drone tries to prioritise enemies with a <style=Debuff_Markerlight>Markerlight</style>.",
+        "description": "If a friendly adjacent <style=Faction_Tau>T'au Empire</style> unit is attacked, there is a <style=Stat_Chance>{[chance]}%</style> chance for each hit to be scored against this Drone instead of the original target.\n\nWhen moving, this Drone prioritises hexes adjacent to friendly <style=Faction_Tau>T'au Empire</style> units. \n\nWhen attacking, this Drone tries to prioritise enemies with a <style=Debuff_Markerlight>Markerlight</style>.",
         "name": "Saviour Protocols"
     },
     "ScarabHive": {
-        "description": "Summons 2 <style=Summon><style=Faction_Necrons>Scarab Swarms</style></style> next to the target, whom they immediately attack using the Damage type <style=DMG_Piercing>Piercing</style>. In any subsequent attack they use their normal damage type.\\n\\nScarab Swarm’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons 2 <style=Summon><style=Faction_Necrons>Scarab Swarms</style></style> next to the target, whom they immediately attack using the Damage type <style=DMG_Piercing>Piercing</style>. In any subsequent attack they use their normal damage type.\n\nScarab Swarm’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Scarab Hive"
     },
     "ScarabSummon": {
@@ -1386,7 +1386,7 @@
         "name": "Scarab Summon"
     },
     "ScreamerInvocation": {
-        "description": "The first time there are no allied <style=Daemon>Daemons</style> on the battlefield at the end of his turn, <style=Faction_ThousandSons>Abraxas</style> summons <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_ThousandSons>Screamers</style></style> onto random hexes on the battlefield. When a friendly Daemon is defeated, Abraxas loses <style=Stat_Health>{[hp]} Health</style>. As long as there are friendly Daemons on the battlefield, all incoming damage to Abraxas is reduced by <style=Stat_Damage>{[dmgReductionPct]}%</style>.\\n\\nScreamer of Tzeentch stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
+        "description": "The first time there are no allied <style=Daemon>Daemons</style> on the battlefield at the end of his turn, <style=Faction_ThousandSons>Abraxas</style> summons <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_ThousandSons>Screamers</style></style> onto random hexes on the battlefield. When a friendly Daemon is defeated, Abraxas loses <style=Stat_Health>{[hp]} Health</style>. As long as there are friendly Daemons on the battlefield, all incoming damage to Abraxas is reduced by <style=Stat_Damage>{[dmgReductionPct]}%</style>.\n\nScreamer of Tzeentch stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
         "name": "Screamer Invocation"
     },
     "ScytheOfDust": {
@@ -1394,11 +1394,11 @@
         "name": "Scythe of Dust"
     },
     "ScythingTalons": {
-        "description": "Attacks an enemy in melee for <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Bio>{[minDmg]}-{[maxDmg]} Bio Damage</style> and any enemy units adjacent to that target and to the <style=Faction_Tyranids>Tyranid Warrior</style> take <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Bio>{[minDmg]}-{[maxDmg]} Bio Damage</style>. \\n\\nDouble hits against <style=Summon>Summons</style>.",
+        "description": "Attacks an enemy in melee for <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Bio>{[minDmg]}-{[maxDmg]} Bio Damage</style> and any enemy units adjacent to that target and to the <style=Faction_Tyranids>Tyranid Warrior</style> take <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Bio>{[minDmg]}-{[maxDmg]} Bio Damage</style>. \n\nDouble hits against <style=Summon>Summons</style>.",
         "name": "Scything Talons"
     },
     "SeekerMissileFrequencyLock": {
-        "description": "A target enemy unit within {[range]} receives a <style=Debuff_Markerlight>Markerlight</style> until the end of <style=Faction_Tau>Sho'syl</style>'s next turn.\\nAt the beginning of <style=Faction_Tau>Sho'syl</style>'s next turn, if he is still in play, the target is hit by a Seeker Missile dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Heavy>{[minDmg]}-{[maxDmg]} Heavy Round Damage</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "A target enemy unit within {[range]} receives a <style=Debuff_Markerlight>Markerlight</style> until the end of <style=Faction_Tau>Sho'syl</style>'s next turn.\nAt the beginning of <style=Faction_Tau>Sho'syl</style>'s next turn, if he is still in play, the target is hit by a Seeker Missile dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Heavy>{[minDmg]}-{[maxDmg]} Heavy Round Damage</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Seeker Missile Frequency Lock"
     },
     "SelfRepairMechanism": {
@@ -1410,15 +1410,15 @@
         "name": "Self-Repair Mechanism"
     },
     "SendInTheNextWave": {
-        "description": "Select a target within 2 hexes. Summon <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsmen</style></style> plus one for each defeated friendly unit, who immediately appear and fire upon a target from random free hexes within range 2 of the target. The maximum number of <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsmen</style></style> this can summon is <style=Stat>{[maxSummons]}</style>. \\n\\nCadian Guardsman’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Select a target within 2 hexes. Summon <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsmen</style></style> plus one for each defeated friendly unit, who immediately appear and fire upon a target from random free hexes within range 2 of the target. The maximum number of <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsmen</style></style> this can summon is <style=Stat>{[maxSummons]}</style>. \n\nCadian Guardsman’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Send In The Next Wave"
     },
     "SentinelDirectives": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Physical>{[minDmg]}-{[maxDmg]} Physical Damage</style> to an enemy unit within range {[range]} and <style=Debuff_Pinned>Suppresses</style> it for 1 round. Cannot be used if there is an enemy adjacent to <style=Faction_AdeptusMechanicus>Sy-Gex</style>. \\n\\nUsing <i>Sentinel Directives</i> does not end <style=Faction_AdeptusMechanicus>Sy-Gex</style>'s turn and he can still enter <style=Buff_Overwatching>Overwatch</style> this turn, unless he performs a <style=NormalAttack>normal attack</style>.",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Physical>{[minDmg]}-{[maxDmg]} Physical Damage</style> to an enemy unit within range {[range]} and <style=Debuff_Pinned>Suppresses</style> it for 1 round. Cannot be used if there is an enemy adjacent to <style=Faction_AdeptusMechanicus>Sy-Gex</style>. \n\nUsing <i>Sentinel Directives</i> does not end <style=Faction_AdeptusMechanicus>Sy-Gex</style>'s turn and he can still enter <style=Buff_Overwatching>Overwatch</style> this turn, unless he performs a <style=NormalAttack>normal attack</style>.",
         "name": "Sentinel Directives"
     },
     "SereneUnifier": {
-        "description": "<style=Faction_Tau>Aun'Shi</style> grants himself, and adjacent friendly units a bonus based on the current round at the beginning of his turn. Friendly <style=Faction_Tau>T'au Empire</style> units within {[range]} hexes also receive this bonus. The bonus lasts until the start of the unit's next turn, even if <style=Faction_Tau>Aun'Shi</style> is defeated. The following Buffs are granted subsequently in each round:\\n\\n1: <style=BUFF_no_underscore>Sense of Stone</style>: units take <style=Stat_Damage>-{[dmgReductionPct]}% Damage</style>\\n2: <style=BUFF_no_underscore>Zephyr's Grace</style>: units receive <style=Stat_Movement>+{[extraMovement]} Movement</style>\\n3: <style=BUFF_no_underscore>Storm of Fire</style>: units gain <style=Stat_Damage>+{[extraDmg]} Damage</style>\\n\\nAfter round 3, the cycle begins again and will continue to repeat until <style=Faction_Tau>Aun'Shi</style> is defeated.",
+        "description": "<style=Faction_Tau>Aun'Shi</style> grants himself, and adjacent friendly units a bonus based on the current round at the beginning of his turn. Friendly <style=Faction_Tau>T'au Empire</style> units within {[range]} hexes also receive this bonus. The bonus lasts until the start of the unit's next turn, even if <style=Faction_Tau>Aun'Shi</style> is defeated. The following Buffs are granted subsequently in each round:\n\n1: <style=BUFF_no_underscore>Sense of Stone</style>: units take <style=Stat_Damage>-{[dmgReductionPct]}% Damage</style>\n2: <style=BUFF_no_underscore>Zephyr's Grace</style>: units receive <style=Stat_Movement>+{[extraMovement]} Movement</style>\n3: <style=BUFF_no_underscore>Storm of Fire</style>: units gain <style=Stat_Damage>+{[extraDmg]} Damage</style>\n\nAfter round 3, the cycle begins again and will continue to repeat until <style=Faction_Tau>Aun'Shi</style> is defeated.",
         "name": "Serene Unifier"
     },
     "ShieldOfFaith": {
@@ -1446,7 +1446,7 @@
         "name": "Skullsmasher"
     },
     "SkyStrike": {
-        "description": "If <style=Faction_Sisterhood>Celestine</style> has not moved, she targets an enemy unit on the battlefield that has a free adjacent hex, then moves adjacent to it and attacks it. The attack deals the same damage as her <style=NormalAttack>normal attack</style> plus an additional  <style=DMG_Power>+{[extraDmg]} Damage</style>.\\n\\n<style=Cooldown>Initial cooldown: {[initialCooldownTurns]} round</style>.",
+        "description": "If <style=Faction_Sisterhood>Celestine</style> has not moved, she targets an enemy unit on the battlefield that has a free adjacent hex, then moves adjacent to it and attacks it. The attack deals the same damage as her <style=NormalAttack>normal attack</style> plus an additional  <style=DMG_Power>+{[extraDmg]} Damage</style>.\n\n<style=Cooldown>Initial cooldown: {[initialCooldownTurns]} round</style>.",
         "name": "Sky Strike"
     },
     "SlashingDive": {
@@ -1462,35 +1462,35 @@
         "name": "Solar Atomizer"
     },
     "SorcerousFacade": {
-        "description": "Target a friendly <style=Psyker>Psyker</style>. Until the beginning of <style=Faction_ThousandSons>Yazaghor</style>'s next turn both he and the target deal an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> with their <style=NormalAttack>normal attacks</style>. \\n\\n<style=Faction_ThousandSons>Yazaghor</style> performs a normal attack against the closest enemy unit, and then switches positions with the targeted <style=Psyker>Psyker</style>.\\n<i>Note: this ability can only be used if <style=Faction_ThousandSons>Yazaghor</style> has an enemy in range.</i>",
+        "description": "Target a friendly <style=Psyker>Psyker</style>. Until the beginning of <style=Faction_ThousandSons>Yazaghor</style>'s next turn both he and the target deal an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> with their <style=NormalAttack>normal attacks</style>. \n\n<style=Faction_ThousandSons>Yazaghor</style> performs a normal attack against the closest enemy unit, and then switches positions with the targeted <style=Psyker>Psyker</style>.\n<i>Note: this ability can only be used if <style=Faction_ThousandSons>Yazaghor</style> has an enemy in range.</i>",
         "name": "Sorcerous Facade"
     },
     "SoulHunger": {
-        "description": "Enemy Psykers take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> when using Active abilities or Smite within {[range]} hexes from the Hive Tyrant.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Enemy Psykers take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> when using Active abilities or Smite within {[range]} hexes from the Hive Tyrant.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Soul Hunger"
     },
     "SpawnTermagants": {
-        "description": "Summons 1-{[maxSummons]} <style=Summon>Termagants</style>, starting with the hex in front of the Tervigon and then propagating to free hexes from there.\\n\\nTermagant’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons 1-{[maxSummons]} <style=Summon>Termagants</style>, starting with the hex in front of the Tervigon and then propagating to free hexes from there.\n\nTermagant’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Spawn Termagants"
     },
     "SpawnTermagants2": {
-        "description": "Summons 1-{[maxSummons]} <style=Summon>Termagants</style>, starting with the hex in front of the Tervigon and then propagating to free hexes from there.\\n\\nTermagant’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons 1-{[maxSummons]} <style=Summon>Termagants</style>, starting with the hex in front of the Tervigon and then propagating to free hexes from there.\n\nTermagant’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Spawn Termagants"
     },
     "SpawnTermagants3": {
-        "description": "Summons 1-{[maxSummons]} <style=Summon>Termagants</style>, starting with the hex in front of the Tervigon and then propagating to free hexes from there.\\n\\nTermagant’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons 1-{[maxSummons]} <style=Summon>Termagants</style>, starting with the hex in front of the Tervigon and then propagating to free hexes from there.\n\nTermagant’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Spawn Termagants"
     },
     "SpiritLeech": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to an enemy unit within {[range]} hexes. If the target is <style=Debuff_Pinned>Suppressed</style>, deals an additional <style=Stat_Damage>+{[extraDmg]} Damage</style>, otherwise <style=Debuff_Pinned>Suppresses</style> it. The <style=Faction_Tyranids>Neurothrope</style> <style=Healing>heals</style> itself and friendly <style=Faction_Tyranids>Tyranids</style> adjacent to it for <style=Stat_Health>Health</style> equal to <style=Stat>{[hpToHealPct]}%</style> of the total damage dealt with this ability.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to an enemy unit within {[range]} hexes. If the target is <style=Debuff_Pinned>Suppressed</style>, deals an additional <style=Stat_Damage>+{[extraDmg]} Damage</style>, otherwise <style=Debuff_Pinned>Suppresses</style> it. The <style=Faction_Tyranids>Neurothrope</style> <style=Healing>heals</style> itself and friendly <style=Faction_Tyranids>Tyranids</style> adjacent to it for <style=Stat_Health>Health</style> equal to <style=Stat>{[hpToHealPct]}%</style> of the total damage dealt with this ability.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Spirit Leech"
     },
     "SpiritualLeader": {
-        "description": "After moving, places a <style=Decoy>decoy</style> on an empty adjacent hex. Then, if there are 2 or more decoys adjacent to <Style=Faction_Genestealers>Xybia</style>, summons a <style=Summon><style=Faction_Genestealers>Neophyte Hybrid</style></style> on one adjacent decoy. If <Style=Faction_Genestealers>Xybia</style> does not move, then this ability triggers at the end of her turn.\\n\\nNeophyte Hybrid stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "After moving, places a <style=Decoy>decoy</style> on an empty adjacent hex. Then, if there are 2 or more decoys adjacent to <Style=Faction_Genestealers>Xybia</style>, summons a <style=Summon><style=Faction_Genestealers>Neophyte Hybrid</style></style> on one adjacent decoy. If <Style=Faction_Genestealers>Xybia</style> does not move, then this ability triggers at the end of her turn.\n\nNeophyte Hybrid stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Spiritual Leader"
     },
     "Split": {
-        "description": "When this unit gets defeated, it summons 2 <style=Summon><style=Faction_ThousandSons>Blue Horrors</style></style> in adjacent hexes. Does not apply if <style=Overkill>Overkilled</style>. Newly summoned <style=Summon><style=Faction_ThousandSons>Blue Horrors</style></style> can immediately attack an enemy if summoned during the <style=Summon><style=Faction_ThousandSons>Pink Horror</style></style>'s turn, but cannot move until their next turn.\\n\\nBlue Horror's stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
+        "description": "When this unit gets defeated, it summons 2 <style=Summon><style=Faction_ThousandSons>Blue Horrors</style></style> in adjacent hexes. Does not apply if <style=Overkill>Overkilled</style>. Newly summoned <style=Summon><style=Faction_ThousandSons>Blue Horrors</style></style> can immediately attack an enemy if summoned during the <style=Summon><style=Faction_ThousandSons>Pink Horror</style></style>'s turn, but cannot move until their next turn.\n\nBlue Horror's stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
         "name": "Split"
     },
     "SporeMineLauncher": {
@@ -1506,15 +1506,15 @@
         "name": "Spotter"
     },
     "SquigHound": {
-        "description": "Friendly <style=Summon><style=Faction_Orks>Grots</style></style> ignore <style=Battle_Fatigue>Battle Fatigue</style>. <style=Faction_Orks>Snotflogga</style>'s <style=NormalAttack>normal attacks</style> deal an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Physical>{[minDmg]}-{[maxDmg]} Physical Damage</style>. After attacking, if there are less than <style=Stat>{[maxSummons]}</style> friendly <style=Summon><style=Faction_Orks>Grots</style></style> on the battlefield, they summon a <style=Summon><style=Faction_Orks>Grot</style></style> adjacent to the target that immediately can attack.\\n\\nGrot’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
+        "description": "Friendly <style=Summon><style=Faction_Orks>Grots</style></style> ignore <style=Battle_Fatigue>Battle Fatigue</style>. <style=Faction_Orks>Snotflogga</style>'s <style=NormalAttack>normal attacks</style> deal an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Physical>{[minDmg]}-{[maxDmg]} Physical Damage</style>. After attacking, if there are less than <style=Stat>{[maxSummons]}</style> friendly <style=Summon><style=Faction_Orks>Grots</style></style> on the battlefield, they summon a <style=Summon><style=Faction_Orks>Grot</style></style> adjacent to the target that immediately can attack.\n\nGrot’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>",
         "name": "Squig Hound"
     },
     "SquigLaunchas": {
-        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Physical>{[minDmg]}-{[maxDmg]} Physical Damage</style> to an enemy unit that has at least {[nrOfUnits]} friendly <style=Faction_Orks>Ork</style> or {[nrOfUnits_2]} friendly units adjacent to it. Then, if the target has {[nrOfUnits_3]} friendly Orks or {[nrOfUnits_4]} friendly units adjacent to it, summons a <style=Summon><style=Faction_Orks>Large Squig</style></style> on a random free hex adjacent to the target. \\n\\nLarge Squig stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \\nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Physical>{[minDmg]}-{[maxDmg]} Physical Damage</style> to an enemy unit that has at least {[nrOfUnits]} friendly <style=Faction_Orks>Ork</style> or {[nrOfUnits_2]} friendly units adjacent to it. Then, if the target has {[nrOfUnits_3]} friendly Orks or {[nrOfUnits_4]} friendly units adjacent to it, summons a <style=Summon><style=Faction_Orks>Large Squig</style></style> on a random free hex adjacent to the target. \n\nLarge Squig stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Squig Launchas"
     },
     "SquigMine": {
-        "description": "Marks a free hex on the battlefield and additionally <style=Stat>{[nrOfTiles]}</style> random free hexes within range {[range]} of the target hex. Until the start of the <style=Faction_Orks>Rukkatrukk</style>'s next turn, the first time a marked hex is occupied by an enemy, that enemy takes <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style>, and the mark is removed. When a friendly unit occupies an affected hex, it does not take damage, and the mark is removed.\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Marks a free hex on the battlefield and additionally <style=Stat>{[nrOfTiles]}</style> random free hexes within range {[range]} of the target hex. Until the start of the <style=Faction_Orks>Rukkatrukk</style>'s next turn, the first time a marked hex is occupied by an enemy, that enemy takes <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style>, and the mark is removed. When a friendly unit occupies an affected hex, it does not take damage, and the mark is removed.\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Squig Mine"
     },
     "StaffOfStars": {
@@ -1534,7 +1534,7 @@
         "name": "Stormboyz Strike"
     },
     "Stormcaller": {
-        "description": "Target an enemy unit within {[range]} hexes. The target's hex and all adjacent hexes get covered in <style=Effect_Ice>Ice</style>. All enemies on hexes covered in <style=Effect_Ice>Ice</style> take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style>. Flying enemies damaged this way get <style=Debuff_Stunned>Stunned</style> for 1 round.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Target an enemy unit within {[range]} hexes. The target's hex and all adjacent hexes get covered in <style=Effect_Ice>Ice</style>. All enemies on hexes covered in <style=Effect_Ice>Ice</style> take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style>. Flying enemies damaged this way get <style=Debuff_Stunned>Stunned</style> for 1 round.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Stormcaller"
     },
     "StormOfFlensingBlades": {
@@ -1542,7 +1542,7 @@
         "name": "Storm of Flensing Blades"
     },
     "StormOfWrath": {
-        "description": "Deals <style=Stat_Hits>1x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to a unit within 2 hexes and up to {[maxAdjacentTargets]} adjacent units.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Deals <style=Stat_Hits>1x</style> <style=DMG_Psychic>{[minDmg]}-{[maxDmg]} Psychic Damage</style> to a unit within 2 hexes and up to {[maxAdjacentTargets]} adjacent units.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Storm Of Wrath"
     },
     "StranglethornCannon": {
@@ -1550,7 +1550,7 @@
         "name": "Stranglethorn Cannon"
     },
     "StructuralAnalyser": {
-        "description": "Units hit by ranged attacks from <style=Faction_Tau>Darkstrider</style> receive a <style=Debuff_Markerlight>Markerlight</style> for one round.\\n\\nFriendly units adjacent to Darkstrider deal <style=Stat_Damage>+{[extraDmg]} Damage</style> with ranged attacks against targets with a <style=Debuff_Markerlight>Markerlight</style>. Friendly <style=Faction_Tau>T'au Empire</style> units within 2 hexes of Darkstrider are also affected.",
+        "description": "Units hit by ranged attacks from <style=Faction_Tau>Darkstrider</style> receive a <style=Debuff_Markerlight>Markerlight</style> for one round.\n\nFriendly units adjacent to Darkstrider deal <style=Stat_Damage>+{[extraDmg]} Damage</style> with ranged attacks against targets with a <style=Debuff_Markerlight>Markerlight</style>. Friendly <style=Faction_Tau>T'au Empire</style> units within 2 hexes of Darkstrider are also affected.",
         "name": "Structural Analyser"
     },
     "SummaryExecution": {
@@ -1566,14 +1566,14 @@
         "name": "Supercharge"
     },
     "SupremeCommander": {
-        "description": "Summons up to <style=Stat>{[nrOfSummons]}</style><style=Summon><style=Faction_AstraMilitarum>Cadian Guardsman</style></style> in free adjacent hexes. All friendly <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsmen</style></style> within {[range]} hexes then immediately take a turn. If <style=Faction_AstraMilitarum>Colour Sergeant Kell</style> is in play, summons an additional <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsman</style></style> and activation range is 3.\\n\\nCadian Guardsman’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons up to <style=Stat>{[nrOfSummons]}</style><style=Summon><style=Faction_AstraMilitarum>Cadian Guardsman</style></style> in free adjacent hexes. All friendly <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsmen</style></style> within {[range]} hexes then immediately take a turn. If <style=Faction_AstraMilitarum>Colour Sergeant Kell</style> is in play, summons an additional <style=Summon><style=Faction_AstraMilitarum>Cadian Guardsman</style></style> and activation range is 3.\n\nCadian Guardsman’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Supreme Commander"
     },
     "SwampBlockMovement": {
         "name": "<style=Tile_Razor_Wire>Razor Wire</style>"
     },
     "SwornProtector": {
-        "description": "When Lord Castellan Creed is first targeted in battle, <style=Summon><style=Faction_AstraMilitarum>Colour Sergeant Kell</style></style> appears in a free adjacent hex. Any time Creed is attacked, <style=Summon><style=Faction_AstraMilitarum>Kell</style></style> switches hexes with him and takes the <style=Stat_Damage>Damage</style> instead, if they are adjacent to each other. \\n\\nKell’s stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "When Lord Castellan Creed is first targeted in battle, <style=Summon><style=Faction_AstraMilitarum>Colour Sergeant Kell</style></style> appears in a free adjacent hex. Any time Creed is attacked, <style=Summon><style=Faction_AstraMilitarum>Kell</style></style> switches hexes with him and takes the <style=Stat_Damage>Damage</style> instead, if they are adjacent to each other. \n\nKell’s stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Sworn Protector"
     },
     "SynapticBacklash": {
@@ -1589,11 +1589,11 @@
         "name": "Synaptic Insight"
     },
     "SynapticLinchpin": {
-        "description": "Whenever the <style=Faction_Tyranids>Winged Prime</style>, or another friendly unit with <style=Synapse>Synapse</style>, performs a <style=NormalAttack>normal attack</style> against an enemy and that enemy is not defeated, summons a <style=Summon><style=Faction_Tyranids>Hormagaunt</style></style> adjacent to the target, which immediately attacks the enemy. Cannot have more than <style=Stat>{[maxSummons]}</style> <style=Summon><style=Faction_Tyranids>Hormagaunts</style></style> summoned this way at the same time.\\n\\nHormagaunt stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Whenever the <style=Faction_Tyranids>Winged Prime</style>, or another friendly unit with <style=Synapse>Synapse</style>, performs a <style=NormalAttack>normal attack</style> against an enemy and that enemy is not defeated, summons a <style=Summon><style=Faction_Tyranids>Hormagaunt</style></style> adjacent to the target, which immediately attacks the enemy. Cannot have more than <style=Stat>{[maxSummons]}</style> <style=Summon><style=Faction_Tyranids>Hormagaunts</style></style> summoned this way at the same time.\n\nHormagaunt stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Synaptic Linchpin"
     },
     "TacticalPrecision": {
-        "description": "Attacks a targeted adjacent enemy. If <style=Faction_Ultramarines>Titus</style> has <style=Charging>charged</style> that enemy this turn, he deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Bolter>{[minDmg]}-{[maxDmg]} Bolter Damage</style> to it. This attack is always a <style=Stat_CritDamage>Crit</style> and deals an additional <style=Stat_CritDamage>+{[extraCritDmg]} Crit Damage</style>. \\nIf Titus did not <style=Charging>charge</style> the targeted enemy this turn, he instead deals <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Chain>{[minDmg_2]}-{[maxDmg_2]} Chain Damage</style> to all adjacent enemies. \\n\\nWhen Titus gets revived or resurrected and <i>Tactical Precision</i> has already been used, then <i>Tactical Precision</i> can be used again in this battle.",
+        "description": "Attacks a targeted adjacent enemy. If <style=Faction_Ultramarines>Titus</style> has <style=Charging>charged</style> that enemy this turn, he deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Bolter>{[minDmg]}-{[maxDmg]} Bolter Damage</style> to it. This attack is always a <style=Stat_CritDamage>Crit</style> and deals an additional <style=Stat_CritDamage>+{[extraCritDmg]} Crit Damage</style>. \nIf Titus did not <style=Charging>charge</style> the targeted enemy this turn, he instead deals <style=Stat_Hits>{[nrOfHits_2]}x</style> <style=DMG_Chain>{[minDmg_2]}-{[maxDmg_2]} Chain Damage</style> to all adjacent enemies. \n\nWhen Titus gets revived or resurrected and <i>Tactical Precision</i> has already been used, then <i>Tactical Precision</i> can be used again in this battle.",
         "name": "Tactical Precision"
     },
     "TaintedNarthecium": {
@@ -1637,7 +1637,7 @@
         "name": "The Ardent Blade"
     },
     "TheBetrayer": {
-        "description": "After performing a <style=NormalAttack>normal attack</style>, <style=Faction_WorldEaters>Kh\xe2rn</style> performs a second attack against an adjacent enemy, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Eviscerate>{[minDmg]}-{[maxDmg]} Eviscerating Damage</style>.\\n\\nIf <style=Faction_WorldEaters>Kh\xe2rn</style> has defeated an enemy this battle, at the start of his turn, he automatically moves up to {[range]} hexes towards the nearest unit and then deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Eviscerate>{[minDmg]}-{[maxDmg]} Eviscerating Damage</style> to an adjacent unit. <style=Faction_WorldEaters>Kh\xe2rn</style> prefers enemies for this automatic move and attack, but targets friendly units if no enemy is in range.",
+        "description": "After performing a <style=NormalAttack>normal attack</style>, <style=Faction_WorldEaters>Kh\xe2rn</style> performs a second attack against an adjacent enemy, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Eviscerate>{[minDmg]}-{[maxDmg]} Eviscerating Damage</style>.\n\nIf <style=Faction_WorldEaters>Kh\xe2rn</style> has defeated an enemy this battle, at the start of his turn, he automatically moves up to {[range]} hexes towards the nearest unit and then deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Eviscerate>{[minDmg]}-{[maxDmg]} Eviscerating Damage</style> to an adjacent unit. <style=Faction_WorldEaters>Kh\xe2rn</style> prefers enemies for this automatic move and attack, but targets friendly units if no enemy is in range.",
         "name": "The Betrayer"
     },
     "TheBloodyHanded": {
@@ -1645,7 +1645,7 @@
         "name": "The Bloody Handed"
     },
     "TheLantern": {
-        "description": "Conjures a miasma of pestilence in one of six directions that fills a 3x3 hex area adjacent to <style=Faction_DeathGuard>Mortarion</style>. Enemy units hit by the miasma are <style=Debuff_Pinned>Suppressed</style>. At the beginning of <style=Faction_DeathGuard>Mortarion</style>'s next turn he fires The Lantern's beam in an arc over the affected area, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Energy>{[minDmg]}-{[maxDmg]} Energy Damage</style> to each enemy unit in the area.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Conjures a miasma of pestilence in one of six directions that fills a 3x3 hex area adjacent to <style=Faction_DeathGuard>Mortarion</style>. Enemy units hit by the miasma are <style=Debuff_Pinned>Suppressed</style>. At the beginning of <style=Faction_DeathGuard>Mortarion</style>'s next turn he fires The Lantern's beam in an arc over the affected area, dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Energy>{[minDmg]}-{[maxDmg]} Energy Damage</style> to each enemy unit in the area.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "The Lantern"
     },
     "TheQuickening": {
@@ -1661,7 +1661,7 @@
         "name": "The Wailing Doom Sweeps"
     },
     "TheWildHost": {
-        "description": "Reduces all incoming damage by <style=Stat_Damage>{[dmgReductionPct]}%</style>. <style=Faction_Aeldari>Aethana</style> loses <style=Stat_Health>{[hp]} Health</style> each time she is attacked. At the beginning of <style=Faction_Aeldari>Aethana</style>'s turn, units on marked hexes take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Projectile>{[minDmg]}-{[maxDmg]} Projectile Damage</style>, and she marks all hexes of units that attacked her last turn.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Reduces all incoming damage by <style=Stat_Damage>{[dmgReductionPct]}%</style>. <style=Faction_Aeldari>Aethana</style> loses <style=Stat_Health>{[hp]} Health</style> each time she is attacked. At the beginning of <style=Faction_Aeldari>Aethana</style>'s turn, units on marked hexes take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Projectile>{[minDmg]}-{[maxDmg]} Projectile Damage</style>, and she marks all hexes of units that attacked her last turn.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "The Wild Host"
     },
     "TheWrathfulDead": {
@@ -1673,7 +1673,7 @@
         "name": "The Wrath of Khaine Unleashed"
     },
     "ThriceBlessedConflagration": {
-        "description": "Targets a friendly unit on the battlefield. For <style=Stat>{[nrOfRounds]}</style> rounds, it deals <style=Stat_Damage>+{[extraDmgPct]}% Damage</style> with ranged attacks against enemies on <style=Effect_Fire>Fire</style> hexes. Affected <style=Faction_Sisterhood>Adepta Sororitas</style> units deal additional damage with all attacks instead. The <style=Faction_Sisterhood>Exorcist</style> then deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Flame>{[minDmg]}-{[maxDmg]} Flame Damage</style> to all enemies in the longest uninterrupted straight line originating from the targeted friendly unit.\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \\nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Targets a friendly unit on the battlefield. For <style=Stat>{[nrOfRounds]}</style> rounds, it deals <style=Stat_Damage>+{[extraDmgPct]}% Damage</style> with ranged attacks against enemies on <style=Effect_Fire>Fire</style> hexes. Affected <style=Faction_Sisterhood>Adepta Sororitas</style> units deal additional damage with all attacks instead. The <style=Faction_Sisterhood>Exorcist</style> then deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Flame>{[minDmg]}-{[maxDmg]} Flame Damage</style> to all enemies in the longest uninterrupted straight line originating from the targeted friendly unit.\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>. \nCost: <style=Resource_MachinesOfWarAmmo>{[munitionsCost]} munition</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Thrice-Blessed Conflagration"
     },
     "ThunderousAssault": {
@@ -1681,7 +1681,7 @@
         "name": "Thunderous Assault"
     },
     "TimeFlux": {
-        "description": "At the beginning of his turn, <style=Faction_ThousandSons>Toth</style> <style=Regenerate>regenerates</style> <style=Stat_Health>{[hpToHeal]} Health</style> plus an additional amount equal to the <style=Stat_Damage>Damage</style> of the last <style=Stat_Hits>hit</style> he received in the last enemy turn. The total amount restored cannot exceed <style=Stat_Health>{[maxHpToHeal]} Health</style>.\\n\\nWhen <style=Faction_ThousandSons>Toth</style> moves, he leaves a time ghost behind on the hex he moved from. The time ghost vanishes if the hex becomes occupied by another unit or if the terrain becomes impassable (as with <style=Tile_Floe>Broken Ice</style>). The first time <style=Faction_ThousandSons>Toth</style> dies each battle, if his time ghost is on the battlefield then he revives with <style=Stat_Health>{[hp]} Health</style> remaining at its location. This works even if <style=Faction_ThousandSons>Toth</style> is <style=Overkill>Overkilled</style>.",
+        "description": "At the beginning of his turn, <style=Faction_ThousandSons>Toth</style> <style=Regenerate>regenerates</style> <style=Stat_Health>{[hpToHeal]} Health</style> plus an additional amount equal to the <style=Stat_Damage>Damage</style> of the last <style=Stat_Hits>hit</style> he received in the last enemy turn. The total amount restored cannot exceed <style=Stat_Health>{[maxHpToHeal]} Health</style>.\n\nWhen <style=Faction_ThousandSons>Toth</style> moves, he leaves a time ghost behind on the hex he moved from. The time ghost vanishes if the hex becomes occupied by another unit or if the terrain becomes impassable (as with <style=Tile_Floe>Broken Ice</style>). The first time <style=Faction_ThousandSons>Toth</style> dies each battle, if his time ghost is on the battlefield then he revives with <style=Stat_Health>{[hp]} Health</style> remaining at its location. This works even if <style=Faction_ThousandSons>Toth</style> is <style=Overkill>Overkilled</style>.",
         "name": "Time Flux"
     },
     "ToughToKill": {
@@ -1701,7 +1701,7 @@
         "name": "Tunnelling Horror"
     },
     "TwinSmartMissileSystem": {
-        "description": "Targets an enemy unit on the battlefield, then deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to each enemy unit that has a <style=Debuff_Markerlight>Markerlight</style>. The target unit then receives a Markerlight for 2 rounds.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Targets an enemy unit on the battlefield, then deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style> to each enemy unit that has a <style=Debuff_Markerlight>Markerlight</style>. The target unit then receives a Markerlight for 2 rounds.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Twin Smart Missile System"
     },
     "TwistedScience": {
@@ -1709,7 +1709,7 @@
         "name": "Twisted Science"
     },
     "TzeentchsFirestorm": {
-        "description": "Marks all hexes exactly {[range_2]} hexes away from <style=Faction_ThousandSons>Magnus</style> in a ring around him. At the beginning of his next turn, all enemy units on marked hexes receive <style=Stat_Hits>{[nrOfHits]}x </style> <style=DMG_Flame>{[minDmg]}-{[maxDmg]} Flame Damage</style>. For the next 2 turns, the process repeats, reducing the ring radius by {[range]} and increasing hits to enemies in marked hexes by <style=Stat_Hits>{[extraHits]}</style> each turn. Magnus can move independently of the ring after the initial turn of casting.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Marks all hexes exactly {[range_2]} hexes away from <style=Faction_ThousandSons>Magnus</style> in a ring around him. At the beginning of his next turn, all enemy units on marked hexes receive <style=Stat_Hits>{[nrOfHits]}x </style> <style=DMG_Flame>{[minDmg]}-{[maxDmg]} Flame Damage</style>. For the next 2 turns, the process repeats, reducing the ring radius by {[range]} and increasing hits to enemies in marked hexes by <style=Stat_Hits>{[extraHits]}</style> each turn. Magnus can move independently of the ring after the initial turn of casting.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Tzeentch's Firestorm"
     },
     "UnbreakableDuty": {
@@ -1725,11 +1725,11 @@
         "name": "Unparalleled Ferocity"
     },
     "UnstoppableFerocity": {
-        "description": "Scores one additional <style=Stat_Hits>hit</style> when attacking an enemy <style=Psyker>Psyker</style>. \\nScores one additional <style=Stat_Hits>hit</style> when <style=Charging>charging</style>.",
+        "description": "Scores one additional <style=Stat_Hits>hit</style> when attacking an enemy <style=Psyker>Psyker</style>. \nScores one additional <style=Stat_Hits>hit</style> when <style=Charging>charging</style>.",
         "name": "Unstoppable Ferocity"
     },
     "UnstoppableMomentumReworked": {
-        "description": "Charges in one of 6 directions and keeps moving in a straight line until he hits an obstacle or a <style=Big_Target>Big Target</style>. Any enemies hit by the charge take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Direct>{[minDmg]}-{[maxDmg]} Direct Damage</style>, increased by <style=Stat_Damage>{[extraDmg]} Damage</style> for each hex traversed from the starting hex to the enemy. Affected enemies get <style=Displacement>pushed</style> and <style=Debuff_Pinned>Suppressed</style> for 1 round. A <style=Big_Target>Big Target</style> is <style=Debuff_Stunned>Stunned</style> for 1 round instead. Friendly units are also displaced, but take no damage or negative effects.\\n\\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>.",
+        "description": "Charges in one of 6 directions and keeps moving in a straight line until he hits an obstacle or a <style=Big_Target>Big Target</style>. Any enemies hit by the charge take <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Direct>{[minDmg]}-{[maxDmg]} Direct Damage</style>, increased by <style=Stat_Damage>{[extraDmg]} Damage</style> for each hex traversed from the starting hex to the enemy. Affected enemies get <style=Displacement>pushed</style> and <style=Debuff_Pinned>Suppressed</style> for 1 round. A <style=Big_Target>Big Target</style> is <style=Debuff_Stunned>Stunned</style> for 1 round instead. Friendly units are also displaced, but take no damage or negative effects.\n\nInitial <style=Cooldown>cooldown: {[initialCooldownTurns]} round</style>.",
         "name": "Unstoppable Momentum"
     },
     "UnwaveringSentinel": {
@@ -1737,7 +1737,7 @@
         "name": "Unwavering Sentinel"
     },
     "ValkyrieStrike": {
-        "description": "Calls in an air strike on a target hex anywhere on the battlefield, which gets marked with red smoke. After one round, the target hex and two random surrounding hexes are hit with Hellstrike Missiles, each dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style>.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "Calls in an air strike on a target hex anywhere on the battlefield, which gets marked with red smoke. After one round, the target hex and two random surrounding hexes are hit with Hellstrike Missiles, each dealing <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Blast>{[minDmg]}-{[maxDmg]} Blast Damage</style>.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Valkyrie Strike"
     },
     "VengeanceForTheOmnissiah": {
@@ -1749,7 +1749,7 @@
         "name": "Vexilla Magnifica"
     },
     "VigilanceEternal": {
-        "description": "Targets an enemy unit that has a free adjacent hex within movement range {[range]} of <style=Faction_Custodes>Tyrith</style> or is already on a hex adjacent to Tyrith. She then moves to the free hex and deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Power>{[minDmg]}-{[maxDmg]} Power Damage</style> to the targeted unit. This ability can be used multiple times per battle but has a <style=Cooldown>cooldown of {[cooldownTurns]} rounds.</style> \\n\\nUsing <i>Vigilance Eternal</i> does not end Tyrith's turn.",
+        "description": "Targets an enemy unit that has a free adjacent hex within movement range {[range]} of <style=Faction_Custodes>Tyrith</style> or is already on a hex adjacent to Tyrith. She then moves to the free hex and deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Power>{[minDmg]}-{[maxDmg]} Power Damage</style> to the targeted unit. This ability can be used multiple times per battle but has a <style=Cooldown>cooldown of {[cooldownTurns]} rounds.</style> \n\nUsing <i>Vigilance Eternal</i> does not end Tyrith's turn.",
         "name": "Vigilance Eternal"
     },
     "VisionsOfHeresy": {
@@ -1761,7 +1761,7 @@
         "name": "Vitarus"
     },
     "Volatile": {
-        "description": "If this unit is <style=Overkill>Overkilled</style> it deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Bolter>{[minDmg]}-{[maxDmg]} Bolter Damage</style> to all adjacent tiles.\\n\\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
+        "description": "If this unit is <style=Overkill>Overkilled</style> it deals <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Bolter>{[minDmg]}-{[maxDmg]} Bolter Damage</style> to all adjacent tiles.\n\n<i>This ability's Damage ignores all of the attacker bonuses and modifiers (including elevation), and cannot <style=\" Stat_CritDamage  ">Crit</style>.</i>",
         "name": "Volatile"
     },
     "VoltagheistField": {
@@ -1777,7 +1777,7 @@
         "name": "Vulnerable to Melee"
     },
     "Waaagh": {
-        "description": "If <style=Faction_Orks>Boss Gulgortz</style> has not moved, he summons <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_Orks>Ork Boyz</style></style> in free adjacent hexes. Until the end of this turn, all friendly <style=Faction_Orks>Orks</style> and friendly units adjacent to <style=Faction_Orks>Boss Gulgortz</style> gain <style=Stat_Movement>+{[extraMovement]} Movement</style> and their <style=NormalAttack>normal melee attacks</style> deal <style=Stat_Damage>+{[extraDmg]} Damage</style> and score an additional <style=Stat_Hits>hit</style>. <style=Faction_Orks>Boss Gulgortz</style> then <style=Charging>charges</style> a targeted enemy in movement range, performing a <style=NormalAttack>normal melee attack</style> against it. All friendly <style=Faction_Orks>Ork Boyz</style> take a turn.\\n\\nOrk Boyz' stats:\\n<style=Stat_Health>{[summonHp]} Health</style>\\n<style=Stat_Damage>{[summonDmg]} Damage</style>\\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "If <style=Faction_Orks>Boss Gulgortz</style> has not moved, he summons <style=Stat>{[nrOfSummons]}</style> <style=Summon><style=Faction_Orks>Ork Boyz</style></style> in free adjacent hexes. Until the end of this turn, all friendly <style=Faction_Orks>Orks</style> and friendly units adjacent to <style=Faction_Orks>Boss Gulgortz</style> gain <style=Stat_Movement>+{[extraMovement]} Movement</style> and their <style=NormalAttack>normal melee attacks</style> deal <style=Stat_Damage>+{[extraDmg]} Damage</style> and score an additional <style=Stat_Hits>hit</style>. <style=Faction_Orks>Boss Gulgortz</style> then <style=Charging>charges</style> a targeted enemy in movement range, performing a <style=NormalAttack>normal melee attack</style> against it. All friendly <style=Faction_Orks>Ork Boyz</style> take a turn.\n\nOrk Boyz' stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
         "name": "Waaagh!"
     },
     "WallOfMirrors": {
@@ -1789,11 +1789,11 @@
         "name": "War Construct"
     },
     "WarHowl": {
-        "description": "If <style=Faction_SpaceWolves>Ragnar</style> has not moved, he and all friendly <style=Character>Characters</style> that don't have a <style=NormalAttack>normal ranged attack</style> gain <style=Unstoppable>Unstoppable</style> until the end of this turn. Additionally, their <style=NormalAttack>normal melee attacks</style> have <style=Stat>+{[extraCritChance]}% Crit Chance</style> and deal <style=Stat_Damage>+{[extraDmg]} Damage</style> until the end of this turn. \\n\\nUsing <i>War Howl</i> does not end <style=Faction_SpaceWolves>Ragnar</style>'s turn.",
+        "description": "If <style=Faction_SpaceWolves>Ragnar</style> has not moved, he and all friendly <style=Character>Characters</style> that don't have a <style=NormalAttack>normal ranged attack</style> gain <style=Unstoppable>Unstoppable</style> until the end of this turn. Additionally, their <style=NormalAttack>normal melee attacks</style> have <style=Stat>+{[extraCritChance]}% Crit Chance</style> and deal <style=Stat_Damage>+{[extraDmg]} Damage</style> until the end of this turn. \n\nUsing <i>War Howl</i> does not end <style=Faction_SpaceWolves>Ragnar</style>'s turn.",
         "name": "War Howl"
     },
     "WayOfTheShortBlade": {
-        "description": "Affects other friendly <style=Character>Characters</style> within {[range]} hexes. Ranged attacks of affected units against enemies that are adjacent to a friendly <style=Character>Character</style> have <style=Piercing_Ratio>+{[extraPierceRatio]}% pierce ratio</style> and deal <style=Stat>{[dmgPct]}%</style> of their own damage to a maximum of <style=Stat_Damage>{[maxDmg]} Damage</style> per <style=Stat_Hits>hit</style>.\\n\\n<style=Faction_Tau>Commander Farsight</style> and affected <style=Faction_Tau>T'au Empire</style> <style=Character>Characters</style> that perform a melee attack immediately perform a <style=NormalAttack>normal ranged attack</style> against the same unit, even if they are adjacent to it.",
+        "description": "Affects other friendly <style=Character>Characters</style> within {[range]} hexes. Ranged attacks of affected units against enemies that are adjacent to a friendly <style=Character>Character</style> have <style=Piercing_Ratio>+{[extraPierceRatio]}% pierce ratio</style> and deal <style=Stat>{[dmgPct]}%</style> of their own damage to a maximum of <style=Stat_Damage>{[maxDmg]} Damage</style> per <style=Stat_Hits>hit</style>.\n\n<style=Faction_Tau>Commander Farsight</style> and affected <style=Faction_Tau>T'au Empire</style> <style=Character>Characters</style> that perform a melee attack immediately perform a <style=NormalAttack>normal ranged attack</style> against the same unit, even if they are adjacent to it.",
         "name": "Way of the Short Blade"
     },
     "WeakerRearArmour": {

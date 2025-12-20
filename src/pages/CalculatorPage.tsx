@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Play, RotateCcw, Trash2 } from 'lucide-react';
+import { Play, RotateCcw, Trash2, PackageX } from 'lucide-react';
 import { useTeamStore } from '../stores/teamStore';
 import { useBattleStore } from '../stores/battleStore';
 import { TeamSlot } from '../components/battle';
@@ -12,6 +12,7 @@ import {
   BattleSummary,
 } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
+import { abilityEndsTurn } from '../services/abilities';
 
 // Helper to calculate damage bounds from log entries
 function calculateBoundsFromEntries(entries: TurnLogEntry[]): DamageTotals {
@@ -38,21 +39,27 @@ function calculateBoundsFromEntries(entries: TurnLogEntry[]): DamageTotals {
 }
 
 export function CalculatorPage() {
-  const { team, removeCharacter, clearTeam } = useTeamStore();
+  const { team, removeCharacter, clearTeam, clearAllEquipment } = useTeamStore();
   const {
     battleState,
     startBattle,
     resetBattle,
     nextTurn,
+    finishBattle,
     addAction,
     setCharacterMoved,
     setCharacterActed,
     executeAttack,
+    executeAbility,
     resetCharacterTurn,
     resetCharacterTurnAtTurn,
     editingTurn,
     setEditingTurn,
     getActiveTurn,
+    toggleAbility,
+    setLegendaryCommanderBuffAvailable,
+    setIgnoreCrit,
+    setCharacterTurnEnded,
   } = useBattleStore();
 
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
@@ -107,9 +114,16 @@ export function CalculatorPage() {
   };
 
   const handleNextTurn = () => {
-    nextTurn();
+    // On turn 6, finish the battle instead of going to turn 7
+    if (battleState?.turn === 6) {
+      finishBattle();
+    } else {
+      nextTurn();
+    }
     setSelectedCharacterId(null);
   };
+
+  const isLastTurn = battleState?.turn === 6;
 
   const handleUndoActions = (characterId: string) => {
     if (!battleState) return;
@@ -182,12 +196,13 @@ export function CalculatorPage() {
       case 'meleeAttack': {
         // Only modify current turn flags if not editing past turn
         if (!isEditingPastTurn) {
-          setCharacterMoved(characterId, true);
           setCharacterActed(characterId, true);
+          setCharacterTurnEnded(characterId, true); // Basic attack ends turn
         }
         addAction(characterId, { type: 'meleeAttack', characterId, targetId: 'boss' });
 
         // Execute attack and add to log (executeAttack updates total damage in store)
+        // Note: hasMoved reflects actual movement, not action state
         const meleeLog = executeAttack(characterId, 'boss', 'melee');
         setBattleLog((prev) => [...prev, { ...meleeLog, turn: targetTurn }]);
         break;
@@ -196,35 +211,54 @@ export function CalculatorPage() {
       case 'rangedAttack': {
         // Only modify current turn flags if not editing past turn
         if (!isEditingPastTurn) {
-          setCharacterMoved(characterId, true);
           setCharacterActed(characterId, true);
+          setCharacterTurnEnded(characterId, true); // Basic attack ends turn
         }
         addAction(characterId, { type: 'rangedAttack', characterId, targetId: 'boss' });
 
         // Execute attack and add to log (executeAttack updates total damage in store)
+        // Note: hasMoved reflects actual movement, not action state
         const rangedLog = executeAttack(characterId, 'boss', 'ranged');
         setBattleLog((prev) => [...prev, { ...rangedLog, turn: targetTurn }]);
         break;
       }
 
-      case 'ability':
+      case 'ability': {
+        // Execute ability and get damage result
+        const abilityId = character.activeAbilities[0];
+
         // Only modify current turn flags if not editing past turn
         if (!isEditingPastTurn) {
-          setCharacterActed(characterId, true);
+          // Check if this ability ends the turn
+          const endsTurn = abilityId ? abilityEndsTurn(abilityId) : true;
+
+          if (endsTurn) {
+            setCharacterActed(characterId, true);
+            setCharacterTurnEnded(characterId, true);
+          }
+          // Set LegendaryCommander buff available for next attack
+          setLegendaryCommanderBuffAvailable(true);
         }
         addAction(characterId, { type: 'ability', characterId });
-        setBattleLog((prev) => [
-          ...prev,
-          {
-            timestamp: Date.now(),
-            characterId,
-            characterName: character.name,
-            action: 'ability' as const,
-            message: `${character.name} uses ${character.activeAbilities[0] || 'ability'}`,
-            turn: targetTurn,
-          },
-        ]);
+
+        if (abilityId) {
+          const abilityLog = executeAbility(characterId, abilityId);
+          setBattleLog((prev) => [...prev, { ...abilityLog, turn: targetTurn }]);
+        } else {
+          setBattleLog((prev) => [
+            ...prev,
+            {
+              timestamp: Date.now(),
+              characterId,
+              characterName: character.name,
+              action: 'ability' as const,
+              message: `${character.name} has no ability`,
+              turn: targetTurn,
+            },
+          ]);
+        }
         break;
+      }
 
       case 'wait':
         // Only modify current turn flags if not editing past turn
@@ -266,13 +300,22 @@ export function CalculatorPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-100">Your Team</h2>
             {team.length > 0 && (
-              <button
-                onClick={clearTeam}
-                className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
-              >
-                <Trash2 size={16} />
-                Clear All
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={clearAllEquipment}
+                  className="flex items-center gap-2 text-sm text-amber-400 hover:text-amber-300 transition-colors"
+                >
+                  <PackageX size={16} />
+                  Remove Equip
+                </button>
+                <button
+                  onClick={clearTeam}
+                  className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
+                >
+                  <Trash2 size={16} />
+                  Clear All
+                </button>
+              </div>
             )}
           </div>
 
@@ -333,7 +376,16 @@ export function CalculatorPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={battleState.ignoreCrit}
+              onChange={(e) => setIgnoreCrit(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-imperial-gold focus:ring-imperial-gold focus:ring-offset-gray-800"
+            />
+            <span className="text-sm text-gray-300">Ignore Crit</span>
+          </label>
           <button
             onClick={handleResetBattle}
             className="btn-secondary flex items-center gap-2"
@@ -347,6 +399,18 @@ export function CalculatorPage() {
       {/* Damage Summary */}
       <DamageSummary battleState={battleState} />
 
+      {/* Next Turn / Finish Battle Button - below damage recap */}
+      {!battleState.isComplete && (
+        <div className="flex justify-center">
+          <button
+            onClick={handleNextTurn}
+            className="btn-primary flex items-center gap-2 px-6 py-3"
+          >
+            {isLastTurn ? 'Finish Battle' : 'Next Turn →'}
+          </button>
+        </div>
+      )}
+
       {/* Main Battle Area */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Characters - Column Layout */}
@@ -359,7 +423,10 @@ export function CalculatorPage() {
                 <BattleCharacterCard
                   key={character.id}
                   character={effectiveCharacter}
+                  team={battleState.team}
                   isSelected={selectedCharacterId === character.id}
+                  legendaryCommanderBuffAvailable={battleState.legendaryCommanderBuffAvailable}
+                  currentTurn={battleState.turn}
                   onSelect={() =>
                     setSelectedCharacterId(
                       selectedCharacterId === character.id ? null : character.id
@@ -367,6 +434,7 @@ export function CalculatorPage() {
                   }
                   onAction={(type) => handleAction(character.id, type)}
                   onUndo={() => handleUndoActions(character.id)}
+                  onToggleAbility={(abilityId) => toggleAbility(character.id, abilityId)}
                 />
               );
             })}
@@ -388,23 +456,14 @@ export function CalculatorPage() {
         </div>
       </div>
 
-      {/* Next Turn / Battle Summary */}
-      {battleState.isComplete ? (
+      {/* Battle Summary - shown when complete */}
+      {battleState.isComplete && (
         <BattleSummary
           team={battleState.team}
           totalDamage={battleState.totalDamageDealt}
           totalDamageBounds={battleState.totalDamageBounds}
           onReset={handleResetBattle}
         />
-      ) : (
-        <div className="flex justify-center pt-4">
-          <button
-            onClick={handleNextTurn}
-            className="btn-primary flex items-center gap-2 px-6 py-3"
-          >
-            Next Turn →
-          </button>
-        </div>
       )}
     </div>
   );

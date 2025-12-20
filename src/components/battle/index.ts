@@ -5,3 +5,4 @@ export { BattleCharacterCard } from './BattleCharacterCard';
 export { BattleLog } from './BattleLog';
 export { DamageSummary } from './DamageSummary';
 export { BattleSummary } from './BattleSummary';
+export { DamageBar, CompactDamageBar } from './DamageBar';

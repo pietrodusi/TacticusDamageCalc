@@ -1,4 +1,5 @@
 import type { Character, TeamMember } from './character';
+import type { AbilityCooldownState, AbilityStatModifier } from '../services/abilities/types';
 
 export type ActionType = 'move' | 'attack' | 'meleeAttack' | 'rangedAttack' | 'ability' | 'wait';
 
@@ -14,6 +15,7 @@ export interface BattleCharacter extends TeamMember {
   position: { x: number; y: number };
   hasMoved: boolean;
   hasActed: boolean;
+  turnEnded: boolean;  // True when character's turn is completely over (all actions disabled)
   buffs: Buff[];
   debuffs: Debuff[];
   // Calculated stats based on rarity/rank
@@ -24,6 +26,16 @@ export interface BattleCharacter extends TeamMember {
   totalDamageDealt: number;
   // Track damage bounds
   damageTotals: DamageTotals;
+  // Track attacks for trait bonuses
+  hasAttackedThisBattle: boolean;  // For RapidAssault first attack check
+  attacksThisTurn: number;         // For RapidAssault same-turn attacks
+  firstAttackTurn: number | null;  // Turn number when character first attacked (for RapidAssault)
+  attackTurnsCount: number;        // Number of turns character has attacked (for LegacyOfCombat)
+  hasUsedAbilityThisTurn: boolean; // For LegendaryCommander - track if active ability used this turn
+  // Ability state
+  abilityCooldowns: Record<string, AbilityCooldownState>;  // Track ability cooldowns
+  abilityToggles: Record<string, boolean>;  // User-controlled toggles for conditional passives
+  activeBuffs: AbilityStatModifier[];  // Active ability buffs (from abilities like WarHowl)
 }
 
 export interface Buff {
@@ -72,6 +84,15 @@ export interface Turn {
   log: BattleLogEntry[];
 }
 
+// Trait modifier info for display
+export interface TraitModifierInfo {
+  traitId: string;
+  traitName: string;
+  damageMultiplier: number;
+  applicable: boolean;
+  reason?: string;
+}
+
 // Damage breakdown for attacks
 export interface DamageBreakdown {
   lowerBound: number;
@@ -85,6 +106,19 @@ export interface DamageBreakdown {
   critDamage: number;
   targetArmor: number;
   pierceRatio: number;
+  // Trait modifiers
+  traitModifiers?: TraitModifierInfo[];
+  traitMultiplier?: number;
+}
+
+// Follow-up attack log entry (from passives like LegacyOfCombat, TheBetrayer)
+export interface FollowUpAttackLog {
+  abilityName: string;
+  damage: number;
+  lowerBound: number;
+  upperBound: number;
+  hits: number;
+  damageType: string;
 }
 
 export interface BattleLogEntry {
@@ -97,6 +131,7 @@ export interface BattleLogEntry {
   damageBreakdown?: DamageBreakdown;
   healing?: number;
   message: string;
+  followUpAttacks?: FollowUpAttackLog[];  // Follow-up attacks from passives
 }
 
 export interface BattleState {
@@ -109,6 +144,11 @@ export interface BattleState {
   // Track total damage bounds
   totalDamageBounds: DamageTotals;
   isComplete: boolean;
+  // LegendaryCommander (Trajann) aura buff tracking
+  // True after any ability is used, consumed by first attack after
+  legendaryCommanderBuffAvailable: boolean;
+  // If true, crit chance is treated as 0% for all damage calculations
+  ignoreCrit: boolean;
 }
 
 export interface BattleSimulationConfig {

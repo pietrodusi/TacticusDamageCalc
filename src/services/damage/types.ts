@@ -48,8 +48,41 @@ export const DAMAGE_VARIANCE = {
 };
 
 /**
+ * Trait modifier result from trait evaluation
+ */
+export interface TraitModifier {
+  traitId: string;
+  traitName: string;
+  damageMultiplier: number;  // 1.5 = +50%, 0.5 = -50%
+  applicable: boolean;
+  reason?: string;  // Why it was/wasn't applied
+}
+
+/**
  * Attacker stats needed for damage calculation
  */
+/**
+ * Individual buff source for tracking in damage breakdown
+ */
+export interface BuffSource {
+  name: string;           // e.g., "Lord of the Host"
+  sourceName: string;     // e.g., "Dante"
+  damageBonus?: number;   // Flat damage bonus
+  extraHits?: number;     // Extra hits bonus
+}
+
+/**
+ * Ability stat modifiers from passive abilities
+ */
+export interface AbilityModifiers {
+  baseDamageBonus?: number;        // Flat damage added
+  baseDamageMultiplier?: number;   // 1.25 = +25%
+  extraHits?: number;              // Additional hits
+  critChanceBonus?: number;        // +% crit chance
+  critDamageBonus?: number;        // Flat crit damage bonus
+  buffSources?: BuffSource[];      // Sources of the buffs for display
+}
+
 export interface AttackerStats {
   baseDamage: number;
   damageType: DamageType;
@@ -58,6 +91,16 @@ export interface AttackerStats {
   critDamage: number;       // Flat bonus damage on crit
   critChanceBonus?: number; // Additional crit chance from equipment (percentage)
   critDmgBonus?: number;    // Additional crit damage from equipment
+  traits?: string[];        // Character trait IDs
+  hasMoved?: boolean;       // Whether character has moved this turn
+  attackType?: 'melee' | 'ranged'; // Type of attack being performed
+  // Battle state for trait calculations
+  hasAttackedThisBattle?: boolean;  // For RapidAssault first attack check
+  attacksThisTurn?: number;         // For RapidAssault same-turn attacks
+  firstAttackTurn?: number | null;  // Turn when character first attacked (for RapidAssault)
+  currentTurn?: number;             // Current battle turn (for RapidAssault)
+  // Ability modifiers from passive abilities
+  abilityModifiers?: AbilityModifiers;
 }
 
 /**
@@ -106,6 +149,10 @@ export interface DamageResult {
   effectiveCritDamage: number;  // Total crit damage (base + bonus)
   effectiveBlockChance: number; // Total block chance
   pierceRatio: number;          // Pierce ratio for damage type
+
+  // Trait modifiers applied
+  traitModifiers: TraitModifier[];
+  traitMultiplier: number;      // Combined multiplier from all traits
 }
 
 /**

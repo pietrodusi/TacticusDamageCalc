@@ -1,5 +1,6 @@
 import { User, Trophy } from 'lucide-react';
 import type { BattleCharacter, DamageTotals } from '../../types';
+import { DamageBar } from './DamageBar';
 
 interface BattleSummaryProps {
   team: BattleCharacter[];
@@ -27,16 +28,20 @@ export function BattleSummary({ team, totalDamageBounds, onReset }: BattleSummar
           <Trophy className="text-imperial-gold" size={32} />
         </div>
 
-        {/* Total Damage with bounds */}
-        <div className="space-y-1">
+        {/* Total Damage with DamageBar */}
+        <div className="space-y-3">
           <p className="text-3xl font-bold text-white">
             Average Total Damage: {totalDamageBounds.average.toLocaleString()}
           </p>
-          <p className="text-sm text-gray-400">
-            Range: <span className="text-red-400">{totalDamageBounds.lower.toLocaleString()}</span>
-            {' - '}
-            <span className="text-green-400">{totalDamageBounds.upper.toLocaleString()}</span>
-          </p>
+          <div className="max-w-md mx-auto">
+            <DamageBar
+              lowerBound={totalDamageBounds.lower}
+              average={totalDamageBounds.average}
+              upperBound={totalDamageBounds.upper}
+              maxScale={maxUpperBound}
+              height={12}
+            />
+          </div>
         </div>
       </div>
 
@@ -47,27 +52,22 @@ export function BattleSummary({ team, totalDamageBounds, onReset }: BattleSummar
         {/* Legend */}
         <div className="flex items-center gap-4 mb-4 text-xs">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-red-700" />
-            <span className="text-gray-400">Min (no crit)</span>
+            <div className="w-3 h-3 rounded bg-red-600" />
+            <span className="text-gray-400">Unlucky (low roll)</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-amber-500" />
+            <div className="w-3 h-3 rounded bg-amber-400" />
             <span className="text-gray-400">Expected</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-green-500" />
-            <span className="text-gray-400">Max (all crit)</span>
+            <span className="text-gray-400">Lucky (high roll)</span>
           </div>
         </div>
 
         <div className="space-y-3">
           {sortedTeam.map((character, index) => {
             const { lower, upper, average } = character.damageTotals;
-
-            // Calculate percentages relative to max upper bound
-            const lowerPercent = (lower / maxUpperBound) * 100;
-            const avgPercent = (average / maxUpperBound) * 100;
-            const upperPercent = (upper / maxUpperBound) * 100;
 
             // Percent of total (using average)
             const totalPercent = totalDamageBounds.average > 0
@@ -97,55 +97,25 @@ export function BattleSummary({ team, totalDamageBounds, onReset }: BattleSummar
                   )}
                 </div>
 
-                {/* Name and Damage Bars */}
+                {/* Name and Damage Bar */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-gray-100 truncate">
                       {character.name}
                     </span>
-                    <div className="text-right ml-2">
-                      <span className="text-imperial-gold font-bold">
-                        {average.toLocaleString()}
-                      </span>
-                      <span className="text-xs text-gray-500 ml-1">
-                        ({lower.toLocaleString()} - {upper.toLocaleString()})
-                      </span>
-                    </div>
+                    <span className="text-xs text-gray-400 ml-2">
+                      {totalPercent.toFixed(1)}% of total
+                    </span>
                   </div>
 
-                  {/* Multi-color Damage Bar - segmented visualization */}
-                  <div className="h-3 bg-gray-700 rounded-full overflow-hidden relative">
-                    {/* Lower bound segment (red) - guaranteed minimum damage */}
-                    <div
-                      className="absolute h-full bg-red-700 transition-all duration-500 rounded-l-full"
-                      style={{ width: `${lowerPercent}%`, left: 0 }}
-                    />
-                    {/* Average segment (amber) - from lower to average */}
-                    <div
-                      className="absolute h-full bg-amber-500 transition-all duration-500"
-                      style={{
-                        width: `${avgPercent - lowerPercent}%`,
-                        left: `${lowerPercent}%`
-                      }}
-                    />
-                    {/* Upper segment (green) - from average to upper */}
-                    <div
-                      className="absolute h-full bg-green-500 transition-all duration-500 rounded-r-full"
-                      style={{
-                        width: `${upperPercent - avgPercent}%`,
-                        left: `${avgPercent}%`
-                      }}
-                    />
-                    {/* Average marker line */}
-                    <div
-                      className="absolute h-full w-0.5 bg-white/70 transition-all duration-500"
-                      style={{ left: `${avgPercent}%` }}
-                    />
-                  </div>
-
-                  <div className="text-xs text-gray-400 mt-1">
-                    {totalPercent.toFixed(1)}% of total damage
-                  </div>
+                  {/* DamageBar component */}
+                  <DamageBar
+                    lowerBound={lower}
+                    average={average}
+                    upperBound={upper}
+                    maxScale={maxUpperBound}
+                    height={10}
+                  />
                 </div>
               </div>
             );
