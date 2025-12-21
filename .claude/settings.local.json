@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(npm run build:*)",
+      "WebFetch(domain:tacticus.wiki.gg)",
+      "WebFetch(domain:tacticusdb.com)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(node -e:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(git push:*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git branch:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(gh auth status:*)",
+      "WebFetch(domain:pietrodusi.github.io)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(node test-json-parse.js:*)",
+      "Bash(node:*)",
+      "WebFetch(domain:tacticus.fandom.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
