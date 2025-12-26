@@ -3,82 +3,49 @@
  *
  * Based on: https://tacticus.fandom.com/wiki/HDTW_Damage
  *
- * Main Formula:
- *   MAX[(DamVar - Armor) vs (DamVar * Pierce Ratio)] * Hits = Damage dealt
- *
- * Where DamVar = Damage * (1 +/- up to 0.2)
+ * New Formula (simplified - no variance, no blocking):
+ *   DamVarMod = BaseDamage + FlatModifiers + CritBonus
+ *   tempDD = MAX[(DamVarMod - Armor), (DamVarMod * PierceRatio)]
+ *   perHitDamage = tempDD * GlobalMultipliers
+ *   DD = perHitDamage * nrOfHits
  *
  * This file contains pure functions for each step of the calculation.
  */
 
-import { PIERCE_RATIOS, DAMAGE_VARIANCE } from './types';
+import { PIERCE_RATIOS } from './types';
 import type { DamageType } from '../../types';
-
-/**
- * Calculate damage variance (DamVar)
- *
- * Formula: DamVar = BaseDamage * varianceMultiplier
- *
- * @param baseDamage - The character's base damage stat
- * @param varianceMultiplier - Multiplier from 0.8 to 1.2 (±20%)
- * @returns The varied damage value
- */
-export function calculateDamageVariance(baseDamage: number, varianceMultiplier: number): number {
-  return Math.floor(baseDamage * varianceMultiplier);
-}
-
-/**
- * Get the minimum damage variance (for lower bound)
- */
-export function getMinDamageVariance(baseDamage: number): number {
-  return calculateDamageVariance(baseDamage, DAMAGE_VARIANCE.MIN_MULTIPLIER);
-}
-
-/**
- * Get the maximum damage variance (for upper bound)
- */
-export function getMaxDamageVariance(baseDamage: number): number {
-  return calculateDamageVariance(baseDamage, DAMAGE_VARIANCE.MAX_MULTIPLIER);
-}
-
-/**
- * Get the average damage variance
- */
-export function getAvgDamageVariance(baseDamage: number): number {
-  return calculateDamageVariance(baseDamage, DAMAGE_VARIANCE.AVG_MULTIPLIER);
-}
 
 /**
  * Calculate damage after armor reduction
  *
- * Formula: DamVar - Armor (minimum 0)
+ * Formula: DamVarMod - Armor (minimum 0)
  *
- * @param damageVariance - The varied damage value
+ * @param damVarMod - The damage value (base + modifiers + crit)
  * @param armor - Target's armor value
  * @returns Damage after armor subtraction
  */
-export function calculateArmorReduction(damageVariance: number, armor: number): number {
-  return Math.max(0, damageVariance - armor);
+export function calculateArmorReduction(damVarMod: number, armor: number): number {
+  return Math.max(0, damVarMod - armor);
 }
 
 /**
  * Calculate pierce floor (minimum damage from pierce ratio)
  *
- * Formula: DamVar * PierceRatio
+ * Formula: DamVarMod * PierceRatio
  *
- * @param damageVariance - The varied damage value
+ * @param damVarMod - The damage value (base + modifiers + crit)
  * @param damageType - The type of damage (determines pierce ratio)
  * @returns Minimum damage guaranteed by pierce
  */
-export function calculatePierceFloor(damageVariance: number, damageType: DamageType): number {
+export function calculatePierceFloor(damVarMod: number, damageType: DamageType): number {
   const pierceRatio = PIERCE_RATIOS[damageType];
-  return Math.floor(damageVariance * pierceRatio);
+  return Math.floor(damVarMod * pierceRatio);
 }
 
 /**
  * Apply the MAX function from the damage formula
  *
- * Formula: MAX[(DamVar - Armor) vs (DamVar * Pierce Ratio)]
+ * Formula: MAX[(DamVarMod - Armor), (DamVarMod * PierceRatio)]
  *
  * @param afterArmor - Damage after armor reduction
  * @param pierceFloor - Minimum damage from pierce ratio
@@ -92,7 +59,7 @@ export function applyPierceMaximum(afterArmor: number, pierceFloor: number): num
  * Calculate crit damage
  *
  * When a crit occurs, damage becomes: (BaseDamage + CritDamage)
- * This replaces the base damage in the variance calculation.
+ * This replaces the base damage in the calculation.
  *
  * @param baseDamage - The character's base damage stat
  * @param critDamage - The flat crit damage bonus
@@ -103,21 +70,46 @@ export function calculateCritBaseDamage(baseDamage: number, critDamage: number):
 }
 
 /**
- * Calculate expected crit bonus using streak-based solution
+ * Calculate expected number of crits using streak-based formula
  *
- * Formula: E[crit bonus] = CritDamage * sum(k=1 to 5) of p^k
+ * Formula: E[crits] = Σ(k=1 to n) p^k = p × (1 - p^n) / (1 - p)
  *
  * This accounts for the streak mechanic where consecutive crits
- * have increasing probability.
+ * can occur up to the number of hits in the attack.
  *
- * For p = 0.35 (35% crit chance):
+ * @param critChance - Crit chance as decimal (0-1)
+ * @param hits - Number of hits
+ * @returns Expected number of crit hits
+ */
+export function calculateExpectedCrits(
+  critChance: number,
+  hits: number
+): number {
+  if (critChance <= 0) return 0;
+  if (critChance >= 1) return hits;
+
+  const p = critChance;
+  const n = hits;
+  return p * (1 - Math.pow(p, n)) / (1 - p);
+}
+
+/**
+ * @deprecated Use calculateExpectedCrits instead - kept for backwards compatibility
+ * Calculate expected crit bonus using streak-based solution
+ *
+ * Formula: E[crit bonus] = CritDamage * sum(k=1 to n) of p^k
+ *
+ * This accounts for the streak mechanic where consecutive crits
+ * can occur up to the number of hits in the attack.
+ *
+ * For p = 0.35 (35% crit chance) with 5 hits:
  *   sum = 0.35 + 0.35^2 + 0.35^3 + 0.35^4 + 0.35^5
  *   sum = 0.35 + 0.1225 + 0.042875 + 0.01500625 + 0.0052521875
  *   sum ≈ 0.5356
  *
  * @param critChance - Crit chance as decimal (0-1)
  * @param critDamage - Flat crit damage bonus
- * @param maxStreakLength - Maximum streak length (default 5)
+ * @param maxStreakLength - Maximum streak length (should equal number of hits)
  * @returns Expected additional damage from crits per hit
  */
 export function calculateExpectedCritBonus(
@@ -134,11 +126,7 @@ export function calculateExpectedCritBonus(
 }
 
 /**
- * Calculate effective crit chance (simplified for average)
- *
- * For average calculations, we use the simple probability approach
- * rather than streak-based. The streak formula is applied to the
- * damage bonus calculation instead.
+ * Calculate effective crit chance
  *
  * @param baseCritChance - Base crit chance (0-100)
  * @param critChanceBonus - Additional crit chance from equipment (0-100)
@@ -167,68 +155,23 @@ export function calculateEffectiveCritDamage(
 }
 
 /**
- * Calculate block reduction
- *
- * When a block occurs, damage is reduced by block damage value.
- *
- * @param damage - Incoming damage
- * @param blockDamage - Block damage reduction value
- * @returns Damage after block (minimum 0)
- */
-export function calculateBlockReduction(damage: number, blockDamage: number): number {
-  return Math.max(0, damage - blockDamage);
-}
-
-/**
- * Calculate effective block chance
- *
- * @param baseBlockChance - Base block chance (0-100)
- * @param blockChanceBonus - Additional block chance from equipment (0-100)
- * @returns Total block chance as decimal (0-1), capped at 1
- */
-export function calculateEffectiveBlockChance(
-  baseBlockChance: number,
-  blockChanceBonus: number = 0
-): number {
-  const totalPercent = baseBlockChance + blockChanceBonus;
-  return Math.min(totalPercent / 100, 1);
-}
-
-/**
- * Calculate effective block damage
- *
- * @param baseBlockDamage - Base block damage reduction
- * @param blockDmgBonus - Additional block damage from equipment
- * @returns Total block damage reduction
- */
-export function calculateEffectiveBlockDamage(
-  baseBlockDamage: number,
-  blockDmgBonus: number = 0
-): number {
-  return baseBlockDamage + blockDmgBonus;
-}
-
-/**
- * Calculate single hit damage (complete formula)
+ * Calculate single hit damage (complete formula - no variance)
  *
  * Full formula for one hit:
- *   MAX[(DamVar - Armor) vs (DamVar * Pierce Ratio)]
+ *   MAX[(DamVarMod - Armor), (DamVarMod * PierceRatio)]
  *
- * @param baseDamage - Base damage (or base + critDmg if crit)
+ * @param damVarMod - Damage value (base + modifiers + crit)
  * @param armor - Target armor
  * @param damageType - Type of damage
- * @param varianceMultiplier - Damage variance (0.8-1.2)
- * @returns Damage for this hit
+ * @returns Damage for this hit (before global multipliers)
  */
 export function calculateSingleHitDamage(
-  baseDamage: number,
+  damVarMod: number,
   armor: number,
-  damageType: DamageType,
-  varianceMultiplier: number = DAMAGE_VARIANCE.AVG_MULTIPLIER
+  damageType: DamageType
 ): number {
-  const damVar = calculateDamageVariance(baseDamage, varianceMultiplier);
-  const afterArmor = calculateArmorReduction(damVar, armor);
-  const pierceFloor = calculatePierceFloor(damVar, damageType);
+  const afterArmor = calculateArmorReduction(damVarMod, armor);
+  const pierceFloor = calculatePierceFloor(damVarMod, damageType);
   return applyPierceMaximum(afterArmor, pierceFloor);
 }
 

@@ -1,20 +1,18 @@
 import { User, Trophy } from 'lucide-react';
-import type { BattleCharacter, DamageTotals } from '../../types';
-import { DamageBar } from './DamageBar';
+import type { BattleCharacter } from '../../types';
 
 interface BattleSummaryProps {
   team: BattleCharacter[];
   totalDamage: number;
-  totalDamageBounds: DamageTotals;
   onReset: () => void;
 }
 
-export function BattleSummary({ team, totalDamageBounds, onReset }: BattleSummaryProps) {
-  // Sort characters by average damage dealt (highest first)
-  const sortedTeam = [...team].sort((a, b) => b.damageTotals.average - a.damageTotals.average);
+export function BattleSummary({ team, totalDamage, onReset }: BattleSummaryProps) {
+  // Sort characters by damage dealt (highest first)
+  const sortedTeam = [...team].sort((a, b) => b.totalDamageDealt - a.totalDamageDealt);
 
-  // Find max upper bound for scaling progress bars
-  const maxUpperBound = Math.max(...team.map(c => c.damageTotals.upper), 1);
+  // Find max damage for scaling progress bars
+  const maxDamage = Math.max(...team.map(c => c.totalDamageDealt), 1);
 
   return (
     <div className="space-y-6">
@@ -28,20 +26,11 @@ export function BattleSummary({ team, totalDamageBounds, onReset }: BattleSummar
           <Trophy className="text-imperial-gold" size={32} />
         </div>
 
-        {/* Total Damage with DamageBar */}
+        {/* Total Damage */}
         <div className="space-y-3">
           <p className="text-3xl font-bold text-white">
-            Average Total Damage: {totalDamageBounds.average.toLocaleString()}
+            Total Damage: {totalDamage.toLocaleString()}
           </p>
-          <div className="max-w-md mx-auto">
-            <DamageBar
-              lowerBound={totalDamageBounds.lower}
-              average={totalDamageBounds.average}
-              upperBound={totalDamageBounds.upper}
-              maxScale={maxUpperBound}
-              height={12}
-            />
-          </div>
         </div>
       </div>
 
@@ -49,30 +38,17 @@ export function BattleSummary({ team, totalDamageBounds, onReset }: BattleSummar
       <div className="card p-4">
         <h3 className="text-lg font-semibold text-gray-100 mb-4">Damage Breakdown</h3>
 
-        {/* Legend */}
-        <div className="flex items-center gap-4 mb-4 text-xs">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-red-600" />
-            <span className="text-gray-400">Unlucky (low roll)</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-amber-400" />
-            <span className="text-gray-400">Expected</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-green-500" />
-            <span className="text-gray-400">Lucky (high roll)</span>
-          </div>
-        </div>
-
         <div className="space-y-3">
           {sortedTeam.map((character, index) => {
-            const { lower, upper, average } = character.damageTotals;
+            const damage = character.totalDamageDealt;
 
-            // Percent of total (using average)
-            const totalPercent = totalDamageBounds.average > 0
-              ? (average / totalDamageBounds.average) * 100
+            // Percent of total
+            const totalPercent = totalDamage > 0
+              ? (damage / totalDamage) * 100
               : 0;
+
+            // Progress bar width
+            const barWidth = maxDamage > 0 ? (damage / maxDamage) * 100 : 0;
 
             return (
               <div
@@ -108,14 +84,18 @@ export function BattleSummary({ team, totalDamageBounds, onReset }: BattleSummar
                     </span>
                   </div>
 
-                  {/* DamageBar component */}
-                  <DamageBar
-                    lowerBound={lower}
-                    average={average}
-                    upperBound={upper}
-                    maxScale={maxUpperBound}
-                    height={10}
-                  />
+                  {/* Simple damage bar */}
+                  <div className="relative h-6 bg-gray-700 rounded overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500 rounded"
+                      style={{ width: `${barWidth}%` }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs font-medium text-white drop-shadow-md">
+                        {damage.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             );

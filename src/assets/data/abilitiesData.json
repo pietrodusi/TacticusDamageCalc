@@ -1358,7 +1358,7 @@
         "name": "Rites of Restoration"
     },
     "SagaOfTheWarriorBorn": {
-        "description": "[i2p_Plural]When <style=Charging>charging</style>, <style=Faction_SpaceWolves>Ragnar</style> scores <style=Stat>{[extraHits]}</style> additional <style=Stat_Hits>hits</style> and his critical hits deal an additional <style=Stat_CritDamage>+{[extraCritDmg]} Crit Damage</style>. \nIf Ragnar has defeated one or more enemy <style=Character>Characters</style> this battle, friendly <style=Faction_SpaceWolves>Space Wolves</style> also gain this ability.[i2p_One]When <style=Charging>charging</style>, <style=Faction_SpaceWolves>Ragnar</style> scores <style=Stat>{[extraHits]}</style> additional <style=Stat_Hits>hit</style> and his critical hits deal an additional <style=Stat_CritDamage>+{[extraCritDmg]} Crit Damage</style>.\n\nIf Ragnar has defeated one or more enemy <style=Character>Characters</style> this battle, friendly <style=Faction_SpaceWolves>Space Wolves</style> also gain this ability.",
+        "description": "When <style=Charging>charging</style>, <style=Faction_SpaceWolves>Ragnar</style> scores <style=Stat>{[extraHits]}</style> additional <style=Stat_Hits>hit</style> and his critical hits deal an additional <style=Stat_CritDamage>+{[extraCritDmg]} Crit Damage</style>.\n\nIf Ragnar has defeated one or more enemy <style=Character>Characters</style> this battle, friendly <style=Faction_SpaceWolves>Space Wolves</style> also gain this ability.",
         "name": "Saga of the Warrior Born"
     },
     "SanctorumMissile": {

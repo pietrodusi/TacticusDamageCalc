@@ -1,13 +1,15 @@
 /**
  * Damage Calculator for Tacticus Battle Simulation
  *
- * Calculates lower bound, upper bound, and average damage
- * with detailed logging of all calculation steps.
+ * New Formula (simplified - single average value):
+ *   DamVarMod = BaseDamage + FlatModifiers + CritBonus
+ *   tempDD = MAX[(DamVarMod - Armor), (DamVarMod * PierceRatio)]
+ *   perHitDamage = tempDD * GlobalMultipliers
+ *   DD = perHitDamage * nrOfHits
  */
 
 import {
   PIERCE_RATIOS,
-  DAMAGE_VARIANCE,
   type AttackerStats,
   type DefenderStats,
   type DamageResult,
@@ -17,19 +19,12 @@ import {
 } from './types';
 
 import {
-  getMinDamageVariance,
-  getMaxDamageVariance,
-  getAvgDamageVariance,
   calculateArmorReduction,
   calculatePierceFloor,
   applyPierceMaximum,
-  calculateCritBaseDamage,
-  calculateExpectedCritBonus,
+  calculateExpectedCrits,
   calculateEffectiveCritChance,
   calculateEffectiveCritDamage,
-  calculateEffectiveBlockChance,
-  calculateEffectiveBlockDamage,
-  calculateBlockReduction,
   calculateTotalDamage,
 } from './formulas';
 
@@ -90,85 +85,206 @@ export class DamageCalculator {
   }
 
   /**
-   * Format DamVar with variance applied
-   */
-  private formatDamVarWithVariance(
-    baseDamage: number,
-    traitModifiers: TraitModifier[],
-    buffSources: BuffSource[],
-    varianceMultiplier: number,
-    finalDamVar: number
-  ): string {
-    const parts: string[] = [`${baseDamage} (Base)`];
-
-    for (const mod of traitModifiers) {
-      if (mod.applicable && mod.damageMultiplier !== 1) {
-        const bonusAmount = Math.round(baseDamage * (mod.damageMultiplier - 1));
-        const sign = bonusAmount >= 0 ? '+' : '';
-        parts.push(`${sign} ${Math.abs(bonusAmount)} (${mod.traitName})`);
-      }
-    }
-
-    // Add buff sources (auras from teammates)
-    for (const buff of buffSources) {
-      if (buff.damageBonus && buff.damageBonus > 0) {
-        parts.push(`+ ${buff.damageBonus} (${buff.name})`);
-      }
-    }
-
-    const varianceLabel = varianceMultiplier === 1 ? '' : ` × ${varianceMultiplier}`;
-    return `${parts.join(' ')}${varianceLabel} = ${finalDamVar}`;
-  }
-
-  /**
-   * Format DamVar with variance and crit damage applied (for upper bound)
-   */
-  private formatDamVarWithVarianceAndCrit(
-    baseDamage: number,
-    traitModifiers: TraitModifier[],
-    buffSources: BuffSource[],
-    critDamage: number,
-    varianceMultiplier: number,
-    finalDamVar: number
-  ): string {
-    const parts: string[] = [`${baseDamage} (Base)`];
-
-    for (const mod of traitModifiers) {
-      if (mod.applicable && mod.damageMultiplier !== 1) {
-        const bonusAmount = Math.round(baseDamage * (mod.damageMultiplier - 1));
-        const sign = bonusAmount >= 0 ? '+' : '';
-        parts.push(`${sign} ${Math.abs(bonusAmount)} (${mod.traitName})`);
-      }
-    }
-
-    // Add buff sources (auras from teammates)
-    for (const buff of buffSources) {
-      if (buff.damageBonus && buff.damageBonus > 0) {
-        parts.push(`+ ${buff.damageBonus} (${buff.name})`);
-      }
-    }
-
-    if (critDamage > 0) {
-      parts.push(`+ ${critDamage} (Crit)`);
-    }
-
-    const varianceLabel = varianceMultiplier === 1 ? '' : ` × ${varianceMultiplier}`;
-    return `${parts.join(' ')}${varianceLabel} = ${finalDamVar}`;
-  }
-
-  /**
    * Calculate damage with full breakdown
+   *
+   * New formula:
+   *   DamVarMod = BaseDamage + FlatModifiers + CritBonus
+   *   tempDD = MAX[(DamVarMod - Armor), (DamVarMod * PierceRatio)]
+   *   perHitDamage = tempDD * GlobalMultipliers
+   *   DD = perHitDamage * nrOfHits
    *
    * @param attacker - Attacker stats
    * @param defender - Defender stats
-   * @returns Complete damage result with bounds and average
+   * @returns Complete damage result
    */
   public calculate(attacker: AttackerStats, defender: DefenderStats): DamageResult {
     this.clearLogs();
 
-    // === STEP 0: Evaluate Trait Modifiers ===
+    const baseDamage = attacker.baseDamage;
+    let effectiveHits = attacker.hits;
+
+    // === STEP 1: Calculate Flat Modifiers ===
+    let flatModifiers = 0;
+    const flatModifierSources: BuffSource[] = [];
+    let abilityCritChanceBonus = 0;
+    let abilityCritDamageBonus = 0;
+    let extraHits = 0;
+    let globalDamageBonus = 0;
+    const critChanceSources: BuffSource[] = [];
+    const critDamageSources: BuffSource[] = [];
+    const extraHitsSources: BuffSource[] = [];
+    const globalDamageBonusSources: BuffSource[] = [];
+
+    if (attacker.abilityModifiers) {
+      const mods = attacker.abilityModifiers;
+
+      // Flat damage bonus - added BEFORE armor
+      if (mods.baseDamageBonus) {
+        flatModifiers += mods.baseDamageBonus;
+        // Track sources from buffSources with individual values
+        if (mods.buffSources) {
+          for (const source of mods.buffSources) {
+            if (source.damageBonus && source.damageBonus > 0) {
+              flatModifierSources.push({
+                name: source.name,
+                sourceName: source.sourceName,
+                damageBonus: source.damageBonus,
+              });
+            }
+          }
+        }
+        this.log('FLAT_MODIFIERS', 'Base Damage Bonus', `+${mods.baseDamageBonus}`);
+      }
+
+      // Global damage bonus - added AFTER armor/pierce (per hit)
+      if (mods.globalDamageBonus) {
+        globalDamageBonus += mods.globalDamageBonus;
+        // Track sources from buffSources with individual values
+        if (mods.buffSources) {
+          for (const source of mods.buffSources) {
+            if (source.globalDamageBonus && source.globalDamageBonus > 0) {
+              globalDamageBonusSources.push({
+                name: source.name,
+                sourceName: source.sourceName,
+                globalDamageBonus: source.globalDamageBonus,
+              });
+            }
+          }
+        }
+        this.log('GLOBAL_BONUS', 'Global Damage Bonus (post-armor)', `+${mods.globalDamageBonus}`);
+      }
+
+      // Extra hits - track sources
+      if (mods.extraHits) {
+        extraHits += mods.extraHits;
+        effectiveHits += mods.extraHits;
+        // Track sources from buffSources with individual values
+        if (mods.buffSources) {
+          for (const source of mods.buffSources) {
+            if (source.extraHits && source.extraHits > 0) {
+              extraHitsSources.push({
+                name: source.name,
+                sourceName: source.sourceName,
+                extraHits: source.extraHits,
+              });
+            }
+          }
+        }
+        this.log('FLAT_MODIFIERS', 'Extra Hits', `+${mods.extraHits} (${attacker.hits} → ${effectiveHits})`);
+      }
+
+      // Crit chance bonus - track sources
+      if (mods.critChanceBonus) {
+        abilityCritChanceBonus = mods.critChanceBonus;
+        // Track sources from buffSources with individual values
+        if (mods.buffSources) {
+          for (const source of mods.buffSources) {
+            if (source.critChanceBonus && source.critChanceBonus > 0) {
+              critChanceSources.push({
+                name: source.name,
+                sourceName: source.sourceName,
+                critChanceBonus: source.critChanceBonus,
+              });
+            }
+          }
+        }
+        this.log('FLAT_MODIFIERS', 'Crit Chance Bonus', `+${mods.critChanceBonus}%`);
+      }
+
+      // Crit damage bonus - track sources
+      if (mods.critDamageBonus) {
+        abilityCritDamageBonus = mods.critDamageBonus;
+        // Track sources from buffSources with individual values
+        if (mods.buffSources) {
+          for (const source of mods.buffSources) {
+            if (source.critDamageBonus && source.critDamageBonus > 0) {
+              critDamageSources.push({
+                name: source.name,
+                sourceName: source.sourceName,
+                critDamageBonus: source.critDamageBonus,
+              });
+            }
+          }
+        }
+        this.log('FLAT_MODIFIERS', 'Crit Damage Bonus', `+${mods.critDamageBonus}`);
+      }
+    }
+
+    // === STEP 2: Calculate Effective Crit Stats ===
+    // Track base and bonus values for breakdown display
+    const baseCritChance = attacker.critChance;  // Base crit chance from equipment (0-100)
+    const baseCritDamage = attacker.critDamage;  // Base crit damage from equipment
+    const critChanceTotalBonus = (attacker.critChanceBonus || 0) + abilityCritChanceBonus;
+    const critDamageTotalBonus = (attacker.critDmgBonus || 0) + abilityCritDamageBonus;
+
+    const effectiveCritChance = calculateEffectiveCritChance(
+      baseCritChance,
+      critChanceTotalBonus
+    );
+    const effectiveCritDamage = calculateEffectiveCritDamage(
+      baseCritDamage,
+      critDamageTotalBonus
+    );
+
+    // Calculate expected number of crits using streak formula
+    // If ignoreCrit is true, treat as 0 expected crits
+    const expectedCrits = attacker.ignoreCrit ? 0 : calculateExpectedCrits(effectiveCritChance, effectiveHits);
+
+    this.log('CRIT', 'Effective Crit Chance', `${(effectiveCritChance * 100).toFixed(1)}%`);
+    this.log('CRIT', 'Effective Crit Damage', effectiveCritDamage);
+    this.log('CRIT', 'Expected Crits (streak)', expectedCrits.toFixed(3));
+    this.log('CRIT', 'Streak Formula', `E[crits] = ${(effectiveCritChance * 100).toFixed(0)}% × (1 - ${(effectiveCritChance * 100).toFixed(0)}%^${effectiveHits}) / (1 - ${(effectiveCritChance * 100).toFixed(0)}%)`);
+    if (attacker.ignoreCrit) {
+      this.log('CRIT', 'Ignore Crit', 'Crit not applied to damage');
+    }
+
+    // === STEP 3: Calculate DamVarMod for both paths ===
+    // d0 path: non-crit hits
+    const damVarMod0 = baseDamage + flatModifiers;
+    // d1 path: crit hits (add crit damage)
+    const damVarMod1 = baseDamage + flatModifiers + effectiveCritDamage;
+
+    this.log('DAMVARMOD', 'Base Damage', baseDamage);
+    this.log('DAMVARMOD', '+ Flat Modifiers', flatModifiers);
+    this.log('DAMVARMOD', '= DamVarMod (non-crit)', damVarMod0.toFixed(2));
+    this.log('DAMVARMOD', '+ Crit Damage', effectiveCritDamage);
+    this.log('DAMVARMOD', '= DamVarMod (crit)', damVarMod1.toFixed(2));
+
+    // === STEP 4: Apply Armor/Pierce to BOTH paths ===
+    const pierceRatio = PIERCE_RATIOS[attacker.damageType];
+
+    // Non-crit path (d0)
+    const afterArmor0 = calculateArmorReduction(damVarMod0, defender.armor);
+    const pierceFloor0 = calculatePierceFloor(damVarMod0, attacker.damageType);
+    const d0 = applyPierceMaximum(afterArmor0, pierceFloor0);
+
+    // Crit path (d1)
+    const afterArmor1 = calculateArmorReduction(damVarMod1, defender.armor);
+    const pierceFloor1 = calculatePierceFloor(damVarMod1, attacker.damageType);
+    const d1 = applyPierceMaximum(afterArmor1, pierceFloor1);
+
+    this.log('ARMOR_PIERCE', 'Target Armor', defender.armor);
+    this.log('ARMOR_PIERCE', `Pierce Ratio (${attacker.damageType})`, `${(pierceRatio * 100).toFixed(0)}%`);
+    this.log('ARMOR_PIERCE', 'd0 (non-crit): MAX(' + afterArmor0.toFixed(0) + ', ' + pierceFloor0 + ')', d0.toFixed(2));
+    this.log('ARMOR_PIERCE', 'd1 (crit): MAX(' + afterArmor1.toFixed(0) + ', ' + pierceFloor1 + ')', d1.toFixed(2));
+
+    // Calculate expected per-hit damage (weighted average before multipliers)
+    const expectedNonCrits = effectiveHits - expectedCrits;
+    const weightedPerHitBeforeMultipliers = (d0 * expectedNonCrits + d1 * expectedCrits) / effectiveHits;
+    this.log('ARMOR_PIERCE', 'E[per hit] = (d0×' + expectedNonCrits.toFixed(2) + ' + d1×' + expectedCrits.toFixed(2) + ')/' + effectiveHits, weightedPerHitBeforeMultipliers.toFixed(2));
+
+    // Legacy values for backwards compatibility
+    const damVarMod = damVarMod0;  // Alias for display
+    const afterArmor = afterArmor0;
+    const pierceFloor = pierceFloor0;
+    const afterArmorPierce = weightedPerHitBeforeMultipliers;  // Weighted average
+    const critBonus = d1 - d0;  // Crit damage contribution per crit hit
+
+    // === STEP 5: Calculate Global Multipliers ===
+    // Traits are now applied AFTER armor/pierce as global multipliers
     let traitModifiers: TraitModifier[] = [];
     let traitMultiplier = 1;
+    const globalMultiplierSources: BuffSource[] = [];
 
     if (attacker.traits && attacker.traits.length > 0 && attacker.attackType) {
       const traitEval = evaluateTraitModifiers(
@@ -180,251 +296,134 @@ export class DamageCalculator {
           attacksThisTurn: attacker.attacksThisTurn ?? 0,
           firstAttackTurn: attacker.firstAttackTurn,
           currentTurn: attacker.currentTurn,
+          targetTraits: defender.traits,
+          abilityToggles: attacker.abilityToggles,
         }
       );
       traitModifiers = traitEval.modifiers;
       traitMultiplier = traitEval.totalMultiplier;
 
-      // Log trait modifiers
-      this.log('TRAITS', 'Character Traits', attacker.traits.join(', '));
-      this.log('TRAITS', 'Attack Type', attacker.attackType);
-      this.log('TRAITS', 'Has Moved', attacker.hasMoved ? 'Yes' : 'No');
-
+      // Log applicable traits
       for (const mod of traitModifiers) {
-        if (mod.applicable) {
+        if (mod.applicable && mod.damageMultiplier !== 1) {
           const bonusPercent = ((mod.damageMultiplier - 1) * 100).toFixed(0);
           const sign = mod.damageMultiplier >= 1 ? '+' : '';
-          this.log('TRAITS', `${mod.traitName}`, `${sign}${bonusPercent}% (${mod.reason})`);
-        } else {
-          this.log('TRAITS', `${mod.traitName}`, `Not applied: ${mod.reason}`);
+          globalMultiplierSources.push({
+            name: mod.traitName,
+            damageMultiplier: mod.damageMultiplier,
+          });
+          this.log('GLOBAL_MULT', `${mod.traitName}`, `${sign}${bonusPercent}% (${mod.reason})`);
+        }
+      }
+    }
+
+    // Ability multiplier (baseDamageMultiplier) is also a global multiplier
+    // Track sources from buffSources for proper naming
+    let abilityMultiplier = 1;
+    if (attacker.abilityModifiers?.baseDamageMultiplier && attacker.abilityModifiers.baseDamageMultiplier !== 1) {
+      abilityMultiplier = attacker.abilityModifiers.baseDamageMultiplier;
+      const bonusPercent = Math.round((abilityMultiplier - 1) * 100);
+
+      // Use buff source names if available, otherwise use generic "Ability"
+      let foundSource = false;
+      if (attacker.abilityModifiers.buffSources) {
+        for (const source of attacker.abilityModifiers.buffSources) {
+          if (source.damageMultiplier && source.damageMultiplier !== 1) {
+            globalMultiplierSources.push({
+              name: source.name,
+              sourceName: source.sourceName,
+              damageMultiplier: source.damageMultiplier,
+            });
+            const srcBonusPercent = Math.round((source.damageMultiplier - 1) * 100);
+            this.log('GLOBAL_MULT', source.name, `${srcBonusPercent >= 0 ? '+' : ''}${srcBonusPercent}%`);
+            foundSource = true;
+          }
         }
       }
 
-      this.log('TRAITS', 'Combined Trait Multiplier', `${traitMultiplier.toFixed(2)}x`);
-    }
-
-    // Apply trait multiplier to base damage
-    let effectiveBaseDamage = Math.round(attacker.baseDamage * traitMultiplier);
-
-    // === STEP 0.5: Apply Ability Modifiers ===
-    let effectiveHits = attacker.hits;
-    let abilityCritChanceBonus = 0;
-    let abilityCritDamageBonus = 0;
-
-    if (attacker.abilityModifiers) {
-      const mods = attacker.abilityModifiers;
-
-      // Apply base damage bonus (flat)
-      if (mods.baseDamageBonus) {
-        const newDamage = effectiveBaseDamage + mods.baseDamageBonus;
-        this.log('ABILITIES', 'Base Damage Bonus', `+${mods.baseDamageBonus} (${effectiveBaseDamage} → ${newDamage})`);
-        effectiveBaseDamage = newDamage;
-      }
-
-      // Apply base damage multiplier (percentage)
-      if (mods.baseDamageMultiplier && mods.baseDamageMultiplier !== 1) {
-        const newDamage = Math.round(effectiveBaseDamage * mods.baseDamageMultiplier);
-        const bonusPercent = Math.round((mods.baseDamageMultiplier - 1) * 100);
-        this.log('ABILITIES', 'Base Damage Multiplier', `${bonusPercent >= 0 ? '+' : ''}${bonusPercent}% (${effectiveBaseDamage} → ${newDamage})`);
-        effectiveBaseDamage = newDamage;
-      }
-
-      // Apply extra hits
-      if (mods.extraHits) {
-        const newHits = effectiveHits + mods.extraHits;
-        this.log('ABILITIES', 'Extra Hits', `+${mods.extraHits} (${effectiveHits} → ${newHits})`);
-        effectiveHits = newHits;
-      }
-
-      // Store crit bonuses to apply later
-      if (mods.critChanceBonus) {
-        abilityCritChanceBonus = mods.critChanceBonus;
-        this.log('ABILITIES', 'Crit Chance Bonus', `+${mods.critChanceBonus}%`);
-      }
-
-      if (mods.critDamageBonus) {
-        abilityCritDamageBonus = mods.critDamageBonus;
-        this.log('ABILITIES', 'Crit Damage Bonus', `+${mods.critDamageBonus}`);
+      // Fallback to generic name if no source found
+      if (!foundSource) {
+        globalMultiplierSources.push({
+          name: 'Ability',
+          damageMultiplier: abilityMultiplier,
+        });
+        this.log('GLOBAL_MULT', 'Ability Multiplier', `${bonusPercent >= 0 ? '+' : ''}${bonusPercent}%`);
       }
     }
 
-    // Extract buff sources for display in DamVar breakdown
-    const buffSources: BuffSource[] = attacker.abilityModifiers?.buffSources || [];
+    const globalMultiplier = traitMultiplier * abilityMultiplier;
+    this.log('GLOBAL_MULT', 'Combined Global Multiplier', `${globalMultiplier.toFixed(2)}x`);
 
-    // === STEP 1: Log Input Stats ===
-    this.log('INPUT', 'Attacker Base Damage', attacker.baseDamage);
-    if (traitMultiplier !== 1) {
-      this.log('INPUT', 'Effective Base Damage (after traits)', effectiveBaseDamage);
+    // === STEP 6: Calculate Per-Hit Damage ===
+    // Apply global multiplier first, then add global damage bonus (post-armor flat bonus)
+    const perHitBeforeBonus = afterArmorPierce * globalMultiplier;
+    const perHitDamage = perHitBeforeBonus + globalDamageBonus;
+
+    if (globalDamageBonus > 0) {
+      this.log('GLOBAL_BONUS', 'After Multiplier', perHitBeforeBonus.toFixed(2));
+      this.log('GLOBAL_BONUS', '+ Global Damage Bonus', `+${globalDamageBonus}`);
     }
-    this.log('INPUT', 'Attacker Damage Type', attacker.damageType);
-    this.log('INPUT', 'Attacker Hits', attacker.hits);
-    this.log('INPUT', 'Attacker Crit Chance', `${attacker.critChance}%`);
-    this.log('INPUT', 'Attacker Crit Damage', attacker.critDamage);
-    this.log('INPUT', 'Attacker Crit Chance Bonus', `${attacker.critChanceBonus || 0}%`);
-    this.log('INPUT', 'Attacker Crit Damage Bonus', attacker.critDmgBonus || 0);
-    this.log('INPUT', 'Defender Armor', defender.armor);
-    this.log('INPUT', 'Defender Block Chance', `${defender.blockChance}%`);
-    this.log('INPUT', 'Defender Block Damage', defender.blockDamage);
-    this.log('INPUT', 'Defender Block Chance Bonus', `${defender.blockChanceBonus || 0}%`);
-    this.log('INPUT', 'Defender Block Damage Bonus', defender.blockDmgBonus || 0);
+    this.log('RESULT', 'Per Hit Damage', perHitDamage.toFixed(2));
 
-    // === STEP 2: Calculate Effective Stats ===
-    const pierceRatio = PIERCE_RATIOS[attacker.damageType];
-    const effectiveCritChance = calculateEffectiveCritChance(
-      attacker.critChance,
-      (attacker.critChanceBonus || 0) + abilityCritChanceBonus
-    );
-    const effectiveCritDamage = calculateEffectiveCritDamage(
-      attacker.critDamage,
-      (attacker.critDmgBonus || 0) + abilityCritDamageBonus
-    );
-    const effectiveBlockChance = calculateEffectiveBlockChance(
-      defender.blockChance,
-      defender.blockChanceBonus
-    );
-    const effectiveBlockDamage = calculateEffectiveBlockDamage(
-      defender.blockDamage,
-      defender.blockDmgBonus
-    );
+    // === STEP 7: Calculate Total Damage ===
+    const totalDamage = calculateTotalDamage(perHitDamage, effectiveHits);
+    const damage = Math.round(totalDamage);
 
-    this.log('EFFECTIVE', 'Pierce Ratio', `${(pierceRatio * 100).toFixed(0)}%`);
-    this.log('EFFECTIVE', 'Total Crit Chance', `${(effectiveCritChance * 100).toFixed(1)}%`);
-    this.log('EFFECTIVE', 'Total Crit Damage', effectiveCritDamage);
-    this.log('EFFECTIVE', 'Total Block Chance', `${(effectiveBlockChance * 100).toFixed(1)}%`);
-    this.log('EFFECTIVE', 'Total Block Damage', effectiveBlockDamage);
+    this.log('RESULT', `Total (${effectiveHits} hits)`, damage);
 
-    // === STEP 3: Calculate Lower Bound ===
-    // Lower bound: Min variance, no crits, all blocks
-    this.log('LOWER_BOUND', 'Variance Multiplier', `${DAMAGE_VARIANCE.MIN_MULTIPLIER} (-20%)`);
-
-    const minDamVar = getMinDamageVariance(effectiveBaseDamage);
-    const minDamVarBreakdown = this.formatDamVarWithVariance(
-      attacker.baseDamage,
-      traitModifiers,
-      buffSources,
-      DAMAGE_VARIANCE.MIN_MULTIPLIER,
-      minDamVar
-    );
-    this.log('LOWER_BOUND', 'Damage Variance (DamVar)', minDamVarBreakdown);
-
-    const minAfterArmor = calculateArmorReduction(minDamVar, defender.armor);
-    this.log('LOWER_BOUND', 'After Armor (DamVar - Armor)', minAfterArmor);
-
-    const minPierceFloor = calculatePierceFloor(minDamVar, attacker.damageType);
-    this.log('LOWER_BOUND', 'Pierce Floor (DamVar * Pierce)', minPierceFloor);
-
-    const minPerHit = applyPierceMaximum(minAfterArmor, minPierceFloor);
-    this.log('LOWER_BOUND', 'Per Hit = MAX(afterArmor, pierceFloor)', minPerHit);
-
-    // Apply block to lower bound (assume all hits blocked)
-    const minPerHitBlocked = calculateBlockReduction(minPerHit, effectiveBlockDamage);
-    this.log('LOWER_BOUND', 'Per Hit After Block', minPerHitBlocked);
-
-    const lowerBound = calculateTotalDamage(minPerHitBlocked, effectiveHits);
-    this.log('LOWER_BOUND', `Total (${effectiveHits} hits)`, lowerBound);
-
-    // === STEP 4: Calculate Upper Bound ===
-    // Upper bound: Max variance, all crits, no blocks
-    this.log('UPPER_BOUND', 'Variance Multiplier', `${DAMAGE_VARIANCE.MAX_MULTIPLIER} (+20%)`);
-
-    const critBaseDamage = calculateCritBaseDamage(effectiveBaseDamage, effectiveCritDamage);
-    this.log('UPPER_BOUND', 'Crit Base Damage (base + critDmg)', critBaseDamage);
-
-    const maxDamVar = getMaxDamageVariance(critBaseDamage);
-    const maxDamVarBreakdown = this.formatDamVarWithVarianceAndCrit(
-      attacker.baseDamage,
-      traitModifiers,
-      buffSources,
-      effectiveCritDamage,
-      DAMAGE_VARIANCE.MAX_MULTIPLIER,
-      maxDamVar
-    );
-    this.log('UPPER_BOUND', 'Damage Variance (DamVar)', maxDamVarBreakdown);
-
-    const maxAfterArmor = calculateArmorReduction(maxDamVar, defender.armor);
-    this.log('UPPER_BOUND', 'After Armor (DamVar - Armor)', maxAfterArmor);
-
-    const maxPierceFloor = calculatePierceFloor(maxDamVar, attacker.damageType);
-    this.log('UPPER_BOUND', 'Pierce Floor (DamVar * Pierce)', maxPierceFloor);
-
-    const maxPerHit = applyPierceMaximum(maxAfterArmor, maxPierceFloor);
-    this.log('UPPER_BOUND', 'Per Hit = MAX(afterArmor, pierceFloor)', maxPerHit);
-
-    const upperBound = calculateTotalDamage(maxPerHit, effectiveHits);
-    this.log('UPPER_BOUND', `Total (${effectiveHits} hits)`, upperBound);
-
-    // === STEP 5: Calculate Average ===
-    // Average: No variance, streak-based crit, probability-weighted block
-    this.log('AVERAGE', 'Variance Multiplier', `${DAMAGE_VARIANCE.AVG_MULTIPLIER} (0%)`);
-
-    // Base damage per hit (no crit)
-    const avgDamVar = getAvgDamageVariance(effectiveBaseDamage);
-    const avgDamVarBreakdown = this.formatDamVarWithVariance(
-      attacker.baseDamage,
-      traitModifiers,
-      buffSources,
-      DAMAGE_VARIANCE.AVG_MULTIPLIER,
-      avgDamVar
-    );
-    this.log('AVERAGE', 'Base Damage Variance', avgDamVarBreakdown);
-
-    const avgAfterArmor = calculateArmorReduction(avgDamVar, defender.armor);
-    this.log('AVERAGE', 'Base After Armor', avgAfterArmor);
-
-    const avgPierceFloor = calculatePierceFloor(avgDamVar, attacker.damageType);
-    this.log('AVERAGE', 'Base Pierce Floor', avgPierceFloor);
-
-    const basePerHit = applyPierceMaximum(avgAfterArmor, avgPierceFloor);
-    this.log('AVERAGE', 'Base Per Hit', basePerHit);
-
-    // Calculate expected crit bonus using streak formula
-    // E[crit bonus] = CritDamage * sum(k=1 to 5) of p^k
-    const expectedCritBonus = calculateExpectedCritBonus(effectiveCritChance, effectiveCritDamage);
-    this.log('AVERAGE', 'Expected Crit Bonus (streak formula)', expectedCritBonus.toFixed(2));
-    this.log('AVERAGE', 'Streak Formula', `E = ${effectiveCritDamage} * sum(k=1..5) ${(effectiveCritChance * 100).toFixed(0)}%^k`);
-
-    // Calculate crit contribution to per-hit damage
-    // When crit occurs, we get extra damage that also goes through armor/pierce
-    const critDamVar = getAvgDamageVariance(effectiveBaseDamage + effectiveCritDamage);
-    const critAfterArmor = calculateArmorReduction(critDamVar, defender.armor);
-    const critPierceFloor = calculatePierceFloor(critDamVar, attacker.damageType);
-    const critPerHit = applyPierceMaximum(critAfterArmor, critPierceFloor);
-    this.log('AVERAGE', 'Crit Per Hit (if crit)', critPerHit);
-
-    // Weighted average: (1-p)*base + p*crit
-    // But using streak formula for crit probability
-    const avgPerHitPreBlock =
-      basePerHit + (critPerHit - basePerHit) * effectiveCritChance;
-    this.log('AVERAGE', 'Avg Per Hit Pre-Block', avgPerHitPreBlock.toFixed(2));
-
-    // Apply expected block reduction
-    // Expected damage = (1-blockChance)*damage + blockChance*(damage-blockDmg)
-    // = damage - blockChance*blockDmg
-    const expectedBlockReduction = effectiveBlockChance * effectiveBlockDamage;
-    this.log('AVERAGE', 'Expected Block Reduction', expectedBlockReduction.toFixed(2));
-
-    const avgPerHit = Math.max(0, avgPerHitPreBlock - expectedBlockReduction);
-    this.log('AVERAGE', 'Avg Per Hit Post-Block', avgPerHit.toFixed(2));
-
-    const average = avgPerHit * effectiveHits;
-    this.log('AVERAGE', `Total (${effectiveHits} hits)`, average.toFixed(2));
-
-    // === STEP 6: Build Result ===
-    this.log('RESULT', 'Lower Bound', lowerBound);
-    this.log('RESULT', 'Upper Bound', upperBound);
-    this.log('RESULT', 'Average', Math.round(average));
-
+    // === Build Result ===
     return {
-      lowerBound,
-      upperBound,
-      average: Math.round(average),
-      perHitAverage: avgPerHit,
+      damage,
+      perHitDamage,
       totalHits: effectiveHits,
+
+      // Calculation breakdown for Battle Log
+      baseDamage,
+      flatModifiers,
+      flatModifierSources,
+      extraHits,
+      extraHitsSources,
+      critChanceSources,
+      critDamageSources,
+
+      // Non-crit path (d0)
+      damVarMod0,
+      afterArmor0,
+      pierceFloor0,
+      d0,
+
+      // Crit path (d1)
+      damVarMod1,
+      afterArmor1,
+      pierceFloor1,
+      d1,
+
+      // Expected crits
+      expectedCrits,
+
+      // Legacy fields for backwards compatibility
+      critBonus,
+      damVarMod,
+      afterArmor,
+      pierceFloor,
+      afterArmorPierce,
+
+      globalMultiplier,
+      globalMultiplierSources,
+      globalDamageBonus,
+      globalDamageBonusSources,
+
+      // Stats
       attackerStats: attacker,
       defenderStats: defender,
+
+      // Crit breakdown values
+      baseCritChance,
+      baseCritDamage,
+      critChanceTotalBonus,
+      critDamageTotalBonus,
       effectiveCritChance,
       effectiveCritDamage,
-      effectiveBlockChance,
       pierceRatio,
       traitModifiers,
       traitMultiplier,

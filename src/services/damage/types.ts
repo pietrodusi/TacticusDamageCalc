@@ -37,15 +37,7 @@ export const PIERCE_RATIOS: Record<DamageType, number> = {
   Pulse: 0.50,       // 50% pierce (Tau)
 };
 
-/**
- * Damage variance constants
- * Base damage varies by ±20% before armor calculations
- */
-export const DAMAGE_VARIANCE = {
-  MIN_MULTIPLIER: 0.8,  // -20%
-  MAX_MULTIPLIER: 1.2,  // +20%
-  AVG_MULTIPLIER: 1.0,  // Average (no variance)
-};
+// Damage variance removed - using single average value only
 
 /**
  * Trait modifier result from trait evaluation
@@ -66,17 +58,22 @@ export interface TraitModifier {
  */
 export interface BuffSource {
   name: string;           // e.g., "Lord of the Host"
-  sourceName: string;     // e.g., "Dante"
-  damageBonus?: number;   // Flat damage bonus
+  sourceName?: string;    // e.g., "Dante"
+  damageBonus?: number;   // Flat damage bonus (pre-armor)
+  damageMultiplier?: number; // Damage multiplier (e.g., 1.97 for +97%)
+  globalDamageBonus?: number; // Flat damage bonus (post-armor, per hit)
   extraHits?: number;     // Extra hits bonus
+  critChanceBonus?: number;  // Crit chance bonus
+  critDamageBonus?: number;  // Crit damage bonus
 }
 
 /**
  * Ability stat modifiers from passive abilities
  */
 export interface AbilityModifiers {
-  baseDamageBonus?: number;        // Flat damage added
-  baseDamageMultiplier?: number;   // 1.25 = +25%
+  baseDamageBonus?: number;        // Flat damage added (pre-armor)
+  baseDamageMultiplier?: number;   // 1.25 = +25% (post-armor global multiplier)
+  globalDamageBonus?: number;      // Flat damage added (post-armor, per hit)
   extraHits?: number;              // Additional hits
   critChanceBonus?: number;        // +% crit chance
   critDamageBonus?: number;        // Flat crit damage bonus
@@ -91,6 +88,7 @@ export interface AttackerStats {
   critDamage: number;       // Flat bonus damage on crit
   critChanceBonus?: number; // Additional crit chance from equipment (percentage)
   critDmgBonus?: number;    // Additional crit damage from equipment
+  ignoreCrit?: boolean;     // If true, crit bonus is not added to DamVarMod (crit stats still shown)
   traits?: string[];        // Character trait IDs
   hasMoved?: boolean;       // Whether character has moved this turn
   attackType?: 'melee' | 'ranged'; // Type of attack being performed
@@ -101,6 +99,8 @@ export interface AttackerStats {
   currentTurn?: number;             // Current battle turn (for RapidAssault)
   // Ability modifiers from passive abilities
   abilityModifiers?: AbilityModifiers;
+  // User-controlled toggles for trait conditions (e.g., CrushingStrike "has not moved")
+  abilityToggles?: Record<string, boolean>;
 }
 
 /**
@@ -108,11 +108,8 @@ export interface AttackerStats {
  */
 export interface DefenderStats {
   armor: number;
-  blockChance: number;       // 0-100 (percentage)
-  blockDamage: number;       // Damage reduction when blocking
-  blockChanceBonus?: number; // Additional block chance from equipment
-  blockDmgBonus?: number;    // Additional block damage from equipment
   maxHealth: number;
+  traits?: string[];  // Target traits (e.g., BigTarget, Vehicle)
 }
 
 /**
@@ -131,23 +128,57 @@ export interface HitResult {
  * Complete damage calculation result
  */
 export interface DamageResult {
-  // Bounds
-  lowerBound: number;        // Minimum possible damage (no crits, min variance, all blocks)
-  upperBound: number;        // Maximum possible damage (all crits, max variance, no blocks)
-  average: number;           // Expected average damage
+  // Single damage value (no more bounds)
+  damage: number;              // Total calculated damage
+  perHitDamage: number;        // Damage per hit
+  totalHits: number;           // Number of hits
 
-  // Detailed breakdown for average calculation
-  perHitAverage: number;     // Average damage per hit
-  totalHits: number;         // Number of hits
+  // Calculation breakdown for Battle Log display
+  baseDamage: number;           // Character's damage stat or ability avg
+  flatModifiers: number;        // Sum of baseDamageBonus from buffs
+  flatModifierSources: BuffSource[]; // Sources with individual values
+  extraHits: number;            // Extra hits from abilities
+  extraHitsSources: BuffSource[];   // Sources of extra hits with values
+  critChanceSources: BuffSource[];  // Sources of crit chance bonuses with values
+  critDamageSources: BuffSource[];  // Sources of crit damage bonuses with values
+
+  // Non-crit path (d0)
+  damVarMod0: number;           // baseDamage + flatModifiers (no crit)
+  afterArmor0: number;          // damVarMod0 - armor
+  pierceFloor0: number;         // damVarMod0 * pierceRatio
+  d0: number;                   // MAX(afterArmor0, pierceFloor0) - non-crit hit damage
+
+  // Crit path (d1)
+  damVarMod1: number;           // baseDamage + flatModifiers + critDamage
+  afterArmor1: number;          // damVarMod1 - armor
+  pierceFloor1: number;         // damVarMod1 * pierceRatio
+  d1: number;                   // MAX(afterArmor1, pierceFloor1) - crit hit damage
+
+  // Expected crits
+  expectedCrits: number;        // Expected number of crit hits from streak formula
+
+  // Legacy fields (for backwards compatibility in Battle Log)
+  critBonus: number;            // @deprecated - kept for backwards compatibility
+  damVarMod: number;            // @deprecated - alias for damVarMod0
+  afterArmor: number;           // @deprecated - alias for afterArmor0
+  pierceFloor: number;          // @deprecated - alias for pierceFloor0
+  afterArmorPierce: number;     // @deprecated - now shows weighted average
+  globalMultiplier: number;     // Combined trait + ability multipliers
+  globalMultiplierSources: BuffSource[]; // Sources with multiplier values
+  globalDamageBonus: number;    // Flat damage bonus applied after armor/pierce (per hit)
+  globalDamageBonusSources: BuffSource[]; // Sources with globalDamageBonus values
 
   // Stats used in calculation (for logging)
   attackerStats: AttackerStats;
   defenderStats: DefenderStats;
 
-  // Calculation details
-  effectiveCritChance: number;  // Total crit chance (base + bonus)
+  // Calculation details - crit breakdown
+  baseCritChance: number;       // Base crit chance from equipment (0-100)
+  baseCritDamage: number;       // Base crit damage from equipment
+  critChanceTotalBonus: number; // Total crit chance bonus (equipment + abilities)
+  critDamageTotalBonus: number; // Total crit damage bonus (equipment + abilities)
+  effectiveCritChance: number;  // Total crit chance (base + bonus, 0-1)
   effectiveCritDamage: number;  // Total crit damage (base + bonus)
-  effectiveBlockChance: number; // Total block chance
   pierceRatio: number;          // Pierce ratio for damage type
 
   // Trait modifiers applied

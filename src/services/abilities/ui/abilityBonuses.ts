@@ -29,10 +29,14 @@ export function getCharacterPassiveBonuses(
     attacksThisTurn: character.attacksThisTurn,
     attackTurnsCount: character.attackTurnsCount,
     hasUsedAbilityThisTurn: character.hasUsedAbilityThisTurn,
+    hasQualifiedForLCDamage: character.hasQualifiedForLCDamage,
     currentHealth: character.currentHealth,
     maxHealth: character.calculatedHealth,
     currentTurn: 1, // Will be updated from battle state
     attackType: 'melee', // Default for display
+    attackCategory: 'normal',  // Default for display
+    isFirstSpecialAttackOfTurn: true,  // Default for display
+    trajannIsAdjacentToBoss: false,  // Will be updated from battle state
     abilityToggles: character.abilityToggles,
   };
 
@@ -218,24 +222,48 @@ export function getCharacterAuraBonuses(
           if (!hasRequiredTrait) continue;
         }
 
+        // Check alliance requirement
+        if (aura.requiredAlliance && character.alliance !== aura.requiredAlliance) {
+          continue;
+        }
+
         // Check if toggle is enabled
         const toggleKey = aura.auraId;
         const isToggled = character.abilityToggles[toggleKey] ?? false;
+
+        // Calculate scaled modifiers if scaling context exists
+        let modifiers = aura.modifiers;
+        let bonusText = aura.bonusText;
+        if (aura.scalingContext) {
+          const sourceChar = team.find(c => c.id === aura.scalingContext!.sourceCharacterId);
+          const attackCount = Math.min(
+            sourceChar?.totalAttacksThisBattle ?? 0,
+            aura.scalingContext.maxStacks
+          );
+          const scaledBonus = Math.min(
+            aura.scalingContext.baseBonus + (aura.scalingContext.perStackBonus * attackCount),
+            aura.scalingContext.maxBonus
+          );
+          modifiers = { ...aura.modifiers, baseDamageBonus: scaledBonus };
+          bonusText = `+${scaledBonus} dmg (${attackCount}/${aura.scalingContext.maxStacks} attacks)`;
+        }
 
         // Create displayable bonus
         bonuses.push({
           abilityId: toggleKey,
           abilityName: aura.sourceAbilityName,
-          bonusText: aura.bonusText,
+          bonusText,
           isActive: isToggled,
           reason: aura.requiresLowHealth
-            ? `From ${teammate.name} (requires <50% HP)`
+            ? `From ${teammate.name} (requires ≤50% HP)`
             : `From ${teammate.name}`,
           colorClass: isToggled ? 'text-yellow-400' : 'text-gray-500',
           requiresToggle: true,
           toggleLabel: aura.toggleLabel,
           sourceCharacterId: teammate.id,
           sourceCharacterName: teammate.name,
+          attackTypeRestriction: aura.attackTypeRestriction,
+          modifiers,
         });
       }
     }
@@ -252,15 +280,138 @@ export function hasAuraBonuses(character: BattleCharacter, team: BattleCharacter
 }
 
 /**
- * Get LegendaryCommander buff display for a character
- * This is a team-wide buff from Trajann that applies to the first attack after an ability is used
+ * Check if a character is eligible for LC buffs
+ * Trajann is NOT eligible (doesn't receive his own buff)
+ */
+export function isEligibleForLcBuff(character: BattleCharacter): boolean {
+  // Trajann doesn't receive his own buff
+  if (character.passiveAbilities.includes('LegendaryCommander')) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Check if a character is eligible for LC hits buff specifically
+ * Eligible = has damage-dealing active ability OR passive ability with special attack
+ * Trajann is NOT eligible (doesn't receive his own buff)
+ */
+export function isEligibleForLcHitsBuff(character: BattleCharacter): boolean {
+  // Trajann doesn't receive his own buff
+  if (character.passiveAbilities.includes('LegendaryCommander')) {
+    return false;
+  }
+
+  // Check for damage-dealing active abilities
+  for (const abilityId of character.activeAbilities) {
+    const handler = getAbilityHandler(abilityId);
+    if (handler?.category === 'damage') {
+      return true;
+    }
+  }
+
+  // Check for passive abilities with special attack (follow-up attack)
+  // These are passives like LegacyOfCombat, TheBetrayer that trigger additional attacks
+  const passivesWithSpecialAttack = ['LegacyOfCombat', 'TheBetrayer', 'FuryOfTheAncients'];
+  for (const abilityId of character.passiveAbilities) {
+    if (passivesWithSpecialAttack.includes(abilityId)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Get LegendaryCommander buffs for a character as toggleable checkboxes
+ * Returns both damage and hits buffs that the user can enable/disable
+ * @param character The character to check
  * @param team All characters in the team
- * @param legendaryCommanderBuffAvailable Whether the buff is currently available
- * @returns Displayable buff info or null if Trajann isn't in the team
+ * @returns Array of displayable buff info, empty if Trajann isn't in the team or character is Trajann
+ */
+export function getLegendaryCommanderBuffs(
+  character: BattleCharacter,
+  team: BattleCharacter[]
+): DisplayableAbilityBonus[] {
+  const buffs: DisplayableAbilityBonus[] = [];
+
+  // Trajann doesn't receive his own buff
+  if (!isEligibleForLcBuff(character)) {
+    return buffs;
+  }
+
+  // Find Trajann in team
+  const trajann = team.find(c => c.passiveAbilities.includes('LegendaryCommander'));
+  if (!trajann) return buffs;
+
+  // Get ability values
+  const levelIndex = trajann.abilityLevels?.['LegendaryCommander'] ?? 54;
+  const values = getAbilityValues('LegendaryCommander', levelIndex);
+  if (!values) return buffs;
+
+  const extraDmg = values.extraDmg as number || 0;
+  const extraHits = values.nrOfHits as number || 0;
+
+  // Damage buff - available to all characters (except Trajann)
+  const dmgToggleKey = 'LegendaryCommander_damage';
+  const dmgIsActive = character.abilityToggles[dmgToggleKey] ?? false;
+
+  buffs.push({
+    abilityId: dmgToggleKey,
+    abilityName: 'Legendary Commander',
+    bonusText: `+${extraDmg} dmg`,
+    isActive: dmgIsActive,
+    reason: `From ${trajann.name}`,
+    colorClass: dmgIsActive ? 'text-orange-400' : 'text-gray-500',
+    requiresToggle: true,
+    toggleLabel: 'Extra damage',
+    sourceCharacterId: trajann.id,
+    sourceCharacterName: trajann.name,
+  });
+
+  // Hits buff - only for characters with special attacks
+  if (isEligibleForLcHitsBuff(character)) {
+    const hitsToggleKey = 'LegendaryCommander_hits';
+    const hitsIsActive = character.abilityToggles[hitsToggleKey] ?? false;
+
+    buffs.push({
+      abilityId: hitsToggleKey,
+      abilityName: 'Legendary Commander',
+      bonusText: `+${extraHits} hit${extraHits > 1 ? 's' : ''} (special)`,
+      isActive: hitsIsActive,
+      reason: `From ${trajann.name}`,
+      colorClass: hitsIsActive ? 'text-orange-400' : 'text-gray-500',
+      requiresToggle: true,
+      toggleLabel: 'Extra hits',
+      sourceCharacterId: trajann.id,
+      sourceCharacterName: trajann.name,
+    });
+  }
+
+  return buffs;
+}
+
+/**
+ * Get LegendaryCommander hits buff display for a character (legacy)
+ * @deprecated Use getLegendaryCommanderBuffs instead
+ */
+export function getLegendaryCommanderHitsBuffDisplay(
+  character: BattleCharacter,
+  team: BattleCharacter[],
+  _hitsBuffActive: boolean,
+  _hitsBuffConsumed: boolean
+): DisplayableAbilityBonus | null {
+  const buffs = getLegendaryCommanderBuffs(character, team);
+  return buffs.find(b => b.abilityId === 'LegendaryCommander_hits') || null;
+}
+
+/**
+ * Get LegendaryCommander buff display for a character (legacy)
+ * @deprecated Use getLegendaryCommanderBuffs instead
  */
 export function getLegendaryCommanderBuffDisplay(
   team: BattleCharacter[],
-  legendaryCommanderBuffAvailable: boolean
+  _legendaryCommanderBuffAvailable: boolean
 ): DisplayableAbilityBonus | null {
   // Find character with LegendaryCommander
   const trajann = team.find(c => c.passiveAbilities.includes('LegendaryCommander'));
@@ -278,12 +429,10 @@ export function getLegendaryCommanderBuffDisplay(
     abilityId: 'LegendaryCommander',
     abilityName: 'Legendary Commander',
     bonusText: `+${extraDmg} dmg, +${extraHits} hit${extraHits > 1 ? 's' : ''}`,
-    isActive: legendaryCommanderBuffAvailable,
-    reason: legendaryCommanderBuffAvailable
-      ? 'Ready (first attack after ability)'
-      : 'Waiting for ability',
-    colorClass: legendaryCommanderBuffAvailable ? 'text-orange-400' : 'text-gray-500',
-    requiresToggle: false,  // No toggle - automatic based on ability usage
+    isActive: false,
+    reason: 'Toggle in character card',
+    colorClass: 'text-gray-500',
+    requiresToggle: false,
     sourceCharacterId: trajann.id,
     sourceCharacterName: trajann.name,
   };

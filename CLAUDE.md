@@ -17,6 +17,9 @@ A damage calculator for Warhammer 40,000: Tacticus mobile game.
   - `BattleSummary.tsx` - End of battle summary
   - `DamageSummary.tsx` - Damage breakdown display
   - `DamageBar.tsx` - Visual damage range bar
+  - `BossSelector.tsx` - Boss selection dropdown
+  - `BattleBossCard.tsx` - Boss display during battle
+- `src/types/boss.ts` - Boss types and interfaces
 
 ## Ability System
 
@@ -51,6 +54,27 @@ Each ability has a handler implementing `AbilityHandler` interface:
 - Undo functionality resets: `hasMoved`, `hasActed`, `hasUsedAbilityThisTurn`, `activeBuffs`, `abilityCooldowns`
 - DamageBar visualization shows damage range (lower/average/upper bounds)
 
+## Boss System
+
+- Boss selection during team setup (before battle)
+- Boss data from `guildBossUnits.json`, images from `guildBossImg.json`
+- Boss traits from `guildBossTraits.json` (e.g., Immune, BigTarget, Psyker)
+- Boss ranks: Legendary 1-5 (Rank 13-17), Mythic 1 (Rank 18) - only these ranks available
+- Boss armor is applied to all damage calculations
+- Boss health bar shows remaining HP and damage dealt
+- Selected boss stored in `teamStore.selectedBoss`
+- Boss passed to `startBattle()` and stored in `battleState.boss`
+
+### Boss Modifiers
+- Modifier data from `guildBossMods.json` and `guildBossModDetails.json`
+- "Minions Killed" checkbox in boss selector (checked by default)
+- When checked: modifiers applied, reducing boss armor/damage
+- When unchecked: base stats used without reductions
+- Supports `bossStatPctDecrease` (percentage reduction) for armor/damage
+- Supports `bossStatDecrease` (flat reduction) for block chance
+- `getBossStatModifiers(bossId)` - Get aggregated stat reductions for a boss
+- `getBossAtRank(bossId, rank, applyModifiers)` - Get boss with optional modifiers
+
 ## Build & Deploy
 
 ```bash
@@ -61,6 +85,17 @@ npm run deploy   # Deploy to GitHub Pages
 
 ## Recent Changes
 
+- Added boss traits from `guildBossTraits.json`
+  - Each boss has traits array (e.g., Immune, BigTarget, Psyker, Flying)
+  - Traits loaded via `getBossAtRank()` function
+- Added boss modifier system with user toggle
+  - "Minions Killed" checkbox controls whether modifiers are applied
+  - When checked (default): boss armor/damage reduced by modifier percentages
+  - When unchecked: base boss stats used without reductions
+- Implemented enemy boss system for battle simulation
+  - Boss selection UI with dropdown and rank selector
+  - Boss armor applied to damage calculations
+  - Boss health bar with damage tracking
 - Added checkbox UI for toggle-able passive abilities (Saga of the Warrior Born)
 - WarHowl buff ability doesn't end Ragnar's turn
 - Fixed buff application from active abilities

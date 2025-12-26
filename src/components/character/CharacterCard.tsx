@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { User, Check } from 'lucide-react';
+import { User, Check, CheckCircle } from 'lucide-react';
 import type { CharacterListItem } from '../../types';
+import implementedCharacters from '../../assets/data/implementedCharacters.json';
 
 interface CharacterCardProps {
   character: CharacterListItem;
@@ -9,6 +10,8 @@ interface CharacterCardProps {
 }
 
 export function CharacterCard({ character, onClick, isInTeam }: CharacterCardProps) {
+  const isImplemented = (implementedCharacters as string[]).includes(character.name);
+
   const cardContent = (
     <>
       <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center mb-3 overflow-hidden relative">
@@ -27,9 +30,16 @@ export function CharacterCard({ character, onClick, isInTeam }: CharacterCardPro
           </div>
         )}
       </div>
-      <h3 className="text-sm font-semibold text-center text-gray-100 line-clamp-2">
-        {character.name}
-      </h3>
+      <div className="flex items-center gap-1 justify-center">
+        <h3 className="text-sm font-semibold text-center text-gray-100 line-clamp-2">
+          {character.name}
+        </h3>
+        {isImplemented && (
+          <span title="Abilities implemented" className="flex-shrink-0">
+            <CheckCircle size={14} className="text-green-500" />
+          </span>
+        )}
+      </div>
     </>
   );
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Character, TeamMember, EquippedItem } from '../types';
+import type { Character, TeamMember, EquippedItem, SelectedBoss, BossRank } from '../types';
 import { getDefaultEquipment } from '../services/dataService';
 
 const MAX_TEAM_SIZE = 5;
@@ -9,8 +9,12 @@ const MAX_TEAM_SIZE = 5;
 const DEFAULT_PROGRESSION_STEP = 16;
 const DEFAULT_RANK = 18;
 
+// Default boss rank (Legendary 1)
+const DEFAULT_BOSS_RANK: BossRank = 13;
+
 interface TeamState {
   team: TeamMember[];
+  selectedBoss: SelectedBoss | null;
   addCharacter: (character: Character, progressionStepIndex?: number, rank?: number, abilityLevels?: Record<string, number>, equipment?: Record<number, EquippedItem>) => void;
   removeCharacter: (characterId: string) => void;
   updateCharacterProgression: (characterId: string, progressionStepIndex: number, rank: number) => void;
@@ -20,12 +24,18 @@ interface TeamState {
   clearTeam: () => void;
   canAddCharacter: () => boolean;
   reorderTeam: (fromIndex: number, toIndex: number) => void;
+  // Boss selection
+  setSelectedBoss: (bossId: string, rank?: BossRank) => void;
+  updateBossRank: (rank: BossRank) => void;
+  toggleBossModifiers: (apply: boolean) => void;
+  clearBoss: () => void;
 }
 
 export const useTeamStore = create<TeamState>()(
   persist(
     (set, get) => ({
       team: [],
+      selectedBoss: null,
 
       addCharacter: (character, progressionStepIndex = DEFAULT_PROGRESSION_STEP, rank = DEFAULT_RANK, abilityLevels, equipment) => {
         const { team } = get();
@@ -103,6 +113,29 @@ export const useTeamStore = create<TeamState>()(
           newTeam.splice(toIndex, 0, removed);
           return { team: newTeam };
         });
+      },
+
+      // Boss selection functions
+      setSelectedBoss: (bossId, rank = DEFAULT_BOSS_RANK) => {
+        set({ selectedBoss: { bossId, rank, applyModifiers: true } });
+      },
+
+      updateBossRank: (rank) => {
+        set((state) => {
+          if (!state.selectedBoss) return state;
+          return { selectedBoss: { ...state.selectedBoss, rank } };
+        });
+      },
+
+      toggleBossModifiers: (apply) => {
+        set((state) => {
+          if (!state.selectedBoss) return state;
+          return { selectedBoss: { ...state.selectedBoss, applyModifiers: apply } };
+        });
+      },
+
+      clearBoss: () => {
+        set({ selectedBoss: null });
       },
     }),
     {

@@ -9,8 +9,9 @@ import { getAbilityNameSync } from '../abilityDataLoader';
 
 /**
  * WarHowl (Ragnar)
- * Buff that grants extra crit chance, damage percentage, and flat damage
- * Variables: extraCritChance, extraDmgPct, extraDmg, maxDmg
+ * Buff that grants extra crit chance and flat damage
+ * Variables: extraCritChance, extraDmg
+ * Note: extraDmgPct and maxDmg are not used (they're not part of the ability effect)
  */
 export const WarHowlHandler: AbilityHandler = {
   abilityId: 'WarHowl',
@@ -29,7 +30,6 @@ export const WarHowlHandler: AbilityHandler = {
       buffResult: {
         effect: {
           critChanceBonus: values.extraCritChance as number || 0,
-          baseDamageMultiplier: 1 + ((values.extraDmgPct as number || 0) / 100),
           baseDamageBonus: values.extraDmg as number || 0,
         },
         duration: 1, // Lasts until end of turn
@@ -130,7 +130,7 @@ export const GauntletsOfUltramarHandler: AbilityHandler = {
       damageResult: {
         minDamage: minDmg,
         maxDamage: maxDmg,
-        averageDamage: avgDmg * hits,
+        averageDamage: avgDmg,  // Per-hit damage, not total (hits applied in calculator)
         hits,
         damageProfile: (values.damageProfile as DamageType) || 'Bolter',
       },
@@ -202,6 +202,7 @@ export const AberrantHypermorphHandler: AbilityHandler = {
  * MartialInspiration (Kariyan)
  * Melee Eviscerate damage attack with 3 hits
  * Gets +33% damage per turn the character has attacked (from LegacyOfCombat synergy)
+ * The multiplier is shown as a Global buff in the damage breakdown
  * Also triggers LegacyOfCombat follow-up attack
  * Variables: minDmg, maxDmg, extraDmgPct (% of enemy max HP as bonus damage)
  * Constants: damageProfile: Eviscerate, nrOfHits: 3, cooldownTurns: 2
@@ -219,13 +220,13 @@ export const MartialInspirationHandler: AbilityHandler = {
     const hits = values.nrOfHits as number || 3;
 
     // Calculate +33% per attack turn bonus (same as LegacyOfCombat)
-    const attackTurnsBonus = context.attackTurnsCount * 0.33;
-    const damageMultiplier = 1 + attackTurnsBonus;
+    // This is now passed as a global multiplier for proper display
+    const basePercentage = 33;
+    const attackTurns = context.attackTurnsCount;
+    const damageMultiplier = 1 + (attackTurns * basePercentage / 100);
 
-    // Apply multiplier to damage
-    const multipliedMinDmg = Math.round(minDmg * damageMultiplier);
-    const multipliedMaxDmg = Math.round(maxDmg * damageMultiplier);
-    const avgDmg = Math.round((multipliedMinDmg + multipliedMaxDmg) / 2);
+    // Use base damage (multiplier applied via globalMultiplier in calculator)
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
 
     // Note: extraDmgPct adds % of enemy max HP as damage, which we can't calculate here
     // This would need to be applied during damage calculation if we know the boss HP
@@ -234,10 +235,17 @@ export const MartialInspirationHandler: AbilityHandler = {
       abilityId: 'MartialInspiration',
       abilityName,
       category: 'damage',
+      // Pass multiplier info for Global buff display (only if there are stacks)
+      globalMultiplier: attackTurns > 0 ? {
+        multiplier: damageMultiplier,
+        basePercentage,
+        stacks: attackTurns,
+        sourceName: abilityName,
+      } : undefined,
       damageResult: {
-        minDamage: multipliedMinDmg,
-        maxDamage: multipliedMaxDmg,
-        averageDamage: avgDmg * hits,
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,  // Per-hit damage, not total (hits applied in calculator)
         hits,
         damageProfile: 'Eviscerate' as DamageType,
       },
@@ -337,6 +345,131 @@ export const MomentShackleHandler: AbilityHandler = {
   },
 };
 
+/**
+ * LightOfSanguinius (Dante)
+ * Special melee attack with Melta damage
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Melta, nrOfHits: 5
+ */
+export const LightOfSanguiniusHandler: AbilityHandler = {
+  abilityId: 'LightOfSanguinius',
+  abilityName: 'Light of Sanguinius',
+  category: 'damage',
+  cooldown: -1,  // One-time use
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('LightOfSanguinius');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 5;
+
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'LightOfSanguinius',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Melta' as DamageType,
+      },
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * EuphoricStrikes (Laviscus)
+ * Deals Power damage and grants +crit chance to next attack by ANY team member
+ * Variables: minDmg, maxDmg, extraCritChance
+ * Constants: damageProfile: Power, nrOfHits: 1
+ * Special: Does NOT end Laviscus' turn (endsTurn: false)
+ */
+export const EuphoricStrikesHandler: AbilityHandler = {
+  abilityId: 'EuphoricStrikes',
+  abilityName: 'Euphoric Strikes',
+  category: 'damage',
+  cooldown: -1,  // One-time use
+  endsTurn: false,  // Laviscus can still attack after
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('EuphoricStrikes');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 1;
+    const extraCritChance = values.extraCritChance as number || 0;
+
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'EuphoricStrikes',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Power' as DamageType,
+      },
+      // Buff for next attack by any team member
+      buffResult: {
+        effect: {
+          critChanceBonus: extraCritChance,
+        },
+        duration: 1,
+      },
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * Drachnyen (Abaddon)
+ * Sets Abaddon's HP to a specific value, performs immediate normal melee attack,
+ * and grants permanent follow-up attack after each normal melee for rest of battle.
+ * Variables: minDmg, maxDmg (for follow-up attack), hp (health to set)
+ * Constants: damageProfile: Piercing, nrOfHits: 3
+ * Special: Does NOT end turn - triggers normal attack, then enables permanent follow-up
+ */
+export const DrachnyenHandler: AbilityHandler = {
+  abilityId: 'Drachnyen',
+  abilityName: "Drach'nyen",
+  category: 'buff',  // Primary effect is granting permanent follow-up
+  cooldown: -1,  // One-time use
+  endsTurn: false,  // The ability triggers a normal attack, doesn't end turn itself
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('Drachnyen');
+    const hp = values.hp as number || 0;
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 3;
+
+    return {
+      abilityId: 'Drachnyen',
+      abilityName,
+      category: 'buff',
+      // HP modification and follow-up buff info - battleStore handles the actual effects
+      healingResult: {
+        amount: hp,  // This represents the HP to SET TO (not heal amount)
+      },
+      // Store follow-up attack info in buff result
+      buffResult: {
+        effect: {
+          // Custom marker - battleStore checks for drachnyenActive flag
+        },
+        duration: -1,  // Permanent for rest of battle
+      },
+      // Include damage info for the follow-up attack in the message
+      message: `${abilityName}: HP → ${hp}, follow-up ${hits}x Piercing (${minDmg}-${maxDmg})`,
+    };
+  },
+};
+
 // Export all active handlers
 export const activeHandlers: AbilityHandler[] = [
   WarHowlHandler,
@@ -348,4 +481,7 @@ export const activeHandlers: AbilityHandler[] = [
   MartialInspirationHandler,
   KillMaimBurnHandler,
   MomentShackleHandler,
+  LightOfSanguiniusHandler,
+  EuphoricStrikesHandler,
+  DrachnyenHandler,
 ];

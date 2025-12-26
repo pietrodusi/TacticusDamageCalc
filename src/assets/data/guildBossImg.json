@@ -1,0 +1,47 @@
+{
+    "GuildBoss1Boss1TyranTervigonLeviathan": {
+        "img": "/bosses/portrait_guild_tervigon.png"
+    },
+    "GuildBoss1Boss2TyranTervigonKronos": {
+        "img": "/bosses/portrait_guild_tervigon_02.png"
+    },
+    "GuildBoss1Boss3TyranTervigonGorgon": {
+        "img": "/bosses/portrait_guild_tervigon_03.png"
+    },
+    "GuildBoss2Boss1TyranHiveTyrantLeviathan": {
+        "img": "/bosses/portrait_guild_tyrant.png"
+    },
+    "GuildBoss2Boss2TyranHiveTyrantKronos": {
+        "img": "/bosses/portrait_guild_tyrant_02.png"
+    },
+    "GuildBoss2Boss3TyranHiveTyrantGorgon": {
+        "img": "/bosses/portrait_guild_tyrant_03.png"
+    },
+    "GuildBoss3Boss1NecroSilentKing": {
+        "img": "/bosses/portrait_necro_silentking.png"
+    },
+    "GuildBoss4Boss1OrksGhazghkull": {
+        "img": "/bosses/portrait_guild_ghazghkull.png"
+    },
+    "GuildBoss5Boss1DeathMortarion": {
+        "img": "/bosses/portrait_guild_mortarion.png"
+    },
+    "GuildBoss6Boss1TyranScreamerKiller": {
+        "img": "/bosses/portrait_guild_screamerkiller.png"
+    },
+    "GuildBoss7Boss1AstraRogaldorn": {
+        "img": "/bosses/portrait_guild_rogaldorn.png"
+    },
+    "GuildBoss8Boss1EldarAvatar": {
+        "img": "/bosses/portrait_guild_avatar.png"
+    },
+    "GuildBoss9Boss1ThousMagnus": {
+        "img": "/bosses/portrait_guild_magnus.png"
+    },
+    "GuildBoss10Boss1AdmecBelisarius": {
+        "img": "/bosses/portrait_guild_belisarius.png"
+    },
+    "GuildBoss11Boss1TauRiptide": {
+        "img": "/bosses/portrait_guild_riptide.png"
+    }
+}

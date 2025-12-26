@@ -32,6 +32,8 @@ export interface TraitContext {
   attacksThisTurn: number;
   firstAttackTurn: number | null | undefined;  // Turn when character first attacked (for RapidAssault)
   currentTurn: number | undefined;              // Current battle turn (for RapidAssault)
+  targetTraits?: string[];                      // Target's traits (e.g., BigTarget, Vehicle)
+  abilityToggles?: Record<string, boolean>;     // User-controlled toggles for trait conditions
 }
 
 /**
@@ -48,10 +50,12 @@ const TRAIT_EFFECTS: Record<string, TraitEffect> = {
       if (ctx.attackType !== 'melee') {
         return { applicable: false, multiplier: 1, reason: 'Only applies to melee attacks' };
       }
-      if (ctx.hasMoved) {
-        return { applicable: false, multiplier: 1, reason: 'Has moved this turn' };
+      // Only active when the "Has not moved" toggle is checked
+      const isActive = ctx.abilityToggles?.['CrushingStrike_notMoved'] ?? false;
+      if (!isActive) {
+        return { applicable: false, multiplier: 1, reason: 'Has not moved condition not checked' };
       }
-      return { applicable: true, multiplier: 1.5, reason: 'Not moved' };
+      return { applicable: true, multiplier: 1.5, reason: 'Has not moved' };
     },
   },
   HeavyWeapon: {
@@ -96,6 +100,26 @@ const TRAIT_EFFECTS: Record<string, TraitEffect> = {
 
       // Later turns - no bonus
       return { applicable: false, multiplier: 1, reason: 'Not first attack turn' };
+    },
+  },
+  BeastSnagga: {
+    check: (ctx) => {
+      // BeastSnagga: +20% damage on melee attacks against BigTarget or Vehicle
+      if (ctx.attackType !== 'melee') {
+        return { applicable: false, multiplier: 1, reason: 'Only applies to melee attacks' };
+      }
+
+      // Check if target has BigTarget or Vehicle trait
+      const targetTraits = ctx.targetTraits || [];
+      const hasBigTarget = targetTraits.includes('BigTarget');
+      const hasVehicle = targetTraits.includes('Vehicle');
+
+      if (!hasBigTarget && !hasVehicle) {
+        return { applicable: false, multiplier: 1, reason: 'Target is not BigTarget or Vehicle' };
+      }
+
+      const targetType = hasBigTarget && hasVehicle ? 'BigTarget/Vehicle' : (hasBigTarget ? 'BigTarget' : 'Vehicle');
+      return { applicable: true, multiplier: 1.20, reason: `Target is ${targetType}` };
     },
   },
 };

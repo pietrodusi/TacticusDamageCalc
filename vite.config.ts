@@ -5,4 +5,21 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/TacticusDamageCalc/',
+  build: {
+    // Increase chunk size warning limit (default is 500KB)
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split vendor libraries
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-state': ['zustand'],
+          'vendor-ui': ['lucide-react'],
+          // Split large data files
+          'data-bosses': ['./src/assets/data/guildBossUnits.json'],
+          'data-characters': ['./src/assets/data/characters.json'],
+        },
+      },
+    },
+  },
 })

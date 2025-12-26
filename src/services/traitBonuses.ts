@@ -48,13 +48,14 @@ function getTraitName(traitId: string): string {
 const TRAIT_BONUS_DEFINITIONS: Record<string, TraitBonusDefinition> = {
   CrushingStrike: {
     compute: (character) => {
-      const isActive = !character.hasMoved;
+      // Only active when the "Has not moved" toggle is checked
+      const isActive = character.abilityToggles['CrushingStrike_notMoved'] ?? false;
       return {
         traitId: 'CrushingStrike',
         traitName: getTraitName('CrushingStrike'),
-        bonusText: '+50% melee',
+        bonusText: '+50% melee (CrushingStrike)',
         isActive,
-        reason: isActive ? 'Has not moved' : 'Moved this turn',
+        reason: isActive ? 'Has not moved' : 'Has not moved condition not checked',
         colorClass: isActive ? 'text-green-400' : 'text-gray-500',
       };
     },
@@ -130,10 +131,25 @@ const TRAIT_BONUS_DEFINITIONS: Record<string, TraitBonusDefinition> = {
       return {
         traitId: 'RapidAssault',
         traitName: getTraitName('RapidAssault'),
-        bonusText: '+25% damage',
+        bonusText: '+25% damage (RapidAssault)',
         isActive,
         reason,
         colorClass: isActive ? 'text-green-400' : 'text-gray-500',
+      };
+    },
+  },
+  BeastSnagga: {
+    compute: () => {
+      // BeastSnagga: +20% melee damage against BigTarget or Vehicle
+      // Always shown as active since we can't know the target from character card
+      // The actual check happens during damage calculation
+      return {
+        traitId: 'BeastSnagga',
+        traitName: getTraitName('BeastSnagga'),
+        bonusText: '+20% melee (BeastSnagga)',
+        isActive: true,
+        reason: 'vs BigTarget/Vehicle',
+        colorClass: 'text-green-400',
       };
     },
   },

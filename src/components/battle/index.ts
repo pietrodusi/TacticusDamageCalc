@@ -6,3 +6,5 @@ export { BattleLog } from './BattleLog';
 export { DamageSummary } from './DamageSummary';
 export { BattleSummary } from './BattleSummary';
 export { DamageBar, CompactDamageBar } from './DamageBar';
+export { BossSelector } from './BossSelector';
+export { BattleBossCard } from './BattleBossCard';

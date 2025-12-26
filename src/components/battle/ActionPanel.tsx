@@ -1,7 +1,7 @@
 import { Move, Sparkles, Clock } from 'lucide-react';
 import type { BattleCharacter, ActionType } from '../../types';
 import { getDamageTypeImageUrl } from '../../services/dataService';
-import { getAbilityNameSync, getAbilityValues, executeActiveAbility, classifyAbility, isAbilityReady, getCooldownDisplayText } from '../../services/abilities';
+import { getAbilityNameSync, getAbilityValues, executeActiveAbility, classifyAbility, isAbilityReady, getCooldownDisplayText, getFormattedAbilityDescription } from '../../services/abilities';
 
 interface ActionPanelProps {
   character: BattleCharacter;
@@ -37,10 +37,14 @@ export function ActionPanel({ character, onAction }: ActionPanelProps) {
         attacksThisTurn: character.attacksThisTurn,
         attackTurnsCount: character.attackTurnsCount,
         hasUsedAbilityThisTurn: character.hasUsedAbilityThisTurn,
+        hasQualifiedForLCDamage: character.hasQualifiedForLCDamage,
         currentHealth: character.currentHealth,
         maxHealth: character.calculatedHealth,
         currentTurn: 1,
         attackType: 'ability',
+        attackCategory: 'ability',
+        isFirstSpecialAttackOfTurn: true,  // Preview assumes first special attack
+        trajannIsAdjacentToBoss: false,  // Preview doesn't check Trajann position
         abilityToggles: character.abilityToggles,
       });
 
@@ -91,6 +95,11 @@ export function ActionPanel({ character, onAction }: ActionPanelProps) {
   const abilityReady = abilityCooldownState ? isAbilityReady(abilityCooldownState) : true;
   const cooldownText = abilityCooldownState ? getCooldownDisplayText(abilityCooldownState) : '';
 
+  // Get ability description for tooltip
+  const activeAbilityDescription = activeAbilityId
+    ? getFormattedAbilityDescription(activeAbilityId, abilityLevelIndex)
+    : null;
+
   const colorClasses = {
     green: 'hover:bg-green-900/50 hover:border-green-600 text-green-500',
     red: 'hover:bg-red-900/50 hover:border-red-600 text-red-500',
@@ -135,8 +144,8 @@ export function ActionPanel({ character, onAction }: ActionPanelProps) {
           </span>
         </button>
 
-        {/* Ranged Attack (only if character has ranged) */}
-        {hasRanged ? (
+        {/* Ranged Attack (only show if character has ranged) */}
+        {hasRanged && (
           <button
             onClick={() => !isTurnEnded && !character.hasActed && onAction('rangedAttack')}
             disabled={isTurnEnded || character.hasActed}
@@ -154,10 +163,6 @@ export function ActionPanel({ character, onAction }: ActionPanelProps) {
               {damage} × {character.rangedHits} = {rangedTotalDamage.toLocaleString()}
             </span>
           </button>
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-1 p-3 rounded-lg border border-gray-700 opacity-30">
-            <span className="text-xs font-medium text-gray-500">No Ranged</span>
-          </div>
         )}
       </div>
 
@@ -182,7 +187,10 @@ export function ActionPanel({ character, onAction }: ActionPanelProps) {
           className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
             isTurnEnded || character.hasActed || !hasActiveAbility || !abilityReady ? disabledClasses : colorClasses.amber
           }`}
-          title={activeAbilityName ? `${activeAbilityName}${!abilityReady ? ` (${cooldownText})` : ''}` : 'No ability'}
+          title={activeAbilityName
+            ? `${activeAbilityName}${!abilityReady ? ` (${cooldownText})` : ''}\n\n${activeAbilityDescription || ''}`
+            : 'No ability'
+          }
         >
           <Sparkles size={18} />
           <span className="text-xs font-medium truncate max-w-full">

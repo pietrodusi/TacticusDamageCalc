@@ -1,14 +1,15 @@
-import { User, CheckCircle, RotateCcw, Zap, Sparkles, Users } from 'lucide-react';
+import { useState } from 'react';
+import { User, CheckCircle, RotateCcw, Zap, Settings, Sparkles } from 'lucide-react';
 import type { BattleCharacter, ActionType } from '../../types';
 import { ActionPanel } from './ActionPanel';
 import { getCharacterTraitBonuses, hasTraitBonuses } from '../../services/traitBonuses';
-import { getCharacterPassiveBonuses, getCharacterAuraBonuses, hasPassiveAbilities, getLegendaryCommanderBuffDisplay } from '../../services/abilities';
+import { getCharacterBuffConditions, hasBuffConditions } from '../../services/buffConditions';
+import { getAbilityNameSync, getFormattedAbilityDescription } from '../../services/abilities';
 
 interface BattleCharacterCardProps {
   character: BattleCharacter;
   team: BattleCharacter[];
   isSelected: boolean;
-  legendaryCommanderBuffAvailable: boolean;
   currentTurn?: number;
   onSelect: () => void;
   onAction: (type: ActionType) => void;
@@ -20,40 +21,36 @@ export function BattleCharacterCard({
   character,
   team,
   isSelected,
-  legendaryCommanderBuffAvailable,
   currentTurn,
   onSelect,
   onAction,
   onUndo,
   onToggleAbility,
 }: BattleCharacterCardProps) {
+  const [hoveredPassive, setHoveredPassive] = useState<string | null>(null);
   const hasActedThisTurn = character.hasMoved && character.hasActed;
   const hasAnyAction = character.hasMoved || character.hasActed;
+
+  // Get passive abilities for display
+  const passiveAbilities = character.passiveAbilities.map(id => ({
+    id,
+    name: getAbilityNameSync(id),
+    description: getFormattedAbilityDescription(id, character.abilityLevels?.[id] ?? 54),
+  }));
 
   // Get trait bonuses for display
   const showTraitBonuses = hasTraitBonuses(character);
   const traitBonuses = showTraitBonuses ? getCharacterTraitBonuses(character, currentTurn) : [];
 
-  // Get passive ability bonuses for display (filter out LegendaryCommander as it's shown in Buffs)
-  const showPassiveAbilities = hasPassiveAbilities(character);
-  const passiveBonuses = showPassiveAbilities
-    ? getCharacterPassiveBonuses(character).filter(b => b.abilityId !== 'LegendaryCommander')
-    : [];
-
-  // Get aura bonuses from teammates
-  const auraBonuses = getCharacterAuraBonuses(character, team);
-
-  // Get LegendaryCommander buff (Trajann's aura)
-  const lcBuff = getLegendaryCommanderBuffDisplay(team, legendaryCommanderBuffAvailable);
-
-  // Show buffs section if there are aura bonuses or LC buff
-  const showAuraBonuses = auraBonuses.length > 0 || lcBuff !== null;
+  // Get buff conditions for display
+  const showBuffConditions = hasBuffConditions(character, team);
+  const buffConditions = showBuffConditions ? getCharacterBuffConditions(character, team) : [];
 
   return (
     <div
       className={`card p-3 transition-all ${
         isSelected ? 'ring-2 ring-imperial-gold' : ''
-      } ${hasActedThisTurn ? 'opacity-60' : ''}`}
+      } ${character.hasActed ? 'ring-2 ring-green-500' : ''} ${hasActedThisTurn ? 'opacity-60' : ''}`}
     >
       {/* Header */}
       <div
@@ -120,6 +117,37 @@ export function BattleCharacterCard({
         </div>
       </div>
 
+      {/* Passive Abilities */}
+      {passiveAbilities.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-gray-700/50">
+          <div className="flex items-center gap-1 mb-1">
+            <Sparkles size={12} className="text-purple-400" />
+            <span className="text-xs font-medium text-gray-400">Passive</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {passiveAbilities.map((passive) => (
+              <div
+                key={passive.id}
+                className="relative"
+                onMouseEnter={() => setHoveredPassive(passive.id)}
+                onMouseLeave={() => setHoveredPassive(null)}
+              >
+                <span className="px-2 py-0.5 rounded text-xs bg-purple-900/40 text-purple-300 cursor-help">
+                  {passive.name}
+                </span>
+                {/* Tooltip */}
+                {hoveredPassive === passive.id && passive.description && (
+                  <div className="absolute z-50 bottom-full left-0 mb-1 w-64 p-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl text-xs text-gray-300 whitespace-pre-wrap">
+                    <div className="font-medium text-purple-300 mb-1">{passive.name}</div>
+                    <div>{passive.description}</div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Trait Bonuses */}
       {showTraitBonuses && traitBonuses.length > 0 && (
         <div className="mt-2 pt-2 border-t border-gray-700/50">
@@ -145,117 +173,64 @@ export function BattleCharacterCard({
         </div>
       )}
 
-      {/* Passive Ability */}
-      {showPassiveAbilities && passiveBonuses.length > 0 && (
+      {/* Buff Conditions */}
+      {showBuffConditions && (
         <div className="mt-2 pt-2 border-t border-gray-700/50">
           <div className="flex items-center gap-1 mb-1">
-            <Sparkles size={12} className="text-purple-400" />
-            <span className="text-xs font-medium text-gray-400">Passive Ability</span>
+            <Settings size={12} className="text-blue-400" />
+            <span className="text-xs font-medium text-gray-400">Buff Conditions</span>
           </div>
-          <div className="space-y-1">
-            {passiveBonuses.map((bonus) => (
-              <div
-                key={bonus.abilityId}
-                className="flex items-center gap-1"
-              >
-                {bonus.requiresToggle && onToggleAbility ? (
-                  <label
-                    className={`flex items-center gap-2 group ${
-                      character.turnEnded ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-                    }`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={bonus.isActive}
-                      onChange={() => !character.turnEnded && onToggleAbility(bonus.abilityId)}
-                      disabled={character.turnEnded}
-                      className={`w-3.5 h-3.5 rounded border-gray-600 bg-gray-700 text-purple-500 focus:ring-purple-500 focus:ring-offset-0 ${
-                        character.turnEnded ? 'cursor-not-allowed' : 'cursor-pointer'
-                      }`}
-                    />
-                    <span
-                      className={`text-xs ${bonus.isActive ? 'text-purple-300' : 'text-gray-500'}`}
-                      title={bonus.abilityDescription || `${bonus.abilityName}: ${bonus.reason}`}
-                    >
-                      <span className="font-medium">{bonus.abilityName}</span>
-                      {bonus.toggleLabel && (
-                        <span className="text-gray-500 ml-1">({bonus.toggleLabel})</span>
-                      )}
-                    </span>
-                  </label>
-                ) : (
-                  <div
-                    className={`px-2 py-0.5 rounded text-xs ${
-                      bonus.isActive
-                        ? 'bg-purple-900/30'
-                        : 'bg-gray-800/50'
-                    } ${bonus.colorClass}`}
-                    title={bonus.abilityDescription || bonus.abilityName}
-                  >
-                    {bonus.abilityName}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+          <div className="space-y-1.5">
+            {buffConditions.map((condition) => {
+              // Check if this condition depends on another and if that parent is active
+              const parentCondition = condition.dependsOn
+                ? buffConditions.find(c => c.id === condition.dependsOn)
+                : null;
+              const isDisabled = parentCondition ? !parentCondition.isActive : false;
 
-      {/* Buffs Section - only shown when selected */}
-      {isSelected && showAuraBonuses && (
-        <div className="mt-2 pt-2 border-t border-gray-700/50">
-          <div className="flex items-center gap-1 mb-1">
-            <Users size={12} className="text-yellow-400" />
-            <span className="text-xs font-medium text-gray-400">Buffs</span>
-          </div>
-          <div className="space-y-1">
-            {/* LegendaryCommander buff (no toggle - automatic) */}
-            {lcBuff && (
-              <div
-                className="flex items-center gap-2"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <span className={`text-xs ${lcBuff.isActive ? 'text-orange-300' : 'text-gray-500'}`}>
-                  <span className="font-medium">{lcBuff.bonusText}</span>
-                  <span className="text-gray-500 ml-1">
-                    from {lcBuff.sourceCharacterName}'s {lcBuff.abilityName}
-                  </span>
-                  <span className={`ml-1 ${lcBuff.isActive ? 'text-orange-400' : 'text-gray-600'}`}>
-                    ({lcBuff.isActive ? 'Ready' : 'Waiting for ability'})
-                  </span>
-                </span>
-              </div>
-            )}
-            {/* Other aura bonuses (with toggle) */}
-            {auraBonuses.map((bonus) => (
-              <label
-                key={bonus.abilityId}
-                className={`flex items-center gap-2 group ${
-                  character.turnEnded ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
-                }`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <input
-                  type="checkbox"
-                  checked={bonus.isActive}
-                  onChange={() => !character.turnEnded && onToggleAbility?.(bonus.abilityId)}
-                  disabled={character.turnEnded}
-                  className={`w-3.5 h-3.5 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-offset-0 ${
-                    character.turnEnded ? 'cursor-not-allowed' : 'cursor-pointer'
-                  }`}
-                />
-                <span className={`text-xs ${bonus.isActive ? 'text-yellow-300' : 'text-gray-500'}`}>
-                  <span className="font-medium">{bonus.bonusText}</span>
-                  <span className="text-gray-500 ml-1">
-                    from {bonus.sourceCharacterName}'s {bonus.abilityName}
-                    {bonus.reason.includes('Low HP') && (
-                      <span className="text-orange-400 ml-1">(requires &lt;50% HP)</span>
-                    )}
-                  </span>
-                </span>
-              </label>
-            ))}
+              return (
+                <label
+                  key={condition.id}
+                  className={`flex items-start gap-2 group ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="checkbox"
+                    checked={condition.isActive}
+                    disabled={isDisabled}
+                    onChange={() => !isDisabled && onToggleAbility?.(condition.id)}
+                    className={`w-3.5 h-3.5 mt-0.5 rounded border-gray-600 bg-gray-700 focus:ring-offset-0 ${
+                      isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'
+                    } ${
+                      condition.category === 'self'
+                        ? 'text-purple-500 focus:ring-purple-500'
+                        : 'text-yellow-500 focus:ring-yellow-500'
+                    }`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-xs font-medium ${
+                      isDisabled
+                        ? 'text-gray-600'
+                        : condition.isActive
+                          ? (condition.category === 'self' ? 'text-purple-300' : 'text-yellow-300')
+                          : 'text-gray-500'
+                    }`}>
+                      {condition.dependsOn && <span className="mr-1">↳</span>}
+                      {condition.label}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      <span className={condition.isActive && !isDisabled ? 'text-green-400' : ''}>{condition.effect}</span>
+                      {condition.sourceCharacter && (
+                        <span className="ml-1">({condition.source})</span>
+                      )}
+                      {!condition.sourceCharacter && (
+                        <span className="ml-1">({condition.source})</span>
+                      )}
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
           </div>
         </div>
       )}

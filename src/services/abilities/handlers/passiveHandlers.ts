@@ -153,9 +153,9 @@ export const CamoCloakHandler: AbilityHandler = {
 /**
  * LegacyOfCombat (Kariyan)
  * After performing any attack, Kariyan does another attack to the target.
- * For Big Target bosses, use Piercing damage (minDmg_2/maxDmg_2, 1 hit).
+ * 1 Piercing damage attack using minDmg_2/maxDmg_2 (suffix _2 matches damageProfile_2: Piercing).
  * The +33% damage per attack turn bonus ONLY applies when Martial Inspiration is used.
- * Variables: minDmg_2, maxDmg_2 (Piercing), nrOfHits_2
+ * Variables: minDmg_2, maxDmg_2 (Piercing follow-up), minDmg, maxDmg (Power - used by active)
  */
 export const LegacyOfCombatHandler: AbilityHandler = {
   abilityId: 'LegacyOfCombat',
@@ -169,16 +169,17 @@ export const LegacyOfCombatHandler: AbilityHandler = {
 
     // +33% per attack turn bonus ONLY applies when using Martial Inspiration (ability)
     const isAbilityAttack = context.attackType === 'ability';
-    const attackTurnsBonus = isAbilityAttack ? context.attackTurnsCount * 0.33 : 0;
-    const damageMultiplier = 1 + attackTurnsBonus;
+    const basePercentage = 33;
+    const attackTurns = isAbilityAttack ? context.attackTurnsCount : 0;
+    const damageMultiplier = 1 + (attackTurns * basePercentage / 100);
 
-    // Use Piercing damage for Big Target (minDmg_2/maxDmg_2)
+    // Use Piercing damage (minDmg_2/maxDmg_2, 1 hit) - _2 suffix matches damageProfile_2
     const minDamage = values.minDmg_2 as number || 0;
     const maxDamage = values.maxDmg_2 as number || 0;
     const avgDamage = Math.round((minDamage + maxDamage) / 2);
-    const hits = values.nrOfHits_2 as number || 1;
+    const hits = 1;
 
-    // Build follow-up attack
+    // Build follow-up attack with multiplier info for display
     const followUpAttack: FollowUpAttack | undefined = applicable ? {
       abilityId: 'LegacyOfCombat',
       abilityName: 'Legacy of Combat',
@@ -186,13 +187,17 @@ export const LegacyOfCombatHandler: AbilityHandler = {
       minDamage,
       maxDamage,
       hits,
-      damageMultiplier,
+      // Only include multiplier if there are stacks (ability attack with prior attack turns)
+      damageMultiplier: attackTurns > 0 ? damageMultiplier : undefined,
+      multiplierBasePercentage: attackTurns > 0 ? basePercentage : undefined,
+      multiplierStacks: attackTurns > 0 ? attackTurns : undefined,
+      multiplierSourceName: attackTurns > 0 ? 'Martial Inspiration' : undefined,
       attackCategory: 'special',  // Follow-up is a special attack
       triggersOnNormalOnly: false,  // Triggers on any attack (normal or ability)
     } : undefined;
 
-    const bonusText = isAbilityAttack && context.attackTurnsCount > 0
-      ? ` (+${Math.round(attackTurnsBonus * 100)}% from ${context.attackTurnsCount} attack turns)`
+    const bonusText = isAbilityAttack && attackTurns > 0
+      ? ` (+${basePercentage}%×${attackTurns})`
       : '';
 
     return {
@@ -262,8 +267,16 @@ export const TheBetrayerHandler: AbilityHandler = {
 
 /**
  * LegendaryCommander (Trajann)
- * Grants bonus damage and extra hits if an active ability was used this turn
- * Variables: extraDmg (up to 800), nrOfHits (1-2)
+ *
+ * Buff 1 (Damage): Character is adjacent to boss AND has used an active ability this turn
+ *   - For non-special abilities: immediately when activated
+ *   - For special attack abilities: after the first special attack is executed
+ *   - Effect: +extraDmg pre-armor damage bonus
+ *
+ * Buff 2 (Hits): Buff 1 is active AND Trajann is adjacent to boss
+ *   - Effect: +2 hits to the first special attack only
+ *
+ * Variables: extraDmg (up to 800), nrOfHits (constant 2)
  */
 export const LegendaryCommanderHandler: AbilityHandler = {
   abilityId: 'LegendaryCommander',
@@ -272,29 +285,120 @@ export const LegendaryCommanderHandler: AbilityHandler = {
   cooldown: -1,
 
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
-    // Only applies if an active ability was used this turn
-    const applicable = context.hasUsedAbilityThisTurn;
-
     const extraDmg = values.extraDmg as number || 0;
-    const extraHits = values.nrOfHits as number || 0;
+    const LC_EXTRA_HITS = 2;  // Fixed +2 hits for first special attack
+
+    // Check if character is adjacent to boss
+    const isAdjacentToBoss = context.abilityToggles['adjacentToBoss'] ?? false;
+
+    // Buff 1 (Damage): Adjacent to boss + has qualified for LC damage (ability "used")
+    const damageBonusActive = isAdjacentToBoss && context.hasQualifiedForLCDamage;
+
+    // Buff 2 (Hits): Damage buff active + Trajann adjacent to boss + first special attack
+    const isSpecialAttack = context.attackCategory === 'special' || context.attackCategory === 'ability';
+    const hitsBonusActive = damageBonusActive &&
+                            context.trajannIsAdjacentToBoss &&
+                            isSpecialAttack &&
+                            context.isFirstSpecialAttackOfTurn;
+
+    const applicable = damageBonusActive;
+
+    // Build modifiers
+    const modifiers: { baseDamageBonus?: number; extraHits?: number } = {};
+    if (damageBonusActive) {
+      modifiers.baseDamageBonus = extraDmg;
+    }
+    if (hitsBonusActive) {
+      modifiers.extraHits = LC_EXTRA_HITS;
+    }
+
+    // Build reason text
+    let reason = '';
+    if (!isAdjacentToBoss) {
+      reason = 'Not adjacent to boss';
+    } else if (!context.hasQualifiedForLCDamage) {
+      reason = 'Ability not yet used';
+    } else {
+      const parts: string[] = [`+${extraDmg} dmg`];
+      if (hitsBonusActive) {
+        parts.push(`+${LC_EXTRA_HITS} hits (first special)`);
+      }
+      reason = parts.join(', ');
+    }
 
     return {
       abilityId: 'LegendaryCommander',
       abilityName: getAbilityNameSync('LegendaryCommander'),
+      modifiers,
+      applicable,
+      reason,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * RefusalToBeOutdone (Laviscus)
+ * Passive that grants bonus damage based on Outrage accumulated from ally attacks.
+ * - Damage bonus = Outrage × extraDmgPct / 100
+ * - Crit damage bonus = extraCritDmg × number of Chaos characters that contributed
+ * Outrage resets after Laviscus's normal attack.
+ * Variables: extraDmgPct, extraCritDmg
+ */
+export const RefusalToBeOutdoneHandler: AbilityHandler = {
+  abilityId: 'RefusalToBeOutdone',
+  abilityName: 'Refusal to be Outdone',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmgPct = values.extraDmgPct as number || 100;
+    const extraCritDmg = values.extraCritDmg as number || 0;
+
+    // Get outrage state from context
+    const outrage = context.outrage || 0;
+    const chaosContributorCount = context.outrageContributorCount || 0;
+
+    // Calculate bonuses
+    // Damage bonus = outrage × extraDmgPct%
+    const damageBonus = Math.round(outrage * extraDmgPct / 100);
+    // Crit damage bonus = extraCritDmg per Chaos character that contributed
+    const critDmgBonus = extraCritDmg * chaosContributorCount;
+
+    const applicable = outrage > 0;
+
+    // Build reason text
+    let reason = '';
+    if (applicable) {
+      const parts: string[] = [];
+      if (damageBonus > 0) {
+        // Show total modifier with breakdown in parentheses
+        parts.push(`+${damageBonus} dmg (${outrage} × ${extraDmgPct}%)`);
+      }
+      if (critDmgBonus > 0) {
+        parts.push(`+${critDmgBonus} crit dmg (${chaosContributorCount} Chaos × ${extraCritDmg})`);
+      }
+      reason = parts.join(', ');
+    } else {
+      reason = 'No outrage accumulated';
+    }
+
+    return {
+      abilityId: 'RefusalToBeOutdone',
+      abilityName: getAbilityNameSync('RefusalToBeOutdone'),
       modifiers: applicable ? {
-        baseDamageBonus: extraDmg,
-        extraHits: extraHits,
+        baseDamageBonus: damageBonus > 0 ? damageBonus : undefined,
+        critDamageBonus: critDmgBonus > 0 ? critDmgBonus : undefined,
       } : {},
       applicable,
-      reason: applicable
-        ? `+${extraDmg} damage, +${extraHits} hits (ability used)`
-        : 'No ability used this turn',
+      reason,
       requiresToggle: false,
     };
   },
 };
 
 // Export all passive handlers
+// Note: LegendaryCommander is now handled via the buff pool system (buffRegistry.ts)
 export const passiveHandlers: AbilityHandler[] = [
   SagaOfTheWarriorBornHandler,
   FuryOfTheAncientsHandler,
@@ -303,5 +407,6 @@ export const passiveHandlers: AbilityHandler[] = [
   CamoCloakHandler,
   LegacyOfCombatHandler,
   TheBetrayerHandler,
-  LegendaryCommanderHandler,
+  RefusalToBeOutdoneHandler,
+  // LegendaryCommanderHandler, // Removed: now using buff pool for team-wide LC application
 ];

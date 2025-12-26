@@ -17,13 +17,27 @@ import type {
   Item,
   ItemStats,
   EquippedItem,
+  Boss,
+  BossRank,
+  RawBossesData,
+  BossImagesData,
+  RawBossModsData,
+  RawBossModDetailsData,
+  BossStatModifiers,
+  BossTraitsData,
 } from '../types';
+import { BOSS_RANKS } from '../types';
 
 // Import static JSON data
 import rawCharactersData from '../assets/data/characters.json';
 import charactersImgData from '../assets/data/charactersImg.json';
 import progressionData from '../assets/data/progression.json';
 import itemsData from '../assets/data/items.json';
+import rawBossesData from '../assets/data/guildBossUnits.json';
+import bossImgData from '../assets/data/guildBossImg.json';
+import bossModsData from '../assets/data/guildBossMods.json';
+import bossModDetailsData from '../assets/data/guildBossModDetails.json';
+import bossTraitsData from '../assets/data/guildBossTraits.json';
 
 // Import all portrait images using Vite's glob import
 const portraitImages = import.meta.glob<{ default: string }>(
@@ -52,6 +66,12 @@ const damageImages = import.meta.glob<{ default: string }>(
 // Import faction images
 const factionImages = import.meta.glob<{ default: string }>(
   '../assets/images/factions/*.png',
+  { eager: true }
+);
+
+// Import boss images
+const bossImages = import.meta.glob<{ default: string }>(
+  '../assets/images/bosses/*.png',
   { eager: true }
 );
 
@@ -90,11 +110,47 @@ for (const path in factionImages) {
   factionImageMap[filename] = factionImages[path].default;
 }
 
+// Create boss image map (e.g., 'portrait_guild_tervigon' -> url)
+const bossImageMap: Record<string, string> = {};
+for (const path in bossImages) {
+  const filename = path.split('/').pop()?.replace('.png', '') || '';
+  bossImageMap[filename] = bossImages[path].default;
+}
+
 // Type assertions for imported JSON
 const characters = rawCharactersData as RawCharactersData;
 const charactersInfo = charactersImgData as CharactersInfoData;
 const progression = progressionData as ProgressionData;
 const items = itemsData as ItemsData;
+const bosses = rawBossesData as RawBossesData;
+const bossImages2 = bossImgData as BossImagesData;
+const bossMods = bossModsData as RawBossModsData;
+const bossModDetails = bossModDetailsData as RawBossModDetailsData;
+const bossTraits = bossTraitsData as BossTraitsData;
+
+// Variables that need to be doubled (JSON values are halved)
+const VARIABLES_TO_DOUBLE = new Set([
+  // Damage
+  'minDmg', 'maxDmg', 'extraMaxDmg', 'dmg', 'extraDmg',
+  'blockDmg', 'extraCritDmg',
+  'spawnDmg', 'summonDmg', 'summonCritDmg', 'summonBlockDmg',
+  'dmgReduction',
+  // HP
+  'hp', 'maxHp', 'minHp', 'extraHp',
+  'hpToHeal', 'maxHpToHeal', 'hpToRepair',
+  'spawnHp', 'summonHp', 'shieldHp',
+  // Armor
+  'extraArmor', 'armorReduction', 'armorIgnored',
+  'spawnArmor', 'summonArmor',
+]);
+
+function shouldDoubleVariable(key: string): boolean {
+  if (VARIABLES_TO_DOUBLE.has(key)) return true;
+  for (const baseVar of VARIABLES_TO_DOUBLE) {
+    if (key.startsWith(baseVar + '_')) return true;
+  }
+  return false;
+}
 
 // Ability data - loaded lazily to handle JSON with non-standard escapes
 let abilitiesDisplay: AbilitiesDisplayData | null = null;
@@ -548,8 +604,12 @@ function replaceAbilityVariables(
     if (stats.variables && stats.variables[varName]) {
       const values = stats.variables[varName];
       const index = Math.min(levelIndex, values.length - 1);
-      const value = values[index]?.toString() ?? match;
-      return `{{VAR:${value}}}`;
+      let value = values[index];
+      // Double damage/HP/armor variables (JSON values are halved)
+      if (typeof value === 'number' && shouldDoubleVariable(varName)) {
+        value = value * 2;
+      }
+      return `{{VAR:${value?.toString() ?? match}}}`;
     }
     // Then check constants (fixed values)
     if (stats.constants && stats.constants[varName]) {
@@ -782,4 +842,183 @@ export function getDefaultEquipment(characterId: string, faction: string, itemSl
   });
 
   return equipment;
+}
+
+// ============ Boss Functions ============
+
+// Boss display names (from boss IDs)
+const bossDisplayNames: Record<string, string> = {
+  'GuildBoss1Boss1TyranTervigonLeviathan': 'Tervigon (Leviathan)',
+  'GuildBoss1Boss2TyranTervigonKronos': 'Tervigon (Kronos)',
+  'GuildBoss1Boss3TyranTervigonGorgon': 'Tervigon (Gorgon)',
+  'GuildBoss2Boss1TyranHiveTyrantLeviathan': 'Hive Tyrant (Leviathan)',
+  'GuildBoss2Boss2TyranHiveTyrantKronos': 'Hive Tyrant (Kronos)',
+  'GuildBoss2Boss3TyranHiveTyrantGorgon': 'Hive Tyrant (Gorgon)',
+  'GuildBoss3Boss1NecroSilentKing': 'Silent King',
+  'GuildBoss4Boss1OrksGhazghkull': 'Ghazghkull',
+  'GuildBoss5Boss1DeathMortarion': 'Mortarion',
+  'GuildBoss6Boss1TyranScreamerKiller': 'Screamer-Killer',
+  'GuildBoss7Boss1AstraRogaldorn': 'Rogal Dorn',
+  'GuildBoss8Boss1EldarAvatar': 'Avatar of Khaine',
+  'GuildBoss9Boss1ThousMagnus': 'Magnus the Red',
+  'GuildBoss10Boss1AdmecBelisarius': 'Belisarius Cawl',
+  'GuildBoss11Boss1TauRiptide': 'Riptide',
+};
+
+// Helper to resolve boss portrait URL from bossImg path
+function resolveBossPortraitUrl(imgPath: string | undefined): string | undefined {
+  if (!imgPath) return undefined;
+  // Extract filename from path (e.g., '/bosses/portrait_guild_tervigon.png' -> 'portrait_guild_tervigon')
+  const filename = imgPath.split('/').pop()?.replace('.png', '') || '';
+  return bossImageMap[filename];
+}
+
+// Get boss display name from ID
+export function getBossDisplayName(bossId: string): string {
+  return bossDisplayNames[bossId] || bossId;
+}
+
+// Get list of all available bosses (for selection)
+export interface BossListItem {
+  id: string;
+  name: string;
+  faction: string;
+  iconUrl?: string;
+}
+
+export function getBossList(): BossListItem[] {
+  return Object.entries(bosses)
+    .filter(([id, boss]) => {
+      // Filter out loot objects without faction
+      if (!boss.FactionId) return false;
+      // Filter out MiniBoss, Npc, and Minion entries
+      if (id.includes('MiniBoss') || id.includes('Npc') || id.includes('Minion')) return false;
+      return true;
+    })
+    .map(([id, boss]) => {
+      const imgData = bossImages2[id];
+      return {
+        id,
+        name: getBossDisplayName(id),
+        faction: boss.FactionId!,
+        iconUrl: resolveBossPortraitUrl(imgData?.img),
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Get stat modifiers for a boss (all modifiers applied)
+export function getBossStatModifiers(bossId: string): BossStatModifiers {
+  const result: BossStatModifiers = {
+    armorPctReduction: 0,
+    damagePctReduction: 0,
+    blockChanceReduction: 0,
+  };
+
+  // Find the modifier entry where this boss ID is the main boss (first unitId)
+  const modEntry = Object.values(bossMods).find(
+    entry => entry.unitIds[0] === bossId
+  );
+
+  if (!modEntry) return result;
+
+  // Collect all unique modifier IDs from all tracks
+  const allModifierIds = new Set<string>();
+  for (const track of modEntry.modifiers) {
+    for (const stage of track) {
+      for (const modId of stage) {
+        allModifierIds.add(modId);
+      }
+    }
+  }
+
+  // Process each modifier
+  for (const modId of allModifierIds) {
+    const modDetail = bossModDetails[modId];
+    if (!modDetail) continue;
+
+    // Only process stat modifiers that affect the boss directly
+    if (modDetail.type === 'bossStatPctDecrease') {
+      if (modDetail.target === 'fixedArmor') {
+        result.armorPctReduction += modDetail.amount;
+      } else if (modDetail.target === 'dmg') {
+        result.damagePctReduction += modDetail.amount;
+      } else if (modDetail.target === 'critDmg') {
+        // We could track this too if needed
+      }
+    } else if (modDetail.type === 'bossStatDecrease') {
+      if (modDetail.target === 'blockChance') {
+        result.blockChanceReduction += modDetail.amount;
+      }
+    }
+  }
+
+  return result;
+}
+
+// Get boss stats at a specific rank (13-18 = Legendary 1 to Mythic 1)
+// Stats are reduced by all applicable modifiers from guildBossMods if applyModifiers is true
+export function getBossAtRank(bossId: string, rank: BossRank, applyModifiers: boolean = true): Boss | null {
+  const bossData = bosses[bossId];
+  if (!bossData || !bossData.FactionId) return null;
+
+  // Find stats for the requested rank
+  const statsForRank = bossData.stats.find(s => s.Rank === rank);
+  if (!statsForRank) return null;
+
+  const imgData = bossImages2[bossId];
+
+  // Get stat modifiers and apply them if enabled
+  let armorMultiplier = 1;
+  let damageMultiplier = 1;
+
+  if (applyModifiers) {
+    const modifiers = getBossStatModifiers(bossId);
+    // Apply percentage reductions (reduce stat by X%)
+    armorMultiplier = Math.max(0, 100 - modifiers.armorPctReduction) / 100;
+    damageMultiplier = Math.max(0, 100 - modifiers.damagePctReduction) / 100;
+  }
+
+  // Get traits for this boss
+  const traitsData = bossTraits[bossId];
+
+  return {
+    id: bossId,
+    name: getBossDisplayName(bossId),
+    faction: bossData.FactionId,
+    movement: bossData.Movement || 0,
+    activeAbilities: bossData.activeAbilities || [],
+    passiveAbilities: bossData.passiveAbilities || [],
+    traits: traitsData?.traits || [],
+    iconUrl: resolveBossPortraitUrl(imgData?.img),
+    health: statsForRank.Health,
+    damage: Math.floor(statsForRank.Damage * damageMultiplier),
+    armor: Math.floor(statsForRank.FixedArmor * armorMultiplier),
+    rank: rank,
+    abilityLevel: statsForRank.AbilityLevel,
+  };
+}
+
+// Get rank display name for boss (e.g., "Legendary 1", "Mythic 1")
+export function getBossRankDisplayName(rank: BossRank): string {
+  const rankInfo = BOSS_RANKS.find(r => r.rank === rank);
+  return rankInfo?.name || `Rank ${rank}`;
+}
+
+// Get all available ranks for a boss
+// Returns Legendary 1-5 (ranks 13-17) and only the first Mythic entry (rank 18)
+export function getAvailableBossRanks(bossId: string): BossRank[] {
+  const bossData = bosses[bossId];
+  if (!bossData) return [];
+
+  const allRanks = bossData.stats
+    .filter(s => s.Rank >= 13 && s.Rank <= 18)
+    .map(s => s.Rank as BossRank)
+    .sort((a, b) => a - b);
+
+  // Filter to only include legendaries (13-17) and the first mythic (18)
+  const legendaryRanks = allRanks.filter(r => r <= 17);
+  const hasMythic = allRanks.includes(18);
+
+  return hasMythic ? [...legendaryRanks, 18] : legendaryRanks;
 }

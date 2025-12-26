@@ -83,6 +83,10 @@ export {
   hasActiveAbilities,
   hasAuraBonuses,
   getLegendaryCommanderBuffDisplay,
+  getLegendaryCommanderHitsBuffDisplay,
+  getLegendaryCommanderBuffs,
+  isEligibleForLcHitsBuff,
+  isEligibleForLcBuff,
 } from './ui/abilityBonuses';
 
 // Aura handlers

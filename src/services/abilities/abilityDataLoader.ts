@@ -14,8 +14,40 @@ import type {
 // Import abilities stats directly (this file doesn't have escape issues)
 import abilitiesStatsData from '../../assets/data/abilities.json';
 
-// Type assertion for the imported data
-const abilitiesStats = abilitiesStatsData as Record<string, RawAbilityStats>;
+// Type assertion for the imported data (cast through unknown to handle edge cases like empty objects)
+const abilitiesStats = abilitiesStatsData as unknown as Record<string, RawAbilityStats>;
+
+// Variables that need to be doubled (JSON values are halved)
+const VARIABLES_TO_DOUBLE = new Set([
+  // Damage
+  'minDmg', 'maxDmg', 'extraMaxDmg', 'dmg', 'extraDmg',
+  'blockDmg', 'extraCritDmg',
+  'spawnDmg', 'summonDmg', 'summonCritDmg', 'summonBlockDmg',
+  'dmgReduction',
+  // HP
+  'hp', 'maxHp', 'minHp', 'extraHp',
+  'hpToHeal', 'maxHpToHeal', 'hpToRepair',
+  'spawnHp', 'summonHp', 'shieldHp',
+  // Armor
+  'extraArmor', 'armorReduction', 'armorIgnored',
+  'spawnArmor', 'summonArmor',
+]);
+
+/**
+ * Check if a variable should be doubled after loading
+ * Handles both base names and suffixed variants (e.g., minDmg_2)
+ */
+function shouldDoubleVariable(key: string): boolean {
+  // Check exact match
+  if (VARIABLES_TO_DOUBLE.has(key)) return true;
+
+  // Check for suffixed variants (e.g., minDmg_2, maxDmg_3)
+  for (const baseVar of VARIABLES_TO_DOUBLE) {
+    if (key.startsWith(baseVar + '_')) return true;
+  }
+
+  return false;
+}
 
 // Cache for ability display names (loaded lazily)
 let abilitiesDisplayCache: Record<string, { name: string; description: string }> | null = null;
@@ -220,9 +252,16 @@ export function getAbilityValues(
         const index = Math.min(clampedLevel, values.length - 1);
         const rawValue = values[index];
 
-        // Handle numeric values (apply rarity multiplier if applicable)
+        // Handle numeric values
         if (typeof rawValue === 'number') {
           let value = rawValue;
+
+          // Double damage-related variables (JSON values are halved)
+          if (shouldDoubleVariable(key)) {
+            value *= 2;
+          }
+
+          // Apply rarity multiplier if applicable
           if (affectedByRarity.has(key) && rarityMultiplier !== 1.0) {
             value = Math.round(value * rarityMultiplier);
           }

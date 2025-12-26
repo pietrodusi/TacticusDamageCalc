@@ -83,9 +83,16 @@ export interface ComputedAbilityValues {
  * Ability stat modifier that modifies attacker stats for damage calculation
  */
 export interface AbilityStatModifier {
-  // Damage bonuses
-  baseDamageBonus?: number;        // Flat damage added to base
-  baseDamageMultiplier?: number;   // 1.25 = +25% damage
+  // Source ability name for display
+  abilityName?: string;
+
+  // Pre-armor damage bonuses
+  baseDamageBonus?: number;        // Flat damage added to base (pre-armor)
+  baseDamageMultiplier?: number;   // 1.25 = +25% damage (pre-armor)
+
+  // Global (post-armor) damage bonuses
+  globalDamageBonus?: number;      // Flat damage added after armor/pierce (per hit)
+  globalDamageMultiplier?: number; // 1.25 = +25% damage (post-armor), same as baseDamageMultiplier
 
   // Hit bonuses
   extraHits?: number;              // Additional hits per attack
@@ -111,7 +118,8 @@ export interface AbilityContext {
   hasActedThisBattle: boolean;
   attacksThisTurn: number;
   attackTurnsCount: number;  // Number of turns character has attacked (for LegacyOfCombat)
-  hasUsedAbilityThisTurn: boolean;  // Whether an active ability was used this turn (for LegendaryCommander)
+  hasUsedAbilityThisTurn: boolean;  // Whether an active ability was used this turn
+  hasQualifiedForLCDamage: boolean;  // LC damage buff: adjacent to boss + ability "used" (immediately for buffs, after first special for special attacks)
   currentHealth?: number;
   maxHealth?: number;
 
@@ -120,9 +128,18 @@ export interface AbilityContext {
 
   // Attack info
   attackType: 'melee' | 'ranged' | 'ability';
+  attackCategory?: AttackCategory;  // 'normal', 'special', or 'ability'
+  isFirstSpecialAttackOfTurn: boolean;  // For LC +2 hits (first special attack this turn)
+
+  // Team state (for auras like Legendary Commander)
+  trajannIsAdjacentToBoss: boolean;
 
   // Ability-specific toggles (user-controlled for conditional abilities)
   abilityToggles: Record<string, boolean>;
+
+  // Laviscus's Refusal to be Outdone passive
+  outrage?: number;  // Accumulated outrage value from ally attacks
+  outrageContributorCount?: number;  // Number of Chaos characters that contributed to outrage
 }
 
 /**
@@ -143,7 +160,11 @@ export interface FollowUpAttack {
   minDamage: number;
   maxDamage: number;
   hits: number;
-  damageMultiplier?: number;  // Applied to damage (e.g., 1.33 for +33%)
+  damageMultiplier?: number;  // Applied to damage (e.g., 1.99 for +99%)
+  // For proper Global multiplier display (e.g., "Martial Inspiration +33%×3")
+  multiplierBasePercentage?: number;  // e.g., 33 for +33%
+  multiplierStacks?: number;          // e.g., 3 for 3 attack turns
+  multiplierSourceName?: string;      // e.g., "Martial Inspiration"
   attackCategory: AttackCategory;  // Whether this is a normal, special, or ability attack
   triggersOnNormalOnly?: boolean;  // If true, only triggers after normal attacks (not abilities)
 }
@@ -184,12 +205,25 @@ export interface DamageComponent {
 }
 
 /**
+ * Global multiplier info for abilities that apply damage multipliers
+ */
+export interface AbilityGlobalMultiplier {
+  multiplier: number;           // e.g., 1.99 for +99%
+  basePercentage: number;       // e.g., 33 for +33%
+  stacks: number;               // e.g., 3 for 3 attack turns
+  sourceName: string;           // e.g., "Martial Inspiration"
+}
+
+/**
  * Result of executing an active ability
  */
 export interface ActiveAbilityResult {
   abilityId: string;
   abilityName: string;
   category: AbilityCategory;
+
+  // Global multiplier from ability (shown in Global multiplier line)
+  globalMultiplier?: AbilityGlobalMultiplier;
 
   // For damage abilities (single damage type)
   damageResult?: DamageComponent;
@@ -267,6 +301,8 @@ export interface DisplayableAbilityBonus {
   toggleLabel?: string;     // e.g., "Killed enemy"
   sourceCharacterId?: string;  // For aura bonuses, the character providing the aura
   sourceCharacterName?: string;
+  attackTypeRestriction?: 'melee' | 'ranged';  // If set, only applies to this attack type
+  modifiers?: AbilityStatModifier;  // The actual modifiers to apply
 }
 
 /**
@@ -277,10 +313,19 @@ export interface AuraBonus {
   sourceAbilityId: string;  // The ability providing this aura
   sourceAbilityName: string;
   requiredTraits?: string[];  // Traits the target must have (e.g., ["RapidAssault", "Flying"])
+  requiredAlliance?: string;  // Alliance the target must have (e.g., "Chaos")
   requiresLowHealth?: boolean;  // If true, only applies below 50% health
   modifiers: AbilityStatModifier;
   toggleLabel: string;      // Label for the toggle
   bonusText: string;        // Display text for the bonus
+  attackTypeRestriction?: 'melee' | 'ranged';  // If set, only applies to this attack type
+  scalingContext?: {        // For auras that scale with source character's stats
+    sourceCharacterId: string;
+    baseBonus: number;
+    perStackBonus: number;
+    maxBonus: number;
+    maxStacks: number;
+  };
 }
 
 /**

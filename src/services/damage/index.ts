@@ -22,7 +22,6 @@
 // Types
 export {
   PIERCE_RATIOS,
-  DAMAGE_VARIANCE,
   type AttackerStats,
   type DefenderStats,
   type HitResult,
@@ -42,10 +41,6 @@ export {
 
 // Formulas (for direct use or testing)
 export {
-  calculateDamageVariance,
-  getMinDamageVariance,
-  getMaxDamageVariance,
-  getAvgDamageVariance,
   calculateArmorReduction,
   calculatePierceFloor,
   applyPierceMaximum,
@@ -53,9 +48,6 @@ export {
   calculateExpectedCritBonus,
   calculateEffectiveCritChance,
   calculateEffectiveCritDamage,
-  calculateBlockReduction,
-  calculateEffectiveBlockChance,
-  calculateEffectiveBlockDamage,
   calculateSingleHitDamage,
   calculateTotalDamage,
 } from './formulas';

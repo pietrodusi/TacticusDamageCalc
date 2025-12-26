@@ -3,43 +3,43 @@ import { Link } from 'react-router-dom';
 import { Play, RotateCcw, Trash2, PackageX } from 'lucide-react';
 import { useTeamStore } from '../stores/teamStore';
 import { useBattleStore } from '../stores/battleStore';
-import { TeamSlot } from '../components/battle';
-import type { ActionType, BattleCharacter, DamageTotals } from '../types';
+import { TeamSlot, BossSelector } from '../components/battle';
+import type { ActionType, BattleCharacter, BossRank } from '../types';
 import {
   BattleCharacterCard,
   BattleLog,
-  DamageSummary,
   BattleSummary,
+  BattleBossCard,
+  DamageSummary,
 } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
 import { abilityEndsTurn } from '../services/abilities';
+import { getBossAtRank } from '../services/dataService';
 
-// Helper to calculate damage bounds from log entries
-function calculateBoundsFromEntries(entries: TurnLogEntry[]): DamageTotals {
-  return entries.reduce(
-    (totals, entry) => {
-      if (entry.damageBreakdown) {
-        return {
-          lower: totals.lower + entry.damageBreakdown.lowerBound,
-          upper: totals.upper + entry.damageBreakdown.upperBound,
-          average: totals.average + entry.damageBreakdown.average,
-        };
-      } else if (entry.damage) {
-        // Fallback for entries without breakdown
-        return {
-          lower: totals.lower + entry.damage,
-          upper: totals.upper + entry.damage,
-          average: totals.average + entry.damage,
-        };
-      }
-      return totals;
-    },
-    { lower: 0, upper: 0, average: 0 }
-  );
+// Helper to calculate total damage from log entries
+function calculateDamageFromEntries(entries: TurnLogEntry[]): number {
+  return entries.reduce((total, entry) => {
+    if (entry.damageBreakdown) {
+      return total + entry.damageBreakdown.damage;
+    } else if (entry.damage) {
+      return total + entry.damage;
+    }
+    return total;
+  }, 0);
 }
 
 export function CalculatorPage() {
-  const { team, removeCharacter, clearTeam, clearAllEquipment } = useTeamStore();
+  const {
+    team,
+    removeCharacter,
+    clearTeam,
+    clearAllEquipment,
+    selectedBoss,
+    setSelectedBoss,
+    updateBossRank,
+    toggleBossModifiers,
+    clearBoss,
+  } = useTeamStore();
   const {
     battleState,
     startBattle,
@@ -57,7 +57,6 @@ export function CalculatorPage() {
     setEditingTurn,
     getActiveTurn,
     toggleAbility,
-    setLegendaryCommanderBuffAvailable,
     setIgnoreCrit,
     setCharacterTurnEnded,
   } = useBattleStore();
@@ -102,7 +101,11 @@ export function CalculatorPage() {
 
   const handleStartBattle = () => {
     if (team.length === 0) return;
-    startBattle(team);
+    // Get the boss data if one is selected (with or without modifiers based on setting)
+    const boss = selectedBoss
+      ? getBossAtRank(selectedBoss.bossId, selectedBoss.rank, selectedBoss.applyModifiers) ?? undefined
+      : undefined;
+    startBattle(team, boss);
     setBattleLog([]);
     setSelectedCharacterId(null);
   };
@@ -130,14 +133,14 @@ export function CalculatorPage() {
 
     const currentTurn = battleState.turn;
 
-    // Calculate damage bounds to subtract from this character's actions this turn
+    // Calculate damage to subtract from this character's actions this turn
     const characterEntries = battleLog.filter(
       entry => entry.characterId === characterId && entry.turn === currentTurn
     );
-    const boundsToSubtract = calculateBoundsFromEntries(characterEntries);
+    const damageToSubtract = calculateDamageFromEntries(characterEntries);
 
-    // Reset character turn in store (resets flags and subtracts damage bounds)
-    resetCharacterTurn(characterId, boundsToSubtract);
+    // Reset character turn in store (resets flags and subtracts damage)
+    resetCharacterTurn(characterId, damageToSubtract);
 
     // Remove this character's log entries for the current turn
     setBattleLog(prev => prev.filter(
@@ -148,14 +151,14 @@ export function CalculatorPage() {
   const handleUndoCharacterTurn = (characterId: string, turn: number) => {
     if (!battleState) return;
 
-    // Calculate damage bounds to subtract from this character's actions in the specified turn
+    // Calculate damage to subtract from this character's actions in the specified turn
     const characterEntries = battleLog.filter(
       entry => entry.characterId === characterId && entry.turn === turn
     );
-    const boundsToSubtract = calculateBoundsFromEntries(characterEntries);
+    const damageToSubtract = calculateDamageFromEntries(characterEntries);
 
     // Reset character turn in store (handles both current and past turns)
-    resetCharacterTurnAtTurn(characterId, turn, boundsToSubtract);
+    resetCharacterTurnAtTurn(characterId, turn, damageToSubtract);
 
     // Remove this character's log entries for the specified turn
     setBattleLog(prev => prev.filter(
@@ -236,8 +239,7 @@ export function CalculatorPage() {
             setCharacterActed(characterId, true);
             setCharacterTurnEnded(characterId, true);
           }
-          // Set LegendaryCommander buff available for next attack
-          setLegendaryCommanderBuffAvailable(true);
+          // LC hits buff activation is handled inside executeAbility
         }
         addAction(characterId, { type: 'ability', characterId });
 
@@ -329,6 +331,19 @@ export function CalculatorPage() {
               />
             ))}
           </div>
+
+          {/* Boss Selector */}
+          <div className="mt-6">
+            <BossSelector
+              selectedBossId={selectedBoss?.bossId ?? null}
+              selectedRank={selectedBoss?.rank ?? (13 as BossRank)}
+              applyModifiers={selectedBoss?.applyModifiers ?? true}
+              onSelectBoss={setSelectedBoss}
+              onUpdateRank={updateBossRank}
+              onToggleModifiers={toggleBossModifiers}
+              onClearBoss={clearBoss}
+            />
+          </div>
         </div>
 
         {/* Start Battle Button */}
@@ -397,9 +412,11 @@ export function CalculatorPage() {
       </div>
 
       {/* Damage Summary */}
-      <DamageSummary battleState={battleState} />
+      {!battleState.isComplete && (
+        <DamageSummary battleState={battleState} />
+      )}
 
-      {/* Next Turn / Finish Battle Button - below damage recap */}
+      {/* Next Turn / Finish Battle Button */}
       {!battleState.isComplete && (
         <div className="flex justify-center">
           <button
@@ -425,7 +442,6 @@ export function CalculatorPage() {
                   character={effectiveCharacter}
                   team={battleState.team}
                   isSelected={selectedCharacterId === character.id}
-                  legendaryCommanderBuffAvailable={battleState.legendaryCommanderBuffAvailable}
                   currentTurn={battleState.turn}
                   onSelect={() =>
                     setSelectedCharacterId(
@@ -441,8 +457,20 @@ export function CalculatorPage() {
           </div>
         </div>
 
-        {/* Battle Log */}
+        {/* Right Column: Boss Card + Battle Log */}
         <div className="space-y-3">
+          {/* Boss Card - shown if boss is selected */}
+          {battleState.boss && (
+            <>
+              <h2 className="text-lg font-semibold text-gray-100">Enemy Boss</h2>
+              <BattleBossCard
+                boss={battleState.boss}
+                totalDamageDealt={battleState.totalDamageDealt}
+              />
+            </>
+          )}
+
+          {/* Battle Log */}
           <h2 className="text-lg font-semibold text-gray-100">Battle Log</h2>
           <div className="card p-4">
             <BattleLog
@@ -461,7 +489,6 @@ export function CalculatorPage() {
         <BattleSummary
           team={battleState.team}
           totalDamage={battleState.totalDamageDealt}
-          totalDamageBounds={battleState.totalDamageBounds}
           onReset={handleResetBattle}
         />
       )}

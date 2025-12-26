@@ -1,0 +1,47 @@
+{
+    "GuildBoss1Boss1TyranTervigonLeviathan": {
+		"traits": ["Synapse", "ShadowInTheWarp", "Psyker", "BigTarget", "Immune"]
+    },
+    "GuildBoss1Boss2TyranTervigonKronos": {
+		"traits": ["Synapse", "ShadowInTheWarp", "Psyker", "BigTarget", "Immune"]
+    },
+    "GuildBoss1Boss3TyranTervigonGorgon": {
+		"traits": ["Synapse", "ShadowInTheWarp", "Psyker", "BigTarget", "Immune"]
+    },
+    "GuildBoss2Boss1TyranHiveTyrantLeviathan": {
+		"traits": ["Synapse", "ShadowInTheWarp", "Psyker", "BigTarget", "Immune", "Flying"]
+    },
+    "GuildBoss2Boss2TyranHiveTyrantKronos": {
+		"traits": ["Synapse", "ShadowInTheWarp", "Psyker", "BigTarget", "Immune", "Flying"]
+    },
+    "GuildBoss2Boss3TyranHiveTyrantGorgon": {
+		"traits": ["Synapse", "ShadowInTheWarp", "Psyker", "BigTarget", "Immune", "Flying"]
+    },
+    "GuildBoss3Boss1NecroSilentKing": {
+		"traits": ["BigTarget", "Immune", "Mechanical"]
+    },
+    "GuildBoss4Boss1OrksGhazghkull": {
+		"traits": ["BigTarget", "Dakka", "Immune", "Mechanical"]
+    },
+    "GuildBoss5Boss1DeathMortarion": {
+		"traits": ["Immune", "ContagionsOfNurgle", "Daemon", "Flying", "Psyker", "BigTarget"]
+    },
+    "GuildBoss6Boss1TyranScreamerKiller": {
+		"traits": ["Immune", "BigTarget", "InstinctiveBehaviour", "SuppressiveFire"]
+    },
+    "GuildBoss7Boss1AstraRogaldorn": {
+		"traits": ["Immune", "BigTarget", "Mechanical", "Vehicle"]
+    },
+    "GuildBoss8Boss1EldarAvatar": {
+		"traits": ["Immune", "BigTarget", "Daemon"]
+    },
+    "GuildBoss9Boss1ThousMagnus": {
+		"traits": ["Immune", "WeaverOfFate", "BigTarget", "Daemon", "Flying", "Psyker"]
+    },
+    "GuildBoss10Boss1AdmecBelisarius": {
+		"traits": ["Immune", "BigTarget", "Mechanical"]
+    },
+    "GuildBoss11Boss1TauRiptide": {
+		"traits": ["Immune", "BigTarget", "Flying", "IndirectFire", "Vehicle", "Mechanical"]
+    }
+}

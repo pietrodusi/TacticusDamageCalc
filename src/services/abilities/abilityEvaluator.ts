@@ -22,6 +22,7 @@ export function combineModifiers(modifiers: AbilityStatModifier[]): AbilityStatM
   const combined: AbilityStatModifier = {
     baseDamageBonus: 0,
     baseDamageMultiplier: 1,
+    globalDamageBonus: 0,
     extraHits: 0,
     critChanceBonus: 0,
     critDamageBonus: 0,
@@ -31,6 +32,9 @@ export function combineModifiers(modifiers: AbilityStatModifier[]): AbilityStatM
     // Additive bonuses
     if (mod.baseDamageBonus) {
       combined.baseDamageBonus! += mod.baseDamageBonus;
+    }
+    if (mod.globalDamageBonus) {
+      combined.globalDamageBonus! += mod.globalDamageBonus;
     }
     if (mod.extraHits) {
       combined.extraHits! += mod.extraHits;
