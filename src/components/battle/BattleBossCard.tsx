@@ -5,11 +5,13 @@ import { getBossRankDisplayName } from '../../services/dataService';
 interface BattleBossCardProps {
   boss: Boss;
   totalDamageDealt: number;
+  bossArmorReduction?: number;
 }
 
 export function BattleBossCard({
   boss,
   totalDamageDealt,
+  bossArmorReduction = 0,
 }: BattleBossCardProps) {
   const remainingHealth = Math.max(0, boss.health - totalDamageDealt);
   const healthPercentage = (remainingHealth / boss.health) * 100;
@@ -77,7 +79,16 @@ export function BattleBossCard({
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="px-2 py-0.5 bg-gray-700/60 text-gray-300 rounded flex items-center gap-1">
               <Shield size={12} />
-              {boss.armor} Armor
+              {bossArmorReduction > 0 ? (
+                <>
+                  <span className="line-through text-gray-500">{boss.armor}</span>
+                  <span className="text-yellow-400">{Math.max(0, boss.armor - bossArmorReduction)}</span>
+                  <span className="text-yellow-400/70">(-{bossArmorReduction})</span>
+                  Armor
+                </>
+              ) : (
+                <>{boss.armor} Armor</>
+              )}
             </span>
             <span className="px-2 py-0.5 bg-red-900/40 text-red-300 rounded flex items-center gap-1">
               <Sword size={12} />

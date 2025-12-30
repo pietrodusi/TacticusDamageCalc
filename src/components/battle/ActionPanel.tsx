@@ -1,4 +1,4 @@
-import { Move, Sparkles, Clock } from 'lucide-react';
+import { Move, Sparkles, Clock, Wrench } from 'lucide-react';
 import type { BattleCharacter, ActionType } from '../../types';
 import { getDamageTypeImageUrl } from '../../services/dataService';
 import { getAbilityNameSync, getAbilityValues, executeActiveAbility, classifyAbility, isAbilityReady, getCooldownDisplayText, getFormattedAbilityDescription } from '../../services/abilities';
@@ -11,6 +11,7 @@ interface ActionPanelProps {
 export function ActionPanel({ character, onAction }: ActionPanelProps) {
   const hasRanged = character.rangedHits !== undefined && character.rangedHits > 0;
   const hasActiveAbility = character.activeAbilities.length > 0;
+  const hasMechanicTrait = character.traits.includes('Mechanic');
 
   // Get active ability info
   const activeAbilityId = character.activeAbilities[0];
@@ -167,7 +168,7 @@ export function ActionPanel({ character, onAction }: ActionPanelProps) {
       </div>
 
       {/* Other Actions */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className={`grid gap-2 ${hasMechanicTrait ? 'grid-cols-4' : 'grid-cols-3'}`}>
         {/* Move */}
         <button
           onClick={() => !isTurnEnded && !character.hasMoved && onAction('move')}
@@ -179,6 +180,21 @@ export function ActionPanel({ character, onAction }: ActionPanelProps) {
           <Move size={18} />
           <span className="text-xs font-medium">Move</span>
         </button>
+
+        {/* Repair (only for Mechanic trait) */}
+        {hasMechanicTrait && (
+          <button
+            onClick={() => !isTurnEnded && !character.hasActed && onAction('repair')}
+            disabled={isTurnEnded || character.hasActed}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              isTurnEnded || character.hasActed ? disabledClasses : 'hover:bg-cyan-900/50 hover:border-cyan-600 text-cyan-500'
+            }`}
+            title="Repair a friendly Mechanical unit"
+          >
+            <Wrench size={18} />
+            <span className="text-xs font-medium">Repair</span>
+          </button>
+        )}
 
         {/* Ability */}
         <button

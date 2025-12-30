@@ -122,6 +122,22 @@ const TRAIT_EFFECTS: Record<string, TraitEffect> = {
       return { applicable: true, multiplier: 1.20, reason: `Target is ${targetType}` };
     },
   },
+  RangedSpecialist: {
+    check: (ctx) => {
+      // RangedSpecialist: +33% ranged damage when NOT adjacent to enemy
+      if (ctx.attackType !== 'ranged') {
+        return { applicable: false, multiplier: 1, reason: 'Only applies to ranged attacks' };
+      }
+
+      // If adjacent to enemy, no bonus (positional bonuses like Position apply instead)
+      const isAdjacentToEnemy = ctx.abilityToggles?.['RangedSpecialist_adjacentToEnemy'] ?? false;
+      if (isAdjacentToEnemy) {
+        return { applicable: false, multiplier: 1, reason: 'Adjacent to enemy' };
+      }
+
+      return { applicable: true, multiplier: 1.33, reason: 'Not adjacent to enemy' };
+    },
+  },
 };
 
 /**

@@ -1,13 +1,15 @@
 import { User, Trophy } from 'lucide-react';
-import type { BattleCharacter } from '../../types';
+import type { BattleCharacter, Turn } from '../../types';
+import { DamagePerTurnChart } from './DamagePerTurnChart';
 
 interface BattleSummaryProps {
   team: BattleCharacter[];
   totalDamage: number;
+  turnHistory: Turn[];
   onReset: () => void;
 }
 
-export function BattleSummary({ team, totalDamage, onReset }: BattleSummaryProps) {
+export function BattleSummary({ team, totalDamage, turnHistory, onReset }: BattleSummaryProps) {
   // Sort characters by damage dealt (highest first)
   const sortedTeam = [...team].sort((a, b) => b.totalDamageDealt - a.totalDamageDealt);
 
@@ -33,6 +35,11 @@ export function BattleSummary({ team, totalDamage, onReset }: BattleSummaryProps
           </p>
         </div>
       </div>
+
+      {/* Cumulative Damage Chart */}
+      {turnHistory.length > 0 && (
+        <DamagePerTurnChart turnHistory={turnHistory} team={team} />
+      )}
 
       {/* Character Damage Breakdown */}
       <div className="card p-4">

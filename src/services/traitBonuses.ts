@@ -153,6 +153,26 @@ const TRAIT_BONUS_DEFINITIONS: Record<string, TraitBonusDefinition> = {
       };
     },
   },
+  RangedSpecialist: {
+    compute: (character) => {
+      // Only show if character has ranged attack
+      if (!character.rangedHits) return null;
+
+      // RangedSpecialist: +33% ranged damage when NOT adjacent to enemy
+      // Active when the "Started turn adjacent to enemy" toggle is NOT checked
+      const isAdjacentToEnemy = character.abilityToggles['RangedSpecialist_adjacentToEnemy'] ?? false;
+      const isActive = !isAdjacentToEnemy;
+
+      return {
+        traitId: 'RangedSpecialist',
+        traitName: getTraitName('RangedSpecialist'),
+        bonusText: '+33% ranged',
+        isActive,
+        reason: isActive ? 'Not adjacent to enemy' : 'Adjacent to enemy',
+        colorClass: isActive ? 'text-green-400' : 'text-gray-500',
+      };
+    },
+  },
 };
 
 /**

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Play, RotateCcw, Trash2, PackageX } from 'lucide-react';
 import { useTeamStore } from '../stores/teamStore';
@@ -11,9 +11,11 @@ import {
   BattleSummary,
   BattleBossCard,
   DamageSummary,
+  RepairTargetModal,
+  AttackTypeModal,
 } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
-import { abilityEndsTurn } from '../services/abilities';
+import { abilityEndsTurn, getAbilityValues } from '../services/abilities';
 import { getBossAtRank } from '../services/dataService';
 
 // Helper to calculate total damage from log entries
@@ -59,10 +61,31 @@ export function CalculatorPage() {
     toggleAbility,
     setIgnoreCrit,
     setCharacterTurnEnded,
+    executeRepairWithGalvanicField,
   } = useBattleStore();
 
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [battleLog, setBattleLog] = useState<TurnLogEntry[]>([]);
+  const battleSummaryRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to battle summary when battle is complete
+  useEffect(() => {
+    if (battleState?.isComplete && battleSummaryRef.current) {
+      battleSummaryRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [battleState?.isComplete]);
+
+  // Repair modal state (for Actus's Mechanic trait and DefendTheDivineWork)
+  const [repairModalOpen, setRepairModalOpen] = useState(false);
+  const [attackTypeModalOpen, setAttackTypeModalOpen] = useState(false);
+  const [repairContext, setRepairContext] = useState<{
+    repairerId: string;
+    repairType: 'mechanic' | 'ddw';
+    healAmount: number;
+    selectedTargets: string[];
+    attackTypeChoices: Record<string, 'melee' | 'ranged'>;
+    pendingAttackChoiceTargets: string[];
+  } | null>(null);
 
   // Get the active turn (editing turn or current turn)
   const activeTurn = getActiveTurn();
@@ -117,11 +140,16 @@ export function CalculatorPage() {
   };
 
   const handleNextTurn = () => {
+    if (!battleState) return;
+
+    // Filter log entries for the current turn to pass to turnHistory
+    const currentTurnLog = battleLog.filter(entry => entry.turn === battleState.turn);
+
     // On turn 6, finish the battle instead of going to turn 7
-    if (battleState?.turn === 6) {
-      finishBattle();
+    if (battleState.turn === 6) {
+      finishBattle(currentTurnLog);
     } else {
-      nextTurn();
+      nextTurn(currentTurnLog);
     }
     setSelectedCharacterId(null);
   };
@@ -230,6 +258,24 @@ export function CalculatorPage() {
         // Execute ability and get damage result
         const abilityId = character.activeAbilities[0];
 
+        // Special handling for DefendTheDivineWork - opens repair modal for multi-target selection
+        if (abilityId === 'DefendTheDivineWork') {
+          const ddwLevelIndex = character.abilityLevels?.['DefendTheDivineWork'] ?? 54;
+          const ddwValues = getAbilityValues('DefendTheDivineWork', ddwLevelIndex);
+          const hpToRepair = (ddwValues?.hpToRepair as number) || 0;
+
+          setRepairContext({
+            repairerId: characterId,
+            repairType: 'ddw',
+            healAmount: hpToRepair,
+            selectedTargets: [],
+            attackTypeChoices: {},
+            pendingAttackChoiceTargets: [],
+          });
+          setRepairModalOpen(true);
+          break;
+        }
+
         // Only modify current turn flags if not editing past turn
         if (!isEditingPastTurn) {
           // Check if this ability ends the turn
@@ -281,7 +327,137 @@ export function CalculatorPage() {
           },
         ]);
         break;
+
+      case 'repair': {
+        // Open repair target modal for Mechanic trait
+        // Calculate heal amount: character's damage × max(meleeHits, rangedHits)
+        const maxHits = Math.max(character.meleeHits, character.rangedHits || 0);
+        const healAmount = character.calculatedDamage * maxHits;
+
+        setRepairContext({
+          repairerId: characterId,
+          repairType: 'mechanic',
+          healAmount,
+          selectedTargets: [],
+          attackTypeChoices: {},
+          pendingAttackChoiceTargets: [],
+        });
+        setRepairModalOpen(true);
+        break;
+      }
     }
+  };
+
+  // Helper to check if character has both melee and ranged attacks
+  const hasBothAttacks = (char: BattleCharacter) => {
+    const hasMelee = char.meleeHits > 0;
+    const hasRanged = char.rangedHits !== undefined && char.rangedHits > 0;
+    return hasMelee && hasRanged;
+  };
+
+  // Handle repair target selection
+  const handleRepairTargetConfirm = (targetIds: string[]) => {
+    if (!repairContext || !battleState) return;
+
+    const repairer = battleState.team.find(c => c.id === repairContext.repairerId);
+    if (!repairer) return;
+
+    // Find targets that need attack type choice (non-self with both melee and ranged)
+    const pendingAttackChoiceTargets = targetIds.filter(targetId => {
+      if (targetId === repairContext.repairerId) return false; // Self-repair doesn't trigger attack
+      const target = battleState.team.find(c => c.id === targetId);
+      return target && hasBothAttacks(target);
+    });
+
+    // Set default attack type for targets without both attacks (melee by default)
+    const attackTypeChoices: Record<string, 'melee' | 'ranged'> = {};
+    targetIds.forEach(targetId => {
+      if (targetId === repairContext.repairerId) return; // Skip self
+      const target = battleState.team.find(c => c.id === targetId);
+      if (target && !hasBothAttacks(target)) {
+        // Default to melee, or ranged if no melee
+        attackTypeChoices[targetId] = target.meleeHits > 0 ? 'melee' : 'ranged';
+      }
+    });
+
+    setRepairContext({
+      ...repairContext,
+      selectedTargets: targetIds,
+      attackTypeChoices,
+      pendingAttackChoiceTargets,
+    });
+
+    setRepairModalOpen(false);
+
+    // If there are attack type choices needed, open the modal
+    if (pendingAttackChoiceTargets.length > 0) {
+      setAttackTypeModalOpen(true);
+    } else {
+      // No choices needed, execute repair immediately
+      executeRepairAction(targetIds, attackTypeChoices);
+    }
+  };
+
+  // Handle attack type selection for Galvanic Field
+  const handleAttackTypeSelect = (attackType: 'melee' | 'ranged') => {
+    if (!repairContext || repairContext.pendingAttackChoiceTargets.length === 0) return;
+
+    const currentTargetId = repairContext.pendingAttackChoiceTargets[0];
+    const remainingTargets = repairContext.pendingAttackChoiceTargets.slice(1);
+    const updatedChoices = {
+      ...repairContext.attackTypeChoices,
+      [currentTargetId]: attackType,
+    };
+
+    if (remainingTargets.length > 0) {
+      // More choices needed
+      setRepairContext({
+        ...repairContext,
+        attackTypeChoices: updatedChoices,
+        pendingAttackChoiceTargets: remainingTargets,
+      });
+    } else {
+      // All choices made, execute repair
+      setAttackTypeModalOpen(false);
+      executeRepairAction(repairContext.selectedTargets, updatedChoices);
+    }
+  };
+
+  // Execute the repair action with Galvanic Field
+  const executeRepairAction = (targetIds: string[], attackTypeChoices: Record<string, 'melee' | 'ranged'>) => {
+    if (!repairContext || !battleState) return;
+
+    const targetTurn = activeTurn;
+
+    // Only modify current turn flags if not editing past turn
+    if (!isEditingPastTurn) {
+      setCharacterActed(repairContext.repairerId, true);
+      setCharacterTurnEnded(repairContext.repairerId, true);
+    }
+
+    // Execute repair and get log entries
+    const logEntries = executeRepairWithGalvanicField(
+      repairContext.repairerId,
+      targetIds,
+      repairContext.healAmount,
+      attackTypeChoices
+    );
+
+    // Add to battle log
+    setBattleLog((prev) => [
+      ...prev,
+      ...logEntries.map(entry => ({ ...entry, turn: targetTurn })),
+    ]);
+
+    // Clear repair context
+    setRepairContext(null);
+  };
+
+  // Cancel repair action
+  const handleRepairCancel = () => {
+    setRepairModalOpen(false);
+    setAttackTypeModalOpen(false);
+    setRepairContext(null);
   };
 
   // Team setup mode
@@ -423,7 +599,7 @@ export function CalculatorPage() {
             onClick={handleNextTurn}
             className="btn-primary flex items-center gap-2 px-6 py-3"
           >
-            {isLastTurn ? 'Finish Battle' : 'Next Turn →'}
+            {isLastTurn ? 'Finish Battle' : `End Turn ${battleState.turn} →`}
           </button>
         </div>
       )}
@@ -466,6 +642,7 @@ export function CalculatorPage() {
               <BattleBossCard
                 boss={battleState.boss}
                 totalDamageDealt={battleState.totalDamageDealt}
+                bossArmorReduction={battleState.bossArmorReduction}
               />
             </>
           )}
@@ -477,6 +654,7 @@ export function CalculatorPage() {
               entries={battleLog}
               currentTurn={battleState.turn}
               editingTurn={editingTurn}
+              isComplete={battleState.isComplete}
               onUndoCharacterTurn={handleUndoCharacterTurn}
               onEditTurn={setEditingTurn}
             />
@@ -486,10 +664,36 @@ export function CalculatorPage() {
 
       {/* Battle Summary - shown when complete */}
       {battleState.isComplete && (
-        <BattleSummary
+        <div ref={battleSummaryRef}>
+          <BattleSummary
+            team={battleState.team}
+            totalDamage={battleState.totalDamageDealt}
+            turnHistory={battleState.turnHistory}
+            onReset={handleResetBattle}
+          />
+        </div>
+      )}
+
+      {/* Repair Target Modal (Actus's Mechanic trait) */}
+      {repairContext && (
+        <RepairTargetModal
+          isOpen={repairModalOpen}
+          onClose={handleRepairCancel}
+          repairer={battleState.team.find(c => c.id === repairContext.repairerId)!}
           team={battleState.team}
-          totalDamage={battleState.totalDamageDealt}
-          onReset={handleResetBattle}
+          repairType={repairContext.repairType}
+          repairAmount={repairContext.healAmount}
+          onConfirm={handleRepairTargetConfirm}
+        />
+      )}
+
+      {/* Attack Type Modal (Galvanic Field attack type choice) */}
+      {repairContext && repairContext.pendingAttackChoiceTargets.length > 0 && (
+        <AttackTypeModal
+          isOpen={attackTypeModalOpen}
+          onClose={handleRepairCancel}
+          attacker={battleState.team.find(c => c.id === repairContext.pendingAttackChoiceTargets[0])!}
+          onSelect={handleAttackTypeSelect}
         />
       )}
     </div>

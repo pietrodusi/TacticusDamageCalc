@@ -22,7 +22,7 @@ import {
   calculateArmorReduction,
   calculatePierceFloor,
   applyPierceMaximum,
-  calculateExpectedCrits,
+  calculateExpectedCritsWithOffset,
   calculateEffectiveCritChance,
   calculateEffectiveCritDamage,
   calculateTotalDamage,
@@ -110,10 +110,12 @@ export class DamageCalculator {
     let abilityCritDamageBonus = 0;
     let extraHits = 0;
     let globalDamageBonus = 0;
+    let armorIgnored = 0;
     const critChanceSources: BuffSource[] = [];
     const critDamageSources: BuffSource[] = [];
     const extraHitsSources: BuffSource[] = [];
     const globalDamageBonusSources: BuffSource[] = [];
+    const armorIgnoredSources: BuffSource[] = [];
 
     if (attacker.abilityModifiers) {
       const mods = attacker.abilityModifiers;
@@ -208,6 +210,24 @@ export class DamageCalculator {
         }
         this.log('FLAT_MODIFIERS', 'Crit Damage Bonus', `+${mods.critDamageBonus}`);
       }
+
+      // Armor ignored - track sources
+      if (mods.armorIgnored) {
+        armorIgnored += mods.armorIgnored;
+        // Track sources from buffSources with individual values
+        if (mods.buffSources) {
+          for (const source of mods.buffSources) {
+            if (source.armorIgnored && source.armorIgnored > 0) {
+              armorIgnoredSources.push({
+                name: source.name,
+                sourceName: source.sourceName,
+                armorIgnored: source.armorIgnored,
+              });
+            }
+          }
+        }
+        this.log('FLAT_MODIFIERS', 'Armor Ignored', `-${mods.armorIgnored} armor`);
+      }
     }
 
     // === STEP 2: Calculate Effective Crit Stats ===
@@ -226,14 +246,25 @@ export class DamageCalculator {
       critDamageTotalBonus
     );
 
-    // Calculate expected number of crits using streak formula
-    // If ignoreCrit is true, treat as 0 expected crits
-    const expectedCrits = attacker.ignoreCrit ? 0 : calculateExpectedCrits(effectiveCritChance, effectiveHits);
+    // Calculate expected number of crits using streak formula with offset
+    // critChainOffset is the number of hits from previous attacks in the crit chain
+    // startIndex = offset + 1 (1-indexed, so first hit is 1, not 0)
+    const critChainStartIndex = (attacker.critChainOffset ?? 0) + 1;
+    const expectedCrits = attacker.ignoreCrit
+      ? 0
+      : calculateExpectedCritsWithOffset(effectiveCritChance, effectiveHits, critChainStartIndex);
 
     this.log('CRIT', 'Effective Crit Chance', `${(effectiveCritChance * 100).toFixed(1)}%`);
     this.log('CRIT', 'Effective Crit Damage', effectiveCritDamage);
     this.log('CRIT', 'Expected Crits (streak)', expectedCrits.toFixed(3));
-    this.log('CRIT', 'Streak Formula', `E[crits] = ${(effectiveCritChance * 100).toFixed(0)}% × (1 - ${(effectiveCritChance * 100).toFixed(0)}%^${effectiveHits}) / (1 - ${(effectiveCritChance * 100).toFixed(0)}%)`);
+
+    // Show streak formula with chain offset info
+    if (critChainStartIndex > 1) {
+      const endIndex = critChainStartIndex + effectiveHits - 1;
+      this.log('CRIT', 'Streak Formula', `E[crits] = ${(effectiveCritChance * 100).toFixed(0)}%^${critChainStartIndex} + ... + ${(effectiveCritChance * 100).toFixed(0)}%^${endIndex} (chain: hits ${critChainStartIndex}-${endIndex})`);
+    } else {
+      this.log('CRIT', 'Streak Formula', `E[crits] = ${(effectiveCritChance * 100).toFixed(0)}% × (1 - ${(effectiveCritChance * 100).toFixed(0)}%^${effectiveHits}) / (1 - ${(effectiveCritChance * 100).toFixed(0)}%)`);
+    }
     if (attacker.ignoreCrit) {
       this.log('CRIT', 'Ignore Crit', 'Crit not applied to damage');
     }
@@ -253,17 +284,26 @@ export class DamageCalculator {
     // === STEP 4: Apply Armor/Pierce to BOTH paths ===
     const pierceRatio = PIERCE_RATIOS[attacker.damageType];
 
+    // Calculate effective armor (reduced by armor ignored, min 0)
+    const effectiveArmor = Math.max(0, defender.armor - armorIgnored);
+
     // Non-crit path (d0)
-    const afterArmor0 = calculateArmorReduction(damVarMod0, defender.armor);
+    const afterArmor0 = calculateArmorReduction(damVarMod0, effectiveArmor);
     const pierceFloor0 = calculatePierceFloor(damVarMod0, attacker.damageType);
     const d0 = applyPierceMaximum(afterArmor0, pierceFloor0);
 
     // Crit path (d1)
-    const afterArmor1 = calculateArmorReduction(damVarMod1, defender.armor);
+    const afterArmor1 = calculateArmorReduction(damVarMod1, effectiveArmor);
     const pierceFloor1 = calculatePierceFloor(damVarMod1, attacker.damageType);
     const d1 = applyPierceMaximum(afterArmor1, pierceFloor1);
 
-    this.log('ARMOR_PIERCE', 'Target Armor', defender.armor);
+    if (armorIgnored > 0) {
+      this.log('ARMOR_PIERCE', 'Target Armor', defender.armor);
+      this.log('ARMOR_PIERCE', 'Armor Ignored', `-${armorIgnored}`);
+      this.log('ARMOR_PIERCE', 'Effective Armor', effectiveArmor);
+    } else {
+      this.log('ARMOR_PIERCE', 'Target Armor', defender.armor);
+    }
     this.log('ARMOR_PIERCE', `Pierce Ratio (${attacker.damageType})`, `${(pierceRatio * 100).toFixed(0)}%`);
     this.log('ARMOR_PIERCE', 'd0 (non-crit): MAX(' + afterArmor0.toFixed(0) + ', ' + pierceFloor0 + ')', d0.toFixed(2));
     this.log('ARMOR_PIERCE', 'd1 (crit): MAX(' + afterArmor1.toFixed(0) + ', ' + pierceFloor1 + ')', d1.toFixed(2));
@@ -400,6 +440,7 @@ export class DamageCalculator {
 
       // Expected crits
       expectedCrits,
+      expectedCritsStartIndex: critChainStartIndex,
 
       // Legacy fields for backwards compatibility
       critBonus,
@@ -412,6 +453,9 @@ export class DamageCalculator {
       globalMultiplierSources,
       globalDamageBonus,
       globalDamageBonusSources,
+      armorIgnored,
+      armorIgnoredSources,
+      effectiveArmor,
 
       // Stats
       attackerStats: attacker,

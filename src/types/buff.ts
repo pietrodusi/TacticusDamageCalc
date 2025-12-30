@@ -47,7 +47,8 @@ export interface PooledBuffEffect {
   extraHits?: number;
   critChanceBonus?: number;
   critDamageBonus?: number;
-  // Future: armor, movement, etc.
+  armorIgnored?: number;  // Reduces target armor before damage calculation
+  attackType?: 'melee' | 'ranged';  // Restrict buff to specific attack type
 }
 
 // A buff instance in the pool
@@ -93,4 +94,8 @@ export interface BuffTemplate {
 
   // If true, buff is consumed (removed) after being used once
   consumeOnUse?: boolean;
+
+  // Toggle IDs this buff requires (e.g., 'adjacentToBoss')
+  // Used to show/hide toggles based on team composition
+  requiredToggles?: string[];
 }

@@ -97,6 +97,9 @@ export interface AbilityStatModifier {
   // Hit bonuses
   extraHits?: number;              // Additional hits per attack
 
+  // Armor reduction
+  armorIgnored?: number;           // Reduces target armor before damage calculation
+
   // Crit bonuses
   critChanceBonus?: number;        // +% crit chance (percentage points)
   critDamageBonus?: number;        // Flat crit damage bonus
@@ -140,6 +143,10 @@ export interface AbilityContext {
   // Laviscus's Refusal to be Outdone passive
   outrage?: number;  // Accumulated outrage value from ally attacks
   outrageContributorCount?: number;  // Number of Chaos characters that contributed to outrage
+
+  // Boss state (for abilities that check boss traits/debuffs)
+  bossTraits?: string[];  // Boss traits (e.g., "Mechanical", "BigTarget")
+  bossDebuffs?: string[];  // Boss debuffs (e.g., "Markerlight")
 }
 
 /**
@@ -167,6 +174,15 @@ export interface FollowUpAttack {
   multiplierSourceName?: string;      // e.g., "Martial Inspiration"
   attackCategory: AttackCategory;  // Whether this is a normal, special, or ability attack
   triggersOnNormalOnly?: boolean;  // If true, only triggers after normal attacks (not abilities)
+  triggersOnMeleeOnly?: boolean;  // If true, only triggers after melee attacks (for WayOfTheShortBlade)
+  useCharacterRangedStats?: boolean;  // If true, use character's normal ranged attack stats instead of values here
+  followUpAttackType?: 'melee' | 'ranged';  // Explicit attack type for buff evaluation (defaults to 'melee')
+  // If true, this attack shares a crit chain with the triggering attack (Additional Attack)
+  // The crit formula will use hit indices starting after the source attack's hits
+  // E.g., source attack has 4 hits, this attack has 3 hits -> uses hit indices 5-7
+  sharesCritChain?: boolean;
+  // Permanent boss armor reduction (for ChampionOfTheFeast)
+  armorReduction?: number;
 }
 
 /**

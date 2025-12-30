@@ -1,6 +1,7 @@
 // Buff Registry - Templates for all buff types
 
 import type { BuffTemplate } from '../../types/buff';
+import type { BattleCharacter } from '../../types';
 
 /**
  * WarHowl buff template (Ragnar)
@@ -73,6 +74,7 @@ export const legendaryCommanderDamageBuffTemplate: BuffTemplate = {
     baseDamageBonus: (values.extraDmg as number) || 0,
   }),
   // No duration - permanent aura-style buff (evaluated each attack)
+  requiredToggles: ['adjacentToBoss'],
 };
 
 /**
@@ -113,6 +115,7 @@ export const legendaryCommanderHitsBuffTemplate: BuffTemplate = {
     extraHits: (values.nrOfHits as number) || 2,
   }),
   // No duration - permanent aura-style buff (evaluated each attack)
+  requiredToggles: ['adjacentToBoss'],
 };
 
 /**
@@ -135,6 +138,85 @@ export const euphoricStrikesBuffTemplate: BuffTemplate = {
   consumeOnUse: true,  // Remove after first attack uses it
 };
 
+/**
+ * ExemplarOfTheMontka buff template (Farsight)
+ * Grants +extraDmg_2 to all normal attacks by characters that have ranged attacks
+ * (Using extraDmg_2 since bosses are always BigTarget)
+ * Duration: 1 turn (until end of turn)
+ */
+export const exemplarOfTheMontkaBuffTemplate: BuffTemplate = {
+  buffId: 'exemplar_of_the_montka',
+  name: "Exemplar of the Mont'ka",
+  sourceAbilityId: 'ExemplarOfTheMontka',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, _buff) => {
+      // Only applies to normal attacks (not abilities)
+      if (context.attackCategory !== 'normal') return false;
+
+      // Only applies to characters that have ranged attacks
+      const hasRangedAttack = context.attacker.rangedHits !== undefined && context.attacker.rangedHits > 0;
+      return hasRangedAttack;
+    },
+  },
+  getEffects: (values) => {
+    // Use extraDmg_2 (BigTarget bonus) since bosses are always BigTarget
+    return {
+      baseDamageBonus: (values.extraDmg_2 as number) || 0,
+    };
+  },
+  duration: 1,
+};
+
+/**
+ * WayOfTheShortBlade aura buff template (Farsight passive)
+ * Grants armor ignore + damage % bonus to teammates' normal ranged attacks
+ * Condition: Character is within range 2 of enemy that is adjacent to friendly
+ * Only applies to non-Psychic attacks
+ */
+export const wayOfTheShortBladeAuraBuffTemplate: BuffTemplate = {
+  buffId: 'way_of_the_short_blade_aura',
+  name: 'Way of the Short Blade',
+  sourceAbilityId: 'WayOfTheShortBlade',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      // Does NOT apply to Farsight himself
+      if (context.attacker.id === buff.sourceCharacterId) return false;
+
+      // Only applies to normal ranged attacks
+      if (context.attackType !== 'ranged') return false;
+      if (context.attackCategory !== 'normal') return false;
+
+      // Check if character has ranged attacks
+      const hasRangedAttack = context.attacker.rangedHits !== undefined && context.attacker.rangedHits > 0;
+      if (!hasRangedAttack) return false;
+
+      // Don't apply to Psychic attacks
+      if (context.attacker.rangedDamageType === 'Psychic') return false;
+
+      // Check condition: within range 2 of adjacent enemy
+      // This is controlled by a toggle on the character
+      const toggleId = `WayOfTheShortBlade_${buff.sourceCharacterId}_range2`;
+      const isInRange = context.attacker.abilityToggles?.[toggleId] ?? false;
+      if (!isInRange) return false;
+
+      // Check condition: enemy is adjacent to a friendly character
+      // Reuse the "adjacentToBoss" toggle for this (since we're checking if any friendly is adjacent to boss)
+      const anyFriendlyAdjacent = context.battleState.team.some(
+        c => c.abilityToggles?.['adjacentToBoss']
+      );
+      return anyFriendlyAdjacent;
+    },
+  },
+  getEffects: (values) => ({
+    armorIgnored: (values.armorIgnored as number) || 0,
+    baseDamageMultiplier: 1 + ((values.extraDmgPct as number) || 0) / 100,
+  }),
+  // No duration - permanent aura-style buff (evaluated each attack)
+  requiredToggles: ['adjacentToBoss'],
+};
+
 // Registry of all buff templates by ability ID
 export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   WarHowl: warHowlBuffTemplate,
@@ -143,6 +225,9 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   legendary_commander_damage: legendaryCommanderDamageBuffTemplate,
   legendary_commander_hits: legendaryCommanderHitsBuffTemplate,
   EuphoricStrikes: euphoricStrikesBuffTemplate,
+  ExemplarOfTheMontka: exemplarOfTheMontkaBuffTemplate,
+  // WayOfTheShortBlade aura is a permanent buff, registered by buff ID
+  way_of_the_short_blade_aura: wayOfTheShortBladeAuraBuffTemplate,
 };
 
 /**
@@ -157,4 +242,29 @@ export function getBuffTemplate(abilityId: string): BuffTemplate | undefined {
  */
 export function hasBuffTemplate(abilityId: string): boolean {
   return abilityId in buffTemplateRegistry;
+}
+
+/**
+ * Get all required toggles for buffs present in the team
+ * Scans all buff templates and collects toggles required by abilities in the team
+ */
+export function getTeamRequiredToggles(team: BattleCharacter[]): Set<string> {
+  const toggles = new Set<string>();
+
+  // Check all registered buff templates
+  for (const template of Object.values(buffTemplateRegistry)) {
+    if (!template.requiredToggles?.length) continue;
+
+    // Check if this buff's source ability is in the team
+    const hasAbility = team.some(c =>
+      c.passiveAbilities.includes(template.sourceAbilityId) ||
+      c.activeAbilities.includes(template.sourceAbilityId)
+    );
+
+    if (hasAbility) {
+      template.requiredToggles.forEach(t => toggles.add(t));
+    }
+  }
+
+  return toggles;
 }

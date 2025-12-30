@@ -722,6 +722,13 @@
         "description": "<style=Healer>Healers</style> can <style=Healing>heal</style> friendly units instead of attacking. The amount of <style=Stat_Health>Health</style> restored corresponds to the <style=Healer>Healer’s</style> Damage.",
         "name": "Heal"
     },
+	
+	"HealingBalms": {
+        "description": "When Baldr uses his action to heal a friendly unit, the healed unit has +{[extraCritChance]}% Crit Chance and deals +{[extraCritDmg]} Crit Damage for 2 rounds. At the start of its next turn, the affected unit is also healed for {[hpToHeal]} Health. Baldr can heal friendly units even if they are at full Health.",
+        "name": "Heal"
+    },
+	
+	
     "HeavyBoltPistol": {
         "description": "Deals an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Bolter>{[dmg]} Bolter Damage</style> in melee.",
         "name": "Heavy Bolt Pistol"
@@ -1353,6 +1360,10 @@
         "description": "Adjacent friendly units gain <style=Stat_Damage>+{[extraDmg]} Damage</style>. <style=Aliance_Imperial>Imperial</style> units gain <style=Stat_Damage>+{[extraDmg_2]} Damage</style> instead.",
         "name": "Rites of Battle"
     },
+	"RitesOfMorkai": {
+        "description": "Baldr and all surrounding friendly non-mechanical units become Inspired for 1 round or until they are revived. The first time each inspired unit would be defeated, it is instead revived with {[hp]} Health, unless Overkilled. Inspired units with Final Vengeance deal +{[extraDmg]} Damage with all attacks. After using this ability, Baldr immediately performs a normal melee attack against an adjacent enemy.",
+        "name": "Rites of Battle"
+    },
     "RitesOfRestoration": {
         "description": "<style=Healing>Heals</style> herself and all adjacent friendly units for <style=Stat_Health>{[hpToHeal]} Health</style>. Resurrects {[nrOfHeroes]} random friendly <style=Aliance_Imperial>Imperial</style> <style=Character>Character</style> and up to <style=Stat>{[nrOfSummons]}</style> random friendly <style=Aliance_Imperial>Imperial</style> <style=Summon>Summons</style> that have been defeated in this battle. Resurrected units appear in free adjacent hexes with <style=Stat_Health>{[hp]} Health</style> and are unable to act on this turn. Only affects non-<style=Mechanical>Mechanical</style> units.",
         "name": "Rites of Restoration"
@@ -1793,7 +1804,7 @@
         "name": "War Howl"
     },
     "WayOfTheShortBlade": {
-        "description": "Affects other friendly <style=Character>Characters</style> within {[range]} hexes. Ranged attacks of affected units against enemies that are adjacent to a friendly <style=Character>Character</style> have <style=Piercing_Ratio>+{[extraPierceRatio]}% pierce ratio</style> and deal <style=Stat>{[dmgPct]}%</style> of their own damage to a maximum of <style=Stat_Damage>{[maxDmg]} Damage</style> per <style=Stat_Hits>hit</style>.\n\n<style=Faction_Tau>Commander Farsight</style> and affected <style=Faction_Tau>T'au Empire</style> <style=Character>Characters</style> that perform a melee attack immediately perform a <style=NormalAttack>normal ranged attack</style> against the same unit, even if they are adjacent to it.",
+        "description": "Normal ranged attacks of other friendly Characters within 2 hexes against enemies that are adjacent to a friendly Character ignore <style=Piercing_Ratio>{[armorIgnored]}</style> Armour and deal <style=Stat_Damage>+{[extraDmgPct]}%</style> Damage, except attacks that deal Psychic Damage.\n\nCommander Farsight and other friendly T'au Empire Characters within 2 hexes that perform a melee attack immediately perform a normal ranged attack against the same unit, even if they are adjacent to it.",
         "name": "Way of the Short Blade"
     },
     "WeakerRearArmour": {

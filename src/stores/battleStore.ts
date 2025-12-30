@@ -1,11 +1,19 @@
 import { create } from 'zustand';
-import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, FollowUpAttackLog, Boss, AppliedBuffInfo, BuffEvaluationContext } from '../types';
+import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, FollowUpAttackLog, Boss, AppliedBuffInfo, BuffEvaluationContext, DamageType } from '../types';
 import { calculateStats, calculateEquipmentStats } from '../services/dataService';
 import { DamageCalculator, type AttackerStats, type DefenderStats } from '../services/damage';
 import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, resetCooldowns, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
 import { getApplicableBuffs, combineBuffEffects, addBuffToPool, getBuffTemplate, expireBuffs } from '../services/buffs';
 
 const MAX_TURNS = 6;
+
+// Options for executeAttack to support Galvanic Field triggered attacks
+interface ExecuteAttackOptions {
+  damageMultiplier?: number;    // GalvanicField dmgPct (e.g., 0.80 for 80%)
+  perHitDamageCap?: number;     // GalvanicField maxDmg per hit
+  skipStateUpdates?: boolean;   // Don't update hasActed, hasAttackedThisBattle, etc.
+  abilityName?: string;         // For log display (e.g., "Galvanic Field")
+}
 
 function createBattleCharacter(character: TeamMember, index: number): BattleCharacter {
   // Calculate stats based on progression and rank
@@ -59,8 +67,8 @@ interface BattleStore {
   resetBattle: () => void;
 
   // Turn management
-  nextTurn: () => void;
-  finishBattle: () => void;
+  nextTurn: (turnLog?: BattleLogEntry[]) => void;
+  finishBattle: (turnLog?: BattleLogEntry[]) => void;
   canAdvanceTurn: () => boolean;
   setEditingTurn: (turn: number | null) => void;
   getActiveTurn: () => number;
@@ -80,7 +88,7 @@ interface BattleStore {
 
   // Damage calculation (placeholder - to be expanded)
   calculateDamage: (attackerId: string, targetId: string, attackType?: 'melee' | 'ranged') => number;
-  executeAttack: (attackerId: string, targetId: string, attackType?: 'melee' | 'ranged') => BattleLogEntry;
+  executeAttack: (attackerId: string, targetId: string, attackType?: 'melee' | 'ranged', options?: ExecuteAttackOptions) => BattleLogEntry;
 
   // Ability management
   toggleAbility: (characterId: string, abilityId: string) => void;
@@ -89,6 +97,15 @@ interface BattleStore {
 
   // Battle settings
   setIgnoreCrit: (ignore: boolean) => void;
+
+  // Repair action (Actus's Mechanic trait and DefendTheDivineWork)
+  setPendingRepairAction: (action: import('../types').PendingRepairAction | null) => void;
+  executeRepairWithGalvanicField: (
+    repairerId: string,
+    targetIds: string[],
+    healAmount: number,
+    attackTypeChoices: Record<string, 'melee' | 'ranged'>
+  ) => BattleLogEntry[];
 }
 
 export const useBattleStore = create<BattleStore>((set, get) => ({
@@ -117,6 +134,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Initialize Way of the Short Blade aura buff if Farsight is in team
+    const farsight = battleCharacters.find(c => c.passiveAbilities.includes('WayOfTheShortBlade'));
+    if (farsight) {
+      const wotsTemplate = getBuffTemplate('way_of_the_short_blade_aura');
+      const wotsValues = getAbilityValues('WayOfTheShortBlade', farsight.abilityLevels?.WayOfTheShortBlade ?? 54);
+
+      if (wotsValues && wotsTemplate) {
+        buffPool = addBuffToPool(buffPool, wotsTemplate, farsight, wotsValues as Record<string, number>, 1);
+      }
+    }
+
     set({
       battleState: {
         turn: 1,
@@ -128,6 +156,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         isComplete: false,
         ignoreCrit: false,
         buffPool, // Buff pool with LC buffs if Trajann present
+        bossArmorReduction: 0, // Cumulative boss armor reduction from abilities
       },
       currentTurnActions: [],
     });
@@ -148,7 +177,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     });
   },
 
-  nextTurn: () => {
+  nextTurn: (turnLog?: BattleLogEntry[]) => {
     const { battleState, currentTurnActions } = get();
     if (!battleState) return;
 
@@ -200,7 +229,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           {
             turnNumber: battleState.turn,
             actions: currentTurnActions,
-            log: [],
+            log: turnLog || [],
           },
         ],
         isComplete,
@@ -209,7 +238,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     });
   },
 
-  finishBattle: () => {
+  finishBattle: (turnLog?: BattleLogEntry[]) => {
     const { battleState, currentTurnActions } = get();
     if (!battleState) return;
 
@@ -222,7 +251,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           {
             turnNumber: battleState.turn,
             actions: currentTurnActions,
-            log: [],
+            log: turnLog || [],
           },
         ],
         isComplete: true,
@@ -537,6 +566,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         isFirstSpecialAttackOfTurn: !attacker.hasUsedFirstSpecialAttackThisTurn,  // Per-character LC tracking
         trajannIsAdjacentToBoss,
         abilityToggles: attacker.abilityToggles,
+        bossTraits: battleState.boss?.traits,
       }
     );
 
@@ -599,8 +629,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       buffSources: buffSourcesPreview,
     };
 
-    // Use boss armor and traits if available
-    const bossArmor = battleState.boss?.armor ?? 0;
+    // Use boss armor and traits if available, accounting for armor reduction
+    const baseBossArmor = battleState.boss?.armor ?? 0;
+    const bossArmor = Math.max(0, baseBossArmor - (battleState.bossArmorReduction || 0));
     const defenderStats: DefenderStats = {
       armor: bossArmor,
       maxHealth: battleState.boss?.health ?? 100000,
@@ -613,7 +644,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     return result.damage;
   },
 
-  executeAttack: (attackerId, targetId, attackType = 'melee') => {
+  executeAttack: (attackerId, targetId, attackType = 'melee', options?: ExecuteAttackOptions) => {
     const { battleState } = get();
     if (!battleState) {
       return {
@@ -673,6 +704,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     ) + (poolBuffEffects.baseDamageBonus || 0);
     const poolExtraHits = poolBuffEffects.extraHits || 0;
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
+    const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
 
     // Log buff effects if any are active
     const hasActiveBuffs = attacker.activeBuffs.length > 0 || applicablePoolBuffs.length > 0;
@@ -690,8 +722,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // If ignoreCrit is enabled, pass the flag to calculator (crit stats still shown, just not applied)
     const ignoreCrit = battleState.ignoreCrit;
     const currentTurn = battleState.turn;
+
+    // Apply damage multiplier (for Galvanic Field dmgPct)
+    const effectiveBaseDamage = options?.damageMultiplier
+      ? attacker.calculatedDamage * options.damageMultiplier
+      : attacker.calculatedDamage;
+
     const attackerStats: AttackerStats = {
-      baseDamage: attacker.calculatedDamage, // Use actual base damage, not buffed
+      baseDamage: effectiveBaseDamage, // Use actual base damage (or modified for Galvanic Field)
       damageType,
       hits,
       critChance: (equipmentStats.critChance || 0) + (equipmentStats.critChanceBonus || 0),
@@ -737,6 +775,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         // Laviscus's Refusal to be Outdone passive
         outrage: attacker.outrage,
         outrageContributorCount: attacker.outrageContributors?.length || 0,
+        // Boss state for abilities that check boss traits
+        bossTraits: battleState.boss?.traits,
       }
     );
 
@@ -775,7 +815,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Build buff sources for display in damage breakdown
     // Define BuffSource type inline
-    type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number };
+    type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number };
     const buffSources: BuffSourceType[] = activeAuras.map(a => {
       const source: BuffSourceType = {
         name: a.abilityName,
@@ -858,8 +898,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (poolBuff.effects.baseDamageMultiplier && poolBuff.effects.baseDamageMultiplier !== 1) {
         source.damageMultiplier = poolBuff.effects.baseDamageMultiplier;
       }
+      if (poolBuff.effects.armorIgnored) source.armorIgnored = poolBuff.effects.armorIgnored;
       // Only add if there's at least one bonus
-      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus || source.damageMultiplier) {
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus || source.damageMultiplier || source.armorIgnored) {
         buffSources.push(source);
       }
     }
@@ -903,6 +944,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Combine armor ignored from passive abilities and pool buffs
+    const totalArmorIgnored = (combinedMods.armorIgnored || 0) + poolArmorIgnored;
+
     attackerStats.abilityModifiers = {
       ...combinedMods,
       baseDamageBonus: totalDamageBonus > 0 ? totalDamageBonus : undefined,
@@ -910,11 +954,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       critChanceBonus: totalCritChanceBonus > 0 ? totalCritChanceBonus : undefined,
       critDamageBonus: (combinedMods.critDamageBonus || 0) + buffCritDmgBonus > 0 ? (combinedMods.critDamageBonus || 0) + buffCritDmgBonus : undefined,
       extraHits: (combinedMods.extraHits || 0) + buffExtraHits > 0 ? (combinedMods.extraHits || 0) + buffExtraHits : undefined,
+      armorIgnored: totalArmorIgnored > 0 ? totalArmorIgnored : undefined,
       buffSources,
     };
 
-    // Use boss armor and traits if available
-    const bossArmor = battleState.boss?.armor ?? 0;
+    // Use boss armor and traits if available, accounting for armor reduction
+    const baseBossArmor = battleState.boss?.armor ?? 0;
+    const bossArmor = Math.max(0, baseBossArmor - (battleState.bossArmorReduction || 0));
     const defenderStats: DefenderStats = {
       armor: bossArmor,
       maxHealth: battleState.boss?.health ?? 100000,
@@ -923,7 +969,18 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Calculate damage with logging enabled
     const calculator = new DamageCalculator(true);
-    const result = calculator.calculate(attackerStats, defenderStats);
+    let result = calculator.calculate(attackerStats, defenderStats);
+
+    // Apply per-hit damage cap (for Galvanic Field maxDmg)
+    if (options?.perHitDamageCap && result.perHitDamage > options.perHitDamageCap) {
+      const cappedPerHit = options.perHitDamageCap;
+      const cappedDamage = Math.round(cappedPerHit * result.totalHits);
+      result = {
+        ...result,
+        damage: cappedDamage,
+        perHitDamage: cappedPerHit,
+      };
+    }
 
     // Print detailed calculation log to console
     console.group(`=== TURN ${currentTurn}: ${attacker.name} ${attackType.toUpperCase()} ATTACK ===`);
@@ -962,12 +1019,88 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Track max perHitDamage for Laviscus outrage (uses highest perHitDamage from any attack)
     let maxPerHitDamage = result.perHitDamage;
 
-    // Handle follow-up attacks from passives (like LegacyOfCombat, TheBetrayer)
-    // Filter based on triggersOnNormalOnly - some passives only trigger on normal attacks
+    // Handle follow-up attacks from passives (like LegacyOfCombat, TheBetrayer, WayOfTheShortBlade)
+    // Filter based on triggersOnNormalOnly and triggersOnMeleeOnly flags
     const isNormalAttack = attackType === 'melee' || attackType === 'ranged';
-    const eligibleFollowUps = passiveResult.followUpAttacks.filter(followUp => {
+    const isMeleeAttack = attackType === 'melee';
+
+    // Check for WayOfTheShortBlade aura: T'au Empire characters get ranged follow-up after melee
+    // if Farsight is on the team and they have the toggle checked
+    const allFollowUps = [...passiveResult.followUpAttacks];
+    if (isMeleeAttack) {
+      const isTauEmpire = attacker.faction === "T'au Empire" || attacker.faction === 'Tau';
+      const hasRangedAttack = attacker.rangedHits !== undefined && attacker.rangedHits > 0;
+      const hasMeleeAttack = attacker.meleeHits !== undefined && attacker.meleeHits > 0;
+
+      if (isTauEmpire && hasRangedAttack && hasMeleeAttack) {
+        // Find Farsight (character with WayOfTheShortBlade) on the team
+        const farsight = battleState.team.find(c => c.passiveAbilities.includes('WayOfTheShortBlade'));
+        if (farsight && farsight.id !== attacker.id) {
+          // Check if this T'au character has the toggle checked
+          const meleeToggleId = `WayOfTheShortBlade_${farsight.id}_melee`;
+          const isToggleActive = attacker.abilityToggles[meleeToggleId] ?? false;
+
+          if (isToggleActive) {
+            // Add ranged follow-up attack from WayOfTheShortBlade aura
+            allFollowUps.push({
+              abilityId: 'WayOfTheShortBlade',
+              abilityName: 'Way of the Short Blade',
+              damageProfile: attacker.rangedDamageType || 'Piercing',
+              minDamage: 0,
+              maxDamage: 0,
+              hits: 0,
+              attackCategory: 'normal',
+              triggersOnMeleeOnly: true,
+              useCharacterRangedStats: true,
+              multiplierSourceName: 'Way of the Short Blade',  // For global multiplier display
+            });
+
+            // If character has CyclicIonBlaster, add its follow-up after the ranged attack
+            // (CyclicIonBlaster triggers on normal attacks, which includes the WayOfTheShortBlade ranged follow-up)
+            if (attacker.passiveAbilities.includes('CyclicIonBlaster')) {
+              const cibLevelIndex = attacker.abilityLevels?.['CyclicIonBlaster'] ?? 54;
+              const cibValues = getAbilityValues('CyclicIonBlaster', cibLevelIndex);
+              if (cibValues) {
+                const cibMinDmg = cibValues.minDmg as number || 0;
+                const cibMaxDmg = cibValues.maxDmg as number || 0;
+                const cibExtraDmg = cibValues.extraDmg as number || 0;
+                const cibHits = 3;
+
+                // Check if boss has Mechanical trait or Markerlight debuff
+                const hasMechanical = battleState.boss?.traits?.includes('Mechanical') ?? false;
+                const hasMarkerlight = false; // TODO: implement Markerlight debuff tracking
+                const hasBonus = hasMechanical || hasMarkerlight;
+                const bonusDamage = hasBonus ? cibExtraDmg : 0;
+
+                allFollowUps.push({
+                  abilityId: 'CyclicIonBlaster',
+                  abilityName: 'Cyclic Ion Blaster',
+                  damageProfile: 'Particle',
+                  minDamage: cibMinDmg + bonusDamage,
+                  maxDamage: cibMaxDmg + bonusDamage,
+                  hits: cibHits,
+                  attackCategory: 'normal',
+                  triggersOnNormalOnly: true,
+                  followUpAttackType: 'ranged',  // CyclicIonBlaster is a ranged attack
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const eligibleFollowUps = allFollowUps.filter(followUp => {
       if (followUp.triggersOnNormalOnly && !isNormalAttack) {
         return false;  // Skip if this follow-up only triggers on normal attacks
+      }
+      if (followUp.triggersOnMeleeOnly && !isMeleeAttack) {
+        return false;  // Skip if this follow-up only triggers on melee attacks
+      }
+      // If follow-up uses character ranged stats, check if character has ranged attacks
+      if (followUp.useCharacterRangedStats) {
+        const hasRangedAttack = attacker.rangedHits !== undefined && attacker.rangedHits > 0;
+        if (!hasRangedAttack) return false;
       }
       return true;
     });
@@ -979,13 +1112,43 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     let lcHitsAppliedInNormalFollowUps = false;
     // Track effective attacker state for follow-up evaluations
     let effectiveAttacker = attacker;
+    // Track cumulative hits for crit chain offset (for Additional Attacks like Cyclic Ion Blaster)
+    // Starts with the source attack's total hits
+    let cumulativeHitsForCritChain = result.totalHits;
+    // Track cumulative boss armor reduction from follow-up attacks (e.g., ChampionOfTheFeast)
+    let followUpArmorReductionTotal = 0;
 
     if (eligibleFollowUps.length > 0) {
       console.log('\n--- FOLLOW-UP ATTACKS ---');
 
       for (const followUp of eligibleFollowUps) {
+        // Determine if this follow-up uses character's ranged stats
+        const usesCharacterRangedStats = followUp.useCharacterRangedStats ?? false;
+
+        // Get effective follow-up stats (from follow-up definition or character's ranged stats)
+        let effectiveMinDamage = followUp.minDamage;
+        let effectiveMaxDamage = followUp.maxDamage;
+        let effectiveHits = followUp.hits;
+        let effectiveDamageProfile = followUp.damageProfile;
+        let effectiveAttackType: 'melee' | 'ranged' = followUp.followUpAttackType || 'melee';  // Use explicit type or default to melee
+
+        if (usesCharacterRangedStats) {
+          // Use character's normal ranged attack stats
+          const rangedStats = {
+            minDamage: attacker.calculatedDamage,  // Character base damage
+            maxDamage: attacker.calculatedDamage,  // Same as min for expected damage
+            hits: attacker.rangedHits || 0,
+            damageType: attacker.rangedDamageType || 'Piercing',
+          };
+          effectiveMinDamage = rangedStats.minDamage;
+          effectiveMaxDamage = rangedStats.maxDamage;
+          effectiveHits = rangedStats.hits;
+          effectiveDamageProfile = rangedStats.damageType as DamageType;
+          effectiveAttackType = 'ranged';  // This is a ranged follow-up
+        }
+
         // Calculate average damage for the follow-up attack
-        const avgDamage = Math.round((followUp.minDamage + followUp.maxDamage) / 2);
+        const avgDamage = Math.round((effectiveMinDamage + effectiveMaxDamage) / 2);
         const multipliedDamage = Math.round(avgDamage * (followUp.damageMultiplier || 1));
 
         // Get current battle state for buff evaluation
@@ -996,11 +1159,15 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           team: currentBattleState.team.map(c => c.id === attackerId ? effectiveAttacker : c),
         };
 
-        // Build buff pool evaluation context for follow-up attack (special attack)
+        // Use the follow-up's defined attack category (important for buff evaluation)
+        // CyclicIonBlaster has attackCategory: 'normal' which should be respected
+        const effectiveAttackCategory = followUp.attackCategory || (usesCharacterRangedStats ? 'normal' : 'special');
+
+        // Build buff pool evaluation context for follow-up attack
         const followUpBuffContext: BuffEvaluationContext = {
           attacker: effectiveAttacker,
-          attackType: 'melee', // Follow-ups are treated as melee
-          attackCategory: 'special',
+          attackType: effectiveAttackType,
+          attackCategory: effectiveAttackCategory as 'normal' | 'special' | 'ability',
           target: currentBattleState.boss,
           battleState: effectiveBattleState,
         };
@@ -1009,9 +1176,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const followUpApplicableBuffs = getApplicableBuffs(currentBattleState.buffPool, followUpBuffContext);
         const followUpPoolEffects = combineBuffEffects(followUpApplicableBuffs);
 
-        // Extract LC bonuses from pool effects
+        // Extract bonuses from pool effects (LC, Way of the Short Blade, Exemplar, etc.)
         const lcExtraDmg = followUpPoolEffects.baseDamageBonus || 0;
-        const lcExtraHits = followUpPoolEffects.extraHits || 0;
+        // Additional Attacks (sharesCritChain) can't receive bonus hits - they're part of the source attack
+        // which already received the bonus hits
+        const lcExtraHits = followUp.sharesCritChain ? 0 : (followUpPoolEffects.extraHits || 0);
+        const followUpArmorIgnored = followUpPoolEffects.armorIgnored || 0;
+        const followUpDamageMultiplier = followUpPoolEffects.baseDamageMultiplier || 1;
 
         // If LC +2 hits was applied, update effective attacker for subsequent follow-ups
         if (lcExtraHits > 0) {
@@ -1023,23 +1194,25 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           console.log(`[Pool Buff applied: +${lcExtraDmg} dmg, +${lcExtraHits} hits]`);
         }
 
-        // Get Lord of the Host aura bonuses for follow-up attacks (melee only)
-        // Follow-up attacks are treated as melee attacks for aura purposes
+        // Get Lord of the Host aura bonuses for follow-up attacks
         const followUpAuraBonuses = getCharacterAuraBonuses(attacker, battleState.team);
         const activeFollowUpAuras = followUpAuraBonuses.filter(a => {
           if (!a.isActive) return false;
-          // Only apply melee-restricted auras since follow-ups are melee
-          if (a.attackTypeRestriction && a.attackTypeRestriction !== 'melee') return false;
+          // Only apply auras that match the attack type
+          if (a.attackTypeRestriction && a.attackTypeRestriction !== effectiveAttackType) return false;
           return true;
         });
 
         // Calculate aura damage and hit bonuses
+        // Additional Attacks can't receive bonus hits (they're part of the source attack)
         let auraDmgBonus = 0;
         let auraHitsBonus = 0;
         for (const aura of activeFollowUpAuras) {
           if (aura.modifiers) {
             auraDmgBonus += aura.modifiers.baseDamageBonus || 0;
-            auraHitsBonus += aura.modifiers.extraHits || 0;
+            if (!followUp.sharesCritChain) {
+              auraHitsBonus += aura.modifiers.extraHits || 0;
+            }
           }
         }
 
@@ -1053,16 +1226,39 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         // and attacksThisTurn is at least 1
         // RapidAssault applies to follow-ups if this is the first attack turn
 
-        // Build buff sources for breakdown display (LC + aura bonuses)
-        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number };
+        // Build buff sources for breakdown display (iterate through applicable pool buffs)
+        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number };
         const followUpBuffSources: FollowUpBuffSource[] = [];
-        if (lcExtraDmg > 0 || lcExtraHits > 0) {
-          followUpBuffSources.push({
-            name: 'Legendary Commander',
-            sourceName: 'Trajann',
-            damageBonus: lcExtraDmg > 0 ? lcExtraDmg : undefined,
-            extraHits: lcExtraHits > 0 ? lcExtraHits : undefined,
-          });
+
+        // Add each applicable pool buff as a source
+        for (const poolBuff of followUpApplicableBuffs) {
+          const effects = poolBuff.effects;
+          const source: FollowUpBuffSource = {
+            name: poolBuff.name,
+          };
+
+          if (effects.baseDamageBonus) source.damageBonus = effects.baseDamageBonus;
+          if (effects.extraHits) source.extraHits = effects.extraHits;
+          if (effects.armorIgnored) source.armorIgnored = effects.armorIgnored;
+          if (effects.baseDamageMultiplier && effects.baseDamageMultiplier !== 1) {
+            source.damageMultiplier = effects.baseDamageMultiplier;
+          }
+
+          // Only add if there's at least one bonus
+          if (source.damageBonus || source.extraHits || source.armorIgnored || source.damageMultiplier) {
+            followUpBuffSources.push(source);
+          }
+        }
+
+        // Add follow-up multiplier source if not from pool (e.g., Way of the Short Blade aura)
+        if (followUp.multiplierSourceName && followUpDamageMultiplier !== 1) {
+          const hasMultiplierSource = followUpBuffSources.some(s => s.damageMultiplier);
+          if (!hasMultiplierSource) {
+            followUpBuffSources.push({
+              name: followUp.multiplierSourceName,
+              damageMultiplier: followUpDamageMultiplier,
+            });
+          }
         }
         for (const aura of activeFollowUpAuras) {
           if (aura.modifiers) {
@@ -1081,8 +1277,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
         const followUpStats: AttackerStats = {
           baseDamage: multipliedDamage,  // Just the ability base damage (avg of min/max * multiplier)
-          damageType: followUp.damageProfile,
-          hits: followUp.hits,  // Base hits only, extra hits via abilityModifiers
+          damageType: effectiveDamageProfile,  // Use effective damage profile (may be from character's ranged)
+          hits: effectiveHits,  // Use effective hits (may be from character's ranged)
           critChance: equipmentStats.critChance || 0,
           critDamage: equipmentStats.critDmg || 0,
           critChanceBonus: equipmentStats.critChanceBonus || 0,
@@ -1090,16 +1286,22 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           ignoreCrit,
           traits: attacker.traits, // Apply trait bonuses to follow-up attacks
           hasMoved: true,
-          attackType: 'melee', // Follow-up attacks count as melee
+          attackType: effectiveAttackType, // Use effective attack type (melee or ranged)
           hasAttackedThisBattle: true, // Main attack just happened
           attacksThisTurn: 1, // At least 1 attack this turn (the main attack)
           // Use the main attack's firstAttackTurn (if null, this is the first attack turn)
           firstAttackTurn: attacker.firstAttackTurn ?? currentTurn,
           currentTurn,
+          // Crit chain offset for Additional Attacks (shares crit chain with source attack)
+          critChainOffset: followUp.sharesCritChain ? cumulativeHitsForCritChain : undefined,
+          // Pass ability toggles for trait evaluation (e.g., RangedSpecialist adjacency check)
+          abilityToggles: attacker.abilityToggles,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
-          abilityModifiers: (lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0) ? {
+          abilityModifiers: (lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || followUpDamageMultiplier !== 1) ? {
             baseDamageBonus: lcExtraDmg + auraDmgBonus > 0 ? lcExtraDmg + auraDmgBonus : undefined,
             extraHits: lcExtraHits + auraHitsBonus > 0 ? lcExtraHits + auraHitsBonus : undefined,
+            armorIgnored: followUpArmorIgnored > 0 ? followUpArmorIgnored : undefined,
+            baseDamageMultiplier: followUpDamageMultiplier !== 1 ? followUpDamageMultiplier : undefined,
             buffSources: followUpBuffSources,
           } : undefined,
         };
@@ -1108,14 +1310,24 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const followUpCalculator = new DamageCalculator(true);
         const followUpResult = followUpCalculator.calculate(followUpStats, defenderStats);
 
+        // Update cumulative hits for crit chain tracking
+        if (followUp.sharesCritChain) {
+          // Additional Attack: add hits to the chain
+          cumulativeHitsForCritChain += followUpResult.totalHits;
+        } else {
+          // Regular follow-up: starts a new chain, subsequent Additional Attacks continue from here
+          cumulativeHitsForCritChain = followUpResult.totalHits;
+        }
+
         // Log follow-up attack details (totalHits includes base + extra from abilityModifiers)
         const bonusText = (followUp.damageMultiplier || 1) > 1
           ? ` (×${followUp.damageMultiplier?.toFixed(2)} from attack turns)`
           : '';
         const categoryText = followUp.attackCategory === 'special' ? ' [SPECIAL]' : '';
+        const attackTypeText = `[${effectiveAttackType.toUpperCase()}/${effectiveAttackCategory}]`;
         const lcText = lcExtraDmg > 0 || lcExtraHits > 0 ? ` [+LC: ${lcExtraDmg} dmg, ${lcExtraHits} hits]` : '';
         const auraText = auraDmgBonus > 0 || auraHitsBonus > 0 ? ` [+Aura: ${auraDmgBonus} dmg, ${auraHitsBonus} hits]` : '';
-        console.log(`\n${followUp.abilityName}${categoryText}: ${followUpResult.totalHits}x ${followUp.damageProfile}${bonusText}${lcText}${auraText}`);
+        console.log(`\n${followUp.abilityName} ${attackTypeText}${categoryText}: ${followUpResult.totalHits}x ${followUp.damageProfile}${bonusText}${lcText}${auraText}`);
         followUpCalculator.printLogs();
         console.log(`Follow-up Damage: ${followUpResult.damage.toLocaleString()}`);
 
@@ -1140,6 +1352,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           extraHitsSources: followUpResult.extraHitsSources,
           damVarMod: followUpResult.damVarMod,
           targetArmor: bossArmor,
+          armorIgnored: followUpResult.armorIgnored,
+          armorIgnoredSources: followUpResult.armorIgnoredSources,
+          effectiveArmor: followUpResult.effectiveArmor,
           afterArmor: followUpResult.afterArmor,
           pierceRatio: followUpResult.pierceRatio,
           pierceFloor: followUpResult.pierceFloor,
@@ -1164,8 +1379,15 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           damage: followUpResult.damage,
           hits: followUpResult.totalHits,
           damageType: followUp.damageProfile,
+          attackType: effectiveAttackType,  // Include attack type for display
           breakdown: followUpBreakdown,
         });
+
+        // Accumulate boss armor reduction from follow-ups (e.g., ChampionOfTheFeast)
+        if (followUp.armorReduction && followUp.armorReduction > 0) {
+          followUpArmorReductionTotal += followUp.armorReduction;
+          console.log(`[Boss armor reduced by ${followUp.armorReduction} from ${followUp.abilityName}]`);
+        }
       }
 
       console.log('\n--- COMBINED TOTAL ---');
@@ -1181,6 +1403,52 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const drachnyenMaxDmg = attacker.drachnyenMaxDmg || 0;
       const drachnyenHits = attacker.drachnyenHits || 3;
       const avgDamage = Math.round((drachnyenMinDmg + drachnyenMaxDmg) / 2);
+
+      // Get current battle state for buff evaluation
+      const currentBattleStateForDrachnyen = get().battleState!;
+
+      // Build buff pool evaluation context for Drachnyen (special melee attack)
+      const drachnyenBuffContext: BuffEvaluationContext = {
+        attacker: attacker,
+        attackType: 'melee',
+        attackCategory: 'special',
+        target: currentBattleStateForDrachnyen.boss,
+        battleState: currentBattleStateForDrachnyen,
+      };
+
+      // Get applicable buffs from the pool (includes LC buffs if conditions met)
+      const drachnyenApplicableBuffs = getApplicableBuffs(currentBattleStateForDrachnyen.buffPool, drachnyenBuffContext);
+      const drachnyenPoolEffects = combineBuffEffects(drachnyenApplicableBuffs);
+
+      // Extract bonuses from pool effects
+      const drachnyenExtraDmg = drachnyenPoolEffects.baseDamageBonus || 0;
+      const drachnyenExtraHits = drachnyenPoolEffects.extraHits || 0;
+      const drachnyenArmorIgnored = drachnyenPoolEffects.armorIgnored || 0;
+      const drachnyenDamageMultiplier = drachnyenPoolEffects.baseDamageMultiplier || 1;
+
+      if (drachnyenExtraDmg > 0 || drachnyenExtraHits > 0) {
+        console.log(`[Pool Buff applied to Drach'nyen: +${drachnyenExtraDmg} dmg, +${drachnyenExtraHits} hits]`);
+      }
+
+      // Build buff sources for breakdown display
+      type DrachnyenBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number };
+      const drachnyenBuffSources: DrachnyenBuffSource[] = [];
+
+      for (const poolBuff of drachnyenApplicableBuffs) {
+        const effects = poolBuff.effects;
+        const source: DrachnyenBuffSource = { name: poolBuff.name };
+        if (effects.baseDamageBonus) source.damageBonus = effects.baseDamageBonus;
+        if (effects.extraHits) source.extraHits = effects.extraHits;
+        if (effects.armorIgnored) source.armorIgnored = effects.armorIgnored;
+        if (effects.baseDamageMultiplier && effects.baseDamageMultiplier !== 1) {
+          source.damageMultiplier = effects.baseDamageMultiplier;
+        }
+        if (source.damageBonus || source.extraHits || source.armorIgnored || source.damageMultiplier) {
+          drachnyenBuffSources.push(source);
+        }
+      }
+
+      const hasDrachnyenModifiers = drachnyenExtraDmg > 0 || drachnyenExtraHits > 0 || drachnyenArmorIgnored > 0 || drachnyenDamageMultiplier !== 1;
 
       // Build attacker stats for Drachnyen follow-up (uses character's equipment crit)
       const drachnyenAttackerStats: AttackerStats = {
@@ -1200,6 +1468,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         firstAttackTurn: attacker.firstAttackTurn ?? currentTurn,
         currentTurn,
         abilityToggles: attacker.abilityToggles,
+        // Pass bonuses via abilityModifiers for proper source tracking in breakdown
+        abilityModifiers: hasDrachnyenModifiers ? {
+          baseDamageBonus: drachnyenExtraDmg > 0 ? drachnyenExtraDmg : undefined,
+          extraHits: drachnyenExtraHits > 0 ? drachnyenExtraHits : undefined,
+          armorIgnored: drachnyenArmorIgnored > 0 ? drachnyenArmorIgnored : undefined,
+          baseDamageMultiplier: drachnyenDamageMultiplier !== 1 ? drachnyenDamageMultiplier : undefined,
+          buffSources: drachnyenBuffSources,
+        } : undefined,
       };
 
       // Calculate Drachnyen follow-up damage
@@ -1217,16 +1493,19 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         damage: drachnyenResult.damage,
         perHitDamage: drachnyenResult.perHitDamage,
         hits: drachnyenResult.totalHits,
-        baseDamage: avgDamage,
-        flatModifiers: 0,
-        flatModifierSources: [],
+        baseDamage: drachnyenResult.baseDamage,
+        flatModifiers: drachnyenResult.flatModifiers,
+        flatModifierSources: drachnyenResult.flatModifierSources,
         critBonus: drachnyenResult.critBonus,
-        critChanceSources: [],
-        critDamageSources: [],
-        extraHits: 0,
-        extraHitsSources: [],
+        critChanceSources: drachnyenResult.critChanceSources,
+        critDamageSources: drachnyenResult.critDamageSources,
+        extraHits: drachnyenResult.extraHits,
+        extraHitsSources: drachnyenResult.extraHitsSources,
         damVarMod: drachnyenResult.damVarMod,
         targetArmor: bossArmor,
+        armorIgnored: drachnyenResult.armorIgnored,
+        armorIgnoredSources: drachnyenResult.armorIgnoredSources,
+        effectiveArmor: drachnyenResult.effectiveArmor,
         afterArmor: drachnyenResult.afterArmor,
         pierceRatio: drachnyenResult.pierceRatio,
         pierceFloor: drachnyenResult.pierceFloor,
@@ -1272,6 +1551,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       extraHitsSources: result.extraHitsSources,
       damVarMod: result.damVarMod,
       targetArmor: bossArmor,
+      armorIgnored: result.armorIgnored,
+      armorIgnoredSources: result.armorIgnoredSources,
+      effectiveArmor: result.effectiveArmor,
       afterArmor: result.afterArmor,
       pierceRatio: result.pierceRatio,
       pierceFloor: result.pierceFloor,
@@ -1305,39 +1587,46 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Update total damage dealt (both global and per-character)
     // Also consume one-time buffs like Euphoric Strikes
     // Also track outrage for Laviscus
+    // Note: skipStateUpdates skips attack count updates but NOT damage tracking
     set((state) => ({
       battleState: state.battleState
         ? {
             ...state.battleState,
             totalDamageDealt: state.battleState.totalDamageDealt + totalDamage,
+            // Apply boss armor reduction from follow-up attacks (e.g., ChampionOfTheFeast)
+            bossArmorReduction: (state.battleState.bossArmorReduction || 0) + followUpArmorReductionTotal,
             // Remove consumed buffs from the pool
             buffPool: buffsToConsume.length > 0
               ? state.battleState.buffPool.filter(b => !buffsToConsume.includes(b.id))
               : state.battleState.buffPool,
             team: state.battleState.team.map((char) => {
               if (char.id === attackerId) {
-                // Update attacker
+                // Update attacker - always track damage dealt
                 const updates: Partial<BattleCharacter> = {
                   totalDamageDealt: char.totalDamageDealt + totalDamage,
-                  hasAttackedThisBattle: true,
-                  attacksThisTurn: char.attacksThisTurn + 1,
-                  totalAttacksThisBattle: char.totalAttacksThisBattle + 1,  // For FirstAmongTraitors scaling
-                  // Set firstAttackTurn only on the first attack (when it's null)
-                  firstAttackTurn: char.firstAttackTurn ?? state.battleState!.turn,
-                  // Mark first special attack used if LC +2 hits was applied to any follow-up
-                  hasUsedFirstSpecialAttackThisTurn: char.hasUsedFirstSpecialAttackThisTurn || lcHitsAppliedInNormalFollowUps,
                 };
 
-                // If Laviscus attacks, reset his outrage
-                if (isLaviscus) {
-                  updates.outrage = 0;
-                  updates.outrageContributors = [];
+                // Skip attack state updates for triggered attacks (like Galvanic Field)
+                if (!options?.skipStateUpdates) {
+                  updates.hasAttackedThisBattle = true;
+                  updates.attacksThisTurn = char.attacksThisTurn + 1;
+                  updates.totalAttacksThisBattle = char.totalAttacksThisBattle + 1;  // For FirstAmongTraitors scaling
+                  // Set firstAttackTurn only on the first attack (when it's null)
+                  updates.firstAttackTurn = char.firstAttackTurn ?? state.battleState!.turn;
+                  // Mark first special attack used if LC +2 hits was applied to any follow-up
+                  updates.hasUsedFirstSpecialAttackThisTurn = char.hasUsedFirstSpecialAttackThisTurn || lcHitsAppliedInNormalFollowUps;
+
+                  // If Laviscus attacks, reset his outrage
+                  if (isLaviscus) {
+                    updates.outrage = 0;
+                    updates.outrageContributors = [];
+                  }
                 }
 
                 return { ...char, ...updates };
               }
 
-              // For other characters: track outrage for Laviscus
+              // For other characters: track outrage for Laviscus (always, even for GF attacks)
               if (char.passiveAbilities.includes('RefusalToBeOutdone')) {
                 // Accumulate outrage from ally attacks (uses max perHitDamage from any attack)
                 const newOutrage = (char.outrage || 0) + maxPerHitForOutrage;
@@ -1423,6 +1712,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       message: `${attacker.name} ${attackType} attacks`,
       followUpAttacks: followUpAttackLogs.length > 0 ? followUpAttackLogs : undefined,
       appliedBuffs: appliedBuffs.length > 0 ? appliedBuffs : undefined,
+      attackType,
     };
   },
 
@@ -1571,8 +1861,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const isAdjacentToBoss = character.abilityToggles['adjacentToBoss'] ?? false;
       let componentIndex = 0;
 
-      // Use boss armor if available, otherwise 0
-      const bossArmor = battleState.boss?.armor ?? 0;
+      // Use boss armor if available, accounting for armor reduction
+      const baseBossArmor = battleState.boss?.armor ?? 0;
+      const bossArmor = Math.max(0, baseBossArmor - (battleState.bossArmorReduction || 0));
       const defenderStats: DefenderStats = {
         armor: bossArmor,
         maxHealth: battleState.boss?.health ?? 100000,
@@ -1740,11 +2031,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         });
 
         // AFTER each component: Update effective character state for next component's buff evaluation
-        // After first component, if adjacent to boss, mark ability as "used" for LC qualification
-        if (componentIndex === 1 && isAdjacentToBoss && !effectiveCharacter.hasQualifiedForLCDamage) {
-          effectiveCharacter = { ...effectiveCharacter, hasQualifiedForLCDamage: true };
-          console.log(`[Component ${componentIndex} completed: ${character.name} now qualifies for LC damage]`);
-        }
+        // NOTE: hasQualifiedForLCDamage is set AFTER all components complete (not per-component)
+        // This ensures the ability can't qualify itself for LC during its own resolution
 
         // If LC +2 hits was applied to this component, mark first special attack as used
         if (lcExtraHits > 0 && !effectiveCharacter.hasUsedFirstSpecialAttackThisTurn) {
@@ -1763,6 +2051,20 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
       // No main damageBreakdown for multi-component abilities - each component shown via followUpAttackLogs
       damageBreakdown = undefined;
+
+      // After ALL components resolved: Mark ability as "used" for LC qualification
+      // This ensures follow-up attacks (like The Betrayer) can benefit from LC damage/hits
+      if (isAdjacentToBoss && !character.hasQualifiedForLCDamage) {
+        set((state) => ({
+          battleState: state.battleState ? {
+            ...state.battleState,
+            team: state.battleState.team.map(c =>
+              c.id === characterId ? { ...c, hasQualifiedForLCDamage: true } : c
+            ),
+          } : null,
+        }));
+        console.log(`[Multi-component ability completed: ${character.name} now qualifies for LC damage]`);
+      }
     } else if (result.damageResult) {
       // Single component damage ability (like Martial Inspiration)
       // Displayed as a special attack with purple shading
@@ -1849,8 +2151,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const baseHits = result.damageResult.hits;
       const avgDamagePerHit = result.damageResult.averageDamage;
 
-      // Use boss armor if available, otherwise 0
-      const bossArmor = battleState.boss?.armor ?? 0;
+      // Use boss armor if available, accounting for armor reduction
+      const baseBossArmor = battleState.boss?.armor ?? 0;
+      const bossArmor = Math.max(0, baseBossArmor - (battleState.bossArmorReduction || 0));
       const defenderStats: DefenderStats = {
         armor: bossArmor,
         maxHealth: battleState.boss?.health ?? 100000,
@@ -2067,6 +2370,12 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             : null,
         }));
         console.log(`[Drachnyen activated: HP → ${newHp}, follow-up ${hits}x Piercing (${minDmg}-${maxDmg})]`);
+
+        // Add to appliedBuffs for BattleLog display
+        appliedBuffs.push({
+          name: abilityName,
+          effect: `HP → ${newHp}, +${hits}x Piercing follow-up`,
+        });
       } else if (buffTemplate) {
         // Use new buff pool system
         const abilityValues = getAbilityValues(abilityId, levelIndex) || {};
@@ -2095,6 +2404,24 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             : null,
         }));
         console.log(`[Buff added to pool: ${abilityName}]`, buffTemplate.getEffects(abilityValues as Record<string, number>));
+
+        // Add to appliedBuffs for BattleLog display
+        const buffEffects = buffTemplate.getEffects(abilityValues as Record<string, number>);
+        const effectsText: string[] = [];
+        if (buffEffects.baseDamageBonus) effectsText.push(`+${buffEffects.baseDamageBonus} Dmg`);
+        if (buffEffects.baseDamageMultiplier && buffEffects.baseDamageMultiplier !== 1) {
+          const pct = Math.round((buffEffects.baseDamageMultiplier - 1) * 100);
+          effectsText.push(`${pct >= 0 ? '+' : ''}${pct}% Dmg`);
+        }
+        if (buffEffects.critChanceBonus) effectsText.push(`+${buffEffects.critChanceBonus}% Crit`);
+        if (buffEffects.extraHits) effectsText.push(`+${buffEffects.extraHits} Hits`);
+        if (buffEffects.armorIgnored) effectsText.push(`-${buffEffects.armorIgnored} Armor`);
+        if (effectsText.length > 0) {
+          appliedBuffs.push({
+            name: abilityName,
+            effect: effectsText.join(', '),
+          });
+        }
       } else {
         // Legacy: store buff on character activeBuffs
         set((state) => ({
@@ -2116,6 +2443,23 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             : null,
         }));
         console.log(`[Buff applied (legacy): ${abilityName}]`, result.buffResult.effect);
+
+        // Add to appliedBuffs for BattleLog display
+        const legacyEffect = result.buffResult.effect;
+        const legacyEffectsText: string[] = [];
+        if (legacyEffect.baseDamageBonus) legacyEffectsText.push(`+${legacyEffect.baseDamageBonus} Dmg`);
+        if (legacyEffect.baseDamageMultiplier && legacyEffect.baseDamageMultiplier !== 1) {
+          const pct = Math.round((legacyEffect.baseDamageMultiplier - 1) * 100);
+          legacyEffectsText.push(`${pct >= 0 ? '+' : ''}${pct}% Dmg`);
+        }
+        if (legacyEffect.critChanceBonus) legacyEffectsText.push(`+${legacyEffect.critChanceBonus}% Crit`);
+        if (legacyEffect.extraHits) legacyEffectsText.push(`+${legacyEffect.extraHits} Hits`);
+        if (legacyEffectsText.length > 0) {
+          appliedBuffs.push({
+            name: abilityName,
+            effect: legacyEffectsText.join(', '),
+          });
+        }
       }
     } else {
       // Other non-damage ability (e.g., healing without buff) - mark ability as used
@@ -2168,6 +2512,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       isFirstSpecialAttackOfTurn: !updatedCharacter.hasUsedFirstSpecialAttackThisTurn,  // Per-character LC +2 hits
       trajannIsAdjacentToBoss: trajann?.abilityToggles['adjacentToBoss'] ?? false,  // LC Trajann check
       abilityToggles: updatedCharacter.abilityToggles,
+      bossTraits: battleState.boss?.traits,
     };
 
     // Evaluate passive abilities for follow-up attacks
@@ -2189,8 +2534,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       console.log('\n--- FOLLOW-UP ATTACKS (from ability) ---');
       const equipmentStats = calculateEquipmentStats(character.equipment);
 
-      // Use boss armor and traits if available
-      const bossArmorFollowUp = battleState.boss?.armor ?? 0;
+      // Use boss armor and traits if available (accounting for armor reduction)
+      const baseBossArmorFollowUp = battleState.boss?.armor ?? 0;
+      const bossArmorFollowUp = Math.max(0, baseBossArmorFollowUp - (battleState.bossArmorReduction || 0));
       const defenderStats: DefenderStats = {
         armor: bossArmorFollowUp,
         maxHealth: battleState.boss?.health ?? 100000,
@@ -2201,6 +2547,12 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       let lcHitsAppliedInFollowUps = false;
       // Track effective character state for follow-up evaluations (for per-character LC tracking)
       let effectiveCharacter = updatedCharacter;
+      // Track cumulative hits for crit chain offset (for Additional Attacks like Cyclic Ion Blaster)
+      // Starts with the ability's base hits (result.damageResult.hits)
+      // Note: CyclicIonBlaster has triggersOnNormalOnly=true so it won't trigger here
+      let cumulativeHitsForCritChain = result.damageResult?.hits ?? 0;
+      // Track cumulative boss armor reduction from follow-up attacks (e.g., ChampionOfTheFeast)
+      let followUpArmorReductionTotal = 0;
 
       for (const followUp of eligibleFollowUps) {
         // Get current battle state for buff evaluation
@@ -2224,9 +2576,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const followUpApplicableBuffs = getApplicableBuffs(currentBattleStateForFollowUp.buffPool, followUpBuffContext);
         const followUpPoolEffects = combineBuffEffects(followUpApplicableBuffs);
 
-        // Extract LC bonuses from pool effects
+        // Extract bonuses from pool effects (LC, Way of the Short Blade, Exemplar, etc.)
         const lcExtraDmg = followUpPoolEffects.baseDamageBonus || 0;
-        const lcExtraHits = followUpPoolEffects.extraHits || 0;
+        // Additional Attacks (sharesCritChain) can't receive bonus hits - they're part of the source attack
+        // which already received the bonus hits
+        const lcExtraHits = followUp.sharesCritChain ? 0 : (followUpPoolEffects.extraHits || 0);
+        const followUpArmorIgnored = followUpPoolEffects.armorIgnored || 0;
+        const followUpDamageMultiplier = followUpPoolEffects.baseDamageMultiplier || 1;
 
         // If LC +2 hits was applied, update effective character for subsequent follow-ups
         if (lcExtraHits > 0) {
@@ -2248,12 +2604,15 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         });
 
         // Calculate aura damage and hit bonuses
+        // Additional Attacks can't receive bonus hits (they're part of the source attack)
         let auraDmgBonus = 0;
         let auraHitsBonus = 0;
         for (const aura of activeFollowUpAuras) {
           if (aura.modifiers) {
             auraDmgBonus += aura.modifiers.baseDamageBonus || 0;
-            auraHitsBonus += aura.modifiers.extraHits || 0;
+            if (!followUp.sharesCritChain) {
+              auraHitsBonus += aura.modifiers.extraHits || 0;
+            }
           }
         }
 
@@ -2264,16 +2623,28 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         // Base damage is the average of min/max (multiplier applied via Global)
         const avgDamagePerHit = Math.round((followUp.minDamage + followUp.maxDamage) / 2);
 
-        // Build buff sources for breakdown display (LC + aura bonuses + ability multiplier)
-        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number };
+        // Build buff sources for breakdown display (iterate through applicable pool buffs)
+        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number };
         const followUpBuffSources: FollowUpBuffSource[] = [];
-        if (lcExtraDmg > 0 || lcExtraHits > 0) {
-          followUpBuffSources.push({
-            name: 'Legendary Commander',
-            sourceName: 'Trajann',
-            damageBonus: lcExtraDmg > 0 ? lcExtraDmg : undefined,
-            extraHits: lcExtraHits > 0 ? lcExtraHits : undefined,
-          });
+
+        // Add each applicable pool buff as a source
+        for (const poolBuff of followUpApplicableBuffs) {
+          const effects = poolBuff.effects;
+          const source: FollowUpBuffSource = {
+            name: poolBuff.name,
+          };
+
+          if (effects.baseDamageBonus) source.damageBonus = effects.baseDamageBonus;
+          if (effects.extraHits) source.extraHits = effects.extraHits;
+          if (effects.armorIgnored) source.armorIgnored = effects.armorIgnored;
+          if (effects.baseDamageMultiplier && effects.baseDamageMultiplier !== 1) {
+            source.damageMultiplier = effects.baseDamageMultiplier;
+          }
+
+          // Only add if there's at least one bonus
+          if (source.damageBonus || source.extraHits || source.armorIgnored || source.damageMultiplier) {
+            followUpBuffSources.push(source);
+          }
         }
         for (const aura of activeFollowUpAuras) {
           if (aura.modifiers) {
@@ -2305,9 +2676,15 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         }
 
         // Check if we have any modifiers to pass
-        const hasFollowUpModifiers = lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpGlobalMultiplier;
+        const hasFollowUpModifiers = lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpGlobalMultiplier || followUpArmorIgnored > 0 || followUpDamageMultiplier !== 1;
+
+        // Combine ability multiplier with pool multiplier (multiplicative)
+        const combinedDamageMultiplier = (followUpGlobalMultiplier || 1) * followUpDamageMultiplier;
+        const effectiveDamageMultiplier = combinedDamageMultiplier !== 1 ? combinedDamageMultiplier : undefined;
 
         // Calculate damage using averageDamage (with crit)
+        // Use follow-up's attack type if specified, otherwise default to melee
+        const effectiveAttackType: 'melee' | 'ranged' = followUp.followUpAttackType || 'melee';
         const followUpStats: AttackerStats = {
           baseDamage: avgDamagePerHit,  // Just the ability base damage (avg of min/max)
           damageType: followUp.damageProfile,
@@ -2319,21 +2696,35 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           ignoreCrit,
           traits: character.traits,
           hasMoved: true,
-          attackType: 'melee',
+          attackType: effectiveAttackType,
           hasAttackedThisBattle: true,
           attacksThisTurn: 1,
           firstAttackTurn: character.firstAttackTurn ?? battleState.turn,
           currentTurn: battleState.turn,
+          // Crit chain offset for Additional Attacks (shares crit chain with source attack)
+          critChainOffset: followUp.sharesCritChain ? cumulativeHitsForCritChain : undefined,
+          // Pass ability toggles for trait evaluation (e.g., RangedSpecialist adjacency check)
+          abilityToggles: character.abilityToggles,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
           abilityModifiers: hasFollowUpModifiers ? {
             baseDamageBonus: lcExtraDmg + auraDmgBonus > 0 ? lcExtraDmg + auraDmgBonus : undefined,
-            baseDamageMultiplier: followUpGlobalMultiplier,
+            baseDamageMultiplier: effectiveDamageMultiplier,
             extraHits: lcExtraHits + auraHitsBonus > 0 ? lcExtraHits + auraHitsBonus : undefined,
+            armorIgnored: followUpArmorIgnored > 0 ? followUpArmorIgnored : undefined,
             buffSources: followUpBuffSources,
           } : undefined,
         };
         const followUpCalc = new DamageCalculator(true);
         const followUpResult = followUpCalc.calculate(followUpStats, defenderStats);
+
+        // Update cumulative hits for crit chain tracking
+        if (followUp.sharesCritChain) {
+          // Additional Attack: add hits to the chain
+          cumulativeHitsForCritChain += followUpResult.totalHits;
+        } else {
+          // Regular follow-up: starts a new chain, subsequent Additional Attacks continue from here
+          cumulativeHitsForCritChain = followUpResult.totalHits;
+        }
 
         // Log follow-up attack details (totalHits includes base + extra from abilityModifiers)
         const bonusText = (followUp.damageMultiplier || 1) > 1
@@ -2393,8 +2784,15 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           damage: followUpResult.damage,
           hits: followUpResult.totalHits,
           damageType: followUp.damageProfile,
+          attackType: followUp.followUpAttackType || 'melee',  // Use follow-up's attack type
           breakdown: followUpBreakdown,
         });
+
+        // Accumulate boss armor reduction from follow-ups (e.g., ChampionOfTheFeast)
+        if (followUp.armorReduction && followUp.armorReduction > 0) {
+          followUpArmorReductionTotal += followUp.armorReduction;
+          console.log(`[Boss armor reduced by ${followUp.armorReduction} from ${followUp.abilityName}]`);
+        }
       }
 
       // Update totals with follow-up damage
@@ -2406,6 +2804,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             ? {
                 ...state.battleState,
                 totalDamageDealt: state.battleState.totalDamageDealt + followUpTotalDamage,
+                // Apply boss armor reduction from follow-up attacks (e.g., ChampionOfTheFeast)
+                bossArmorReduction: (state.battleState.bossArmorReduction || 0) + followUpArmorReductionTotal,
                 team: state.battleState.team.map((char) =>
                   char.id === characterId
                     ? {
@@ -2482,5 +2882,105 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         ignoreCrit: ignore,
       },
     });
+  },
+
+  setPendingRepairAction: (action) => {
+    const { battleState } = get();
+    if (!battleState) return;
+
+    set({
+      battleState: {
+        ...battleState,
+        pendingRepairAction: action ?? undefined,
+      },
+    });
+  },
+
+  executeRepairWithGalvanicField: (repairerId, targetIds, healAmount, attackTypeChoices) => {
+    const { battleState } = get();
+    if (!battleState || !battleState.boss) return [];
+
+    const logEntries: BattleLogEntry[] = [];
+    const repairer = battleState.team.find(c => c.id === repairerId);
+    if (!repairer) return [];
+
+    // Get GalvanicField ability values from repairer
+    const galvanicFieldLevelIndex = repairer.abilityLevels?.['GalvanicField'] ?? 54;
+    const galvanicFieldValues = getAbilityValues('GalvanicField', galvanicFieldLevelIndex);
+    const dmgPct = (galvanicFieldValues?.dmgPct as number) || 100;
+    const maxDmgPerHit = (galvanicFieldValues?.maxDmg as number) || 9999;
+
+    // First, apply healing to all targets
+    const healingUpdates: { targetId: string; actualHeal: number; newHealth: number }[] = [];
+    for (const targetId of targetIds) {
+      const target = battleState.team.find(c => c.id === targetId);
+      if (!target) continue;
+      const actualHeal = Math.min(healAmount, target.calculatedHealth - target.currentHealth);
+      const newHealth = target.currentHealth + actualHeal;
+      healingUpdates.push({ targetId, actualHeal, newHealth });
+    }
+
+    // Update team with healing
+    set((state) => ({
+      battleState: state.battleState ? {
+        ...state.battleState,
+        team: state.battleState.team.map(char => {
+          const healUpdate = healingUpdates.find(h => h.targetId === char.id);
+          if (healUpdate) {
+            return { ...char, currentHealth: healUpdate.newHealth };
+          }
+          return char;
+        }),
+        pendingRepairAction: undefined,
+      } : null,
+    }));
+
+    // Now process each target for repair log and Galvanic Field attacks
+    for (const targetId of targetIds) {
+      const target = battleState.team.find(c => c.id === targetId);
+      if (!target) continue;
+
+      const isSelf = targetId === repairerId;
+      const healUpdate = healingUpdates.find(h => h.targetId === targetId);
+      const actualHeal = healUpdate?.actualHeal || 0;
+
+      // Create repair log entry
+      const repairLog: BattleLogEntry = {
+        timestamp: Date.now(),
+        characterId: repairerId,
+        characterName: repairer.name,
+        action: 'repair',
+        target: target.name,
+        healing: actualHeal,
+        message: `${repairer.name} repairs ${target.name} for ${actualHeal} HP`,
+        followUpAttacks: [],
+      };
+
+      // If not self-repair, trigger Galvanic Field attack using executeAttack
+      if (!isSelf) {
+        const attackType = attackTypeChoices[targetId] || 'melee';
+
+        // Call executeAttack with Galvanic Field options
+        // This handles the full attack pipeline: passives, buffs, follow-ups (like Way of the Short Blade)
+        const attackLog = get().executeAttack(targetId, 'boss', attackType, {
+          damageMultiplier: dmgPct / 100,  // Convert percentage to multiplier
+          perHitDamageCap: maxDmgPerHit,
+          skipStateUpdates: true,  // Don't update hasActed, attacksThisTurn, etc.
+          abilityName: 'Galvanic Field',
+        });
+
+        // Update attackLog message to mention Galvanic Field trigger
+        attackLog.message = `${target.name} attacks via Galvanic Field: ${(attackLog.damage || 0).toLocaleString()} damage`;
+
+        // Push attackLog separately - it has correct characterId for chart attribution
+        // This ensures damage shows under the attacking unit (e.g., Farsight), not Actus
+        logEntries.push(attackLog);
+      }
+
+      // Push repairLog (healing only, no damage)
+      logEntries.push(repairLog);
+    }
+
+    return logEntries;
   },
 }));

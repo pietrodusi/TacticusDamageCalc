@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { BattleLogEntry, DamageBreakdown, FollowUpAttackLog } from '../../types';
 import type { BuffSource } from '../../services/damage/types';
-import { Sword, Move, Sparkles, Clock, RotateCcw, Crosshair, Pencil, X, Zap, ChevronDown, ChevronRight } from 'lucide-react';
+import { Sword, Move, Sparkles, Clock, RotateCcw, Crosshair, Pencil, X, Zap, ChevronDown, ChevronRight, Wrench } from 'lucide-react';
 
 // Extended entry with turn number
 export interface TurnLogEntry extends BattleLogEntry {
@@ -130,7 +130,13 @@ function DamageBreakdownDisplay({ breakdown, sourceName }: { breakdown: DamageBr
         {breakdown.targetArmor > 0 && (
           <div className="flex justify-between text-gray-500">
             <span>− Armor:</span>
-            <span>−{breakdown.targetArmor} → {breakdown.afterArmor.toFixed(0)}</span>
+            <span>
+              {breakdown.armorIgnored && breakdown.armorIgnored > 0 ? (
+                <>−{breakdown.effectiveArmor} <span className="text-green-400">(−{breakdown.armorIgnored} ignored)</span></>
+              ) : (
+                <>−{breakdown.targetArmor}</>
+              )} → {breakdown.afterArmor.toFixed(0)}
+            </span>
           </div>
         )}
         <div className="flex justify-between text-gray-500">
@@ -164,28 +170,34 @@ function DamageBreakdownDisplay({ breakdown, sourceName }: { breakdown: DamageBr
 function FollowUpAttacksDisplay({ followUps }: { followUps: FollowUpAttackLog[] }) {
   return (
     <div className="mt-1 space-y-1">
-      {followUps.map((followUp, index) => (
-        <div key={index} className="bg-purple-900/30 rounded p-1.5 border-l-2 border-purple-500">
-          {followUp.breakdown ? (
-            // Full breakdown display - modifiers shown inline via DamageBreakdownDisplay
-            <DamageBreakdownDisplay breakdown={followUp.breakdown} sourceName={followUp.abilityName} />
-          ) : (
-            // Fallback for old data without breakdown
-            <>
-              <div className="flex items-center gap-1 text-xs">
-                <Zap size={10} className="text-purple-400" />
-                <span className="text-purple-300 font-medium">{followUp.abilityName}</span>
-              </div>
-              <div className="text-xs space-y-0.5 mt-0.5">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">{followUp.hits}x {followUp.damageType}:</span>
-                  <span className="text-purple-300">{followUp.damage.toLocaleString()}</span>
+      {followUps.map((followUp, index) => {
+        // Build source name with attack type indicator
+        const attackTypeLabel = followUp.attackType ? ` [${followUp.attackType.toUpperCase()}]` : '';
+        const sourceName = `${followUp.abilityName}${attackTypeLabel}`;
+
+        return (
+          <div key={index} className="bg-purple-900/30 rounded p-1.5 border-l-2 border-purple-500">
+            {followUp.breakdown ? (
+              // Full breakdown display - modifiers shown inline via DamageBreakdownDisplay
+              <DamageBreakdownDisplay breakdown={followUp.breakdown} sourceName={sourceName} />
+            ) : (
+              // Fallback for old data without breakdown
+              <>
+                <div className="flex items-center gap-1 text-xs">
+                  <Zap size={10} className="text-purple-400" />
+                  <span className="text-purple-300 font-medium">{sourceName}</span>
                 </div>
-              </div>
-            </>
-          )}
-        </div>
-      ))}
+                <div className="text-xs space-y-0.5 mt-0.5">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">{followUp.hits}x {followUp.damageType}:</span>
+                    <span className="text-purple-300">{followUp.damage.toLocaleString()}</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -194,6 +206,7 @@ interface BattleLogProps {
   entries: TurnLogEntry[];
   currentTurn: number;
   editingTurn?: number | null;
+  isComplete?: boolean;
   onUndoCharacterTurn?: (characterId: string, turn: number) => void;
   onEditTurn?: (turn: number | null) => void;
 }
@@ -205,9 +218,10 @@ const actionIcons = {
   rangedAttack: Crosshair,
   ability: Sparkles,
   wait: Clock,
+  repair: Wrench,
 };
 
-export function BattleLog({ entries, currentTurn, editingTurn, onUndoCharacterTurn, onEditTurn }: BattleLogProps) {
+export function BattleLog({ entries, currentTurn, editingTurn, isComplete, onUndoCharacterTurn, onEditTurn }: BattleLogProps) {
   // Track which turns are expanded (current turn always starts expanded)
   const [expandedTurns, setExpandedTurns] = useState<Set<number>>(() => new Set([currentTurn]));
 
@@ -215,6 +229,13 @@ export function BattleLog({ entries, currentTurn, editingTurn, onUndoCharacterTu
   useEffect(() => {
     setExpandedTurns(new Set([currentTurn]));
   }, [currentTurn]);
+
+  // When battle is complete, collapse all turns
+  useEffect(() => {
+    if (isComplete) {
+      setExpandedTurns(new Set());
+    }
+  }, [isComplete]);
 
   const toggleTurn = (turn: number) => {
     setExpandedTurns(prev => {

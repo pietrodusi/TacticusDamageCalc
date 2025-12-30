@@ -85,12 +85,37 @@ export function calculateExpectedCrits(
   critChance: number,
   hits: number
 ): number {
-  if (critChance <= 0) return 0;
+  return calculateExpectedCritsWithOffset(critChance, hits, 1);
+}
+
+/**
+ * Calculate expected number of crits with hit offset (for chained crit streaks)
+ *
+ * Formula: E[crits] = p^startIndex + p^(startIndex+1) + ... + p^(startIndex+hits-1)
+ *                   = p^startIndex × (1 - p^hits) / (1 - p)
+ *
+ * This is used for "Additional Attacks" that share a crit chain with the source attack.
+ * If source attack has 4 hits, and additional attack has 3 hits, the additional attack
+ * uses hit indices 5-7 in the crit streak (startIndex = 5).
+ *
+ * @param critChance - Crit chance as decimal (0-1)
+ * @param hits - Number of hits in this attack
+ * @param startIndex - Starting hit index (1-indexed). For source attack = 1.
+ *                     For additional attacks = sourceHits + 1
+ * @returns Expected number of crit hits
+ */
+export function calculateExpectedCritsWithOffset(
+  critChance: number,
+  hits: number,
+  startIndex: number = 1
+): number {
+  if (critChance <= 0 || hits <= 0) return 0;
   if (critChance >= 1) return hits;
+  if (startIndex < 1) startIndex = 1;
 
   const p = critChance;
-  const n = hits;
-  return p * (1 - Math.pow(p, n)) / (1 - p);
+  // p^startIndex × (1 - p^hits) / (1 - p)
+  return Math.pow(p, startIndex) * (1 - Math.pow(p, hits)) / (1 - p);
 }
 
 /**

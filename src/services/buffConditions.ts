@@ -6,6 +6,7 @@
 
 import type { BattleCharacter } from '../types';
 import { getAbilityValues, getAbilityNameSync } from './abilities';
+import { getTeamRequiredToggles } from './buffs/buffRegistry';
 
 /**
  * A toggleable buff condition
@@ -31,8 +32,8 @@ export function getCharacterBuffConditions(
 ): BuffCondition[] {
   const conditions: BuffCondition[] = [];
 
-  // Add "Adjacent to Boss" condition for all characters
-  conditions.push(...getAdjacentToBossCondition(character));
+  // Add "Adjacent to Boss" condition (only if team has buffs that require it)
+  conditions.push(...getAdjacentToBossCondition(character, team));
 
   // Add own passive ability conditions
   conditions.push(...getOwnPassiveConditions(character));
@@ -82,6 +83,18 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
       source: 'Crushing Strike',
       effect: '+50% melee dmg',
       isActive: character.abilityToggles['CrushingStrike_notMoved'] ?? false,
+      category: 'self',
+    });
+  }
+
+  // Ranged Specialist trait - Started turn adjacent to enemy condition
+  if (character.traits.includes('RangedSpecialist')) {
+    conditions.push({
+      id: 'RangedSpecialist_adjacentToEnemy',
+      label: 'Started turn adjacent to enemy',
+      source: 'Ranged Specialist',
+      effect: 'Enables positional bonuses (Position)',
+      isActive: character.abilityToggles['RangedSpecialist_adjacentToEnemy'] ?? false,
       category: 'self',
     });
   }
@@ -174,21 +187,79 @@ function getAuraConditions(
         }
       }
     }
+
+    // Way of the Short Blade (Farsight) - provides buffs to ranged attackers and T'au Empire melee
+    if (teammate.passiveAbilities.includes('WayOfTheShortBlade')) {
+      const levelIndex = teammate.abilityLevels?.['WayOfTheShortBlade'] ?? 54;
+      const values = getAbilityValues('WayOfTheShortBlade', levelIndex);
+      const abilityName = getAbilityNameSync('WayOfTheShortBlade');
+
+      if (values) {
+        const armorIgnored = values.armorIgnored as number || 0;
+        const extraDmgPct = values.extraDmgPct as number || 0;
+
+        // Check if character has normal ranged attacks (for armor ignore + damage buff)
+        const hasRangedAttack = character.rangedHits !== undefined && character.rangedHits > 0;
+        const isNotPsychic = character.rangedDamageType !== 'Psychic';
+
+        if (hasRangedAttack && isNotPsychic) {
+          // Ranged buff condition - "Within range 2 of adjacent enemy"
+          const rangeToggleId = `WayOfTheShortBlade_${teammate.id}_range2`;
+          const isRangeActive = character.abilityToggles[rangeToggleId] ?? false;
+          conditions.push({
+            id: rangeToggleId,
+            label: 'Range 2 from adjacent enemy',
+            source: abilityName,
+            sourceCharacter: teammate.name,
+            effect: `-${armorIgnored} armor, +${extraDmgPct}% dmg`,
+            isActive: isRangeActive,
+            category: 'aura',
+          });
+        }
+
+        // Check if character is T'au Empire (for melee follow-up)
+        // Only for other T'au Empire characters (not Farsight himself)
+        const isTauEmpire = character.faction === "T'au Empire" || character.faction === 'Tau';
+        const hasMeleeAttack = character.meleeHits !== undefined && character.meleeHits > 0;
+
+        if (isTauEmpire && hasMeleeAttack && hasRangedAttack) {
+          // Melee follow-up condition - "Range 2 from Farsight"
+          const meleeToggleId = `WayOfTheShortBlade_${teammate.id}_melee`;
+          const isMeleeActive = character.abilityToggles[meleeToggleId] ?? false;
+          conditions.push({
+            id: meleeToggleId,
+            label: `Range 2 from ${teammate.name}`,
+            source: abilityName,
+            sourceCharacter: teammate.name,
+            effect: 'Additional ranged attack after melee',
+            isActive: isMeleeActive,
+            category: 'aura',
+          });
+        }
+      }
+    }
   }
 
   return conditions;
 }
 
 /**
- * Get "Adjacent to Boss" condition for all characters
- * This is used by Legendary Commander and potentially other abilities
+ * Get "Adjacent to Boss" condition for characters
+ * Only shows if team has buffs that require this toggle (e.g., Legendary Commander, Way of the Short Blade)
  */
 function getAdjacentToBossCondition(
-  character: BattleCharacter
+  character: BattleCharacter,
+  team: BattleCharacter[]
 ): BuffCondition[] {
   const conditions: BuffCondition[] = [];
 
-  // Add "Adjacent to Boss" toggle for every character
+  // Check if any buff in the team requires this toggle
+  const requiredToggles = getTeamRequiredToggles(team);
+  if (!requiredToggles.has('adjacentToBoss')) {
+    return conditions;
+  }
+
+  // Add "Adjacent to Boss" toggle
   const toggleId = 'adjacentToBoss';
   conditions.push({
     id: toggleId,
@@ -204,12 +275,10 @@ function getAdjacentToBossCondition(
 
 /**
  * Check if a character has any buff conditions
- * Always returns true now since every character has the "Adjacent to Boss" toggle
  */
 export function hasBuffConditions(
-  _character: BattleCharacter,
-  _team: BattleCharacter[]
+  character: BattleCharacter,
+  team: BattleCharacter[]
 ): boolean {
-  // Every character has the "Adjacent to Boss" toggle
-  return true;
+  return getCharacterBuffConditions(character, team).length > 0;
 }

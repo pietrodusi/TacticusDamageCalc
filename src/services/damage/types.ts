@@ -65,6 +65,7 @@ export interface BuffSource {
   extraHits?: number;     // Extra hits bonus
   critChanceBonus?: number;  // Crit chance bonus
   critDamageBonus?: number;  // Crit damage bonus
+  armorIgnored?: number;  // Armor reduction before damage calculation
 }
 
 /**
@@ -77,6 +78,7 @@ export interface AbilityModifiers {
   extraHits?: number;              // Additional hits
   critChanceBonus?: number;        // +% crit chance
   critDamageBonus?: number;        // Flat crit damage bonus
+  armorIgnored?: number;           // Reduces target armor before damage calculation
   buffSources?: BuffSource[];      // Sources of the buffs for display
 }
 
@@ -101,6 +103,11 @@ export interface AttackerStats {
   abilityModifiers?: AbilityModifiers;
   // User-controlled toggles for trait conditions (e.g., CrushingStrike "has not moved")
   abilityToggles?: Record<string, boolean>;
+  // Crit chain offset for additional attacks
+  // If this attack shares a crit chain with a source attack (e.g., Cyclic Ion Blaster),
+  // set this to the number of hits in the preceding attack(s).
+  // E.g., if source attack had 4 hits, set critChainOffset = 4 for the additional attack.
+  critChainOffset?: number;
 }
 
 /**
@@ -156,6 +163,7 @@ export interface DamageResult {
 
   // Expected crits
   expectedCrits: number;        // Expected number of crit hits from streak formula
+  expectedCritsStartIndex: number; // Starting hit index for crit chain (1 for normal, >1 for additional attacks)
 
   // Legacy fields (for backwards compatibility in Battle Log)
   critBonus: number;            // @deprecated - kept for backwards compatibility
@@ -167,6 +175,9 @@ export interface DamageResult {
   globalMultiplierSources: BuffSource[]; // Sources with multiplier values
   globalDamageBonus: number;    // Flat damage bonus applied after armor/pierce (per hit)
   globalDamageBonusSources: BuffSource[]; // Sources with globalDamageBonus values
+  armorIgnored: number;         // Amount of armor ignored
+  armorIgnoredSources: BuffSource[]; // Sources with armorIgnored values
+  effectiveArmor: number;       // Actual armor used in calculation (armor - armorIgnored)
 
   // Stats used in calculation (for logging)
   attackerStats: AttackerStats;

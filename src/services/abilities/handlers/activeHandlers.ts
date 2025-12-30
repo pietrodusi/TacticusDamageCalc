@@ -470,6 +470,107 @@ export const DrachnyenHandler: AbilityHandler = {
   },
 };
 
+/**
+ * ExemplarOfTheMontka (Farsight)
+ * Team-wide buff that grants damage bonus to all friendly ranged attackers.
+ * +extraDmg to normal ranged attacks, +extraDmg_2 if target is BigTarget.
+ * Does NOT end Farsight's turn - he can still move and attack.
+ * Variables: extraDmg, extraDmg_2
+ */
+export const ExemplarOfTheMontkaHandler: AbilityHandler = {
+  abilityId: 'ExemplarOfTheMontka',
+  abilityName: "Exemplar of the Mont'ka",
+  category: 'buff',
+  cooldown: -1,  // One-time use
+  endsTurn: false,  // Farsight can still move and attack
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('ExemplarOfTheMontka');
+    const extraDmg = values.extraDmg as number || 0;
+    const extraDmg_2 = values.extraDmg_2 as number || 0;
+
+    // Note: The actual team-wide buff is handled by the buff registry (exemplarOfTheMontkaBuffTemplate)
+    // This handler just returns the values for the buff system to use
+    return {
+      abilityId: 'ExemplarOfTheMontka',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {
+          // These values are passed to the buff pool manager
+          baseDamageBonus: extraDmg,  // Base bonus (normal targets)
+        },
+        duration: 1,  // Lasts until end of turn
+      },
+      message: `${abilityName}: +${extraDmg} ranged dmg (+${extraDmg_2} vs BigTarget)`,
+    };
+  },
+};
+
+/**
+ * ThunderousAssault (Godswyl)
+ * Melee Power damage attack (1 hit)
+ * Push + stun effects are ignored (bosses are Immune)
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Power, nrOfHits: 1
+ */
+export const ThunderousAssaultHandler: AbilityHandler = {
+  abilityId: 'ThunderousAssault',
+  abilityName: 'Thunderous Assault',
+  category: 'damage',
+  cooldown: -1,  // One-time use
+  endsTurn: true,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('ThunderousAssault');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 1;
+
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'ThunderousAssault',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Power' as DamageType,
+      },
+      message: abilityName,
+    };
+  },
+};
+
+// DefendTheDivineWork (Actus) - Multi-target repair that triggers Galvanic Field
+// Note: The actual repair/attack logic is handled in CalculatorPage and battleStore
+// This handler provides metadata for the ability system
+export const DefendTheDivineWorkHandler: AbilityHandler = {
+  abilityId: 'DefendTheDivineWork',
+  abilityName: 'Defend the Divine Work',
+  category: 'healing',
+  cooldown: -1,  // One-time use
+  endsTurn: true,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('DefendTheDivineWork');
+    const hpToRepair = values.hpToRepair as number || 0;
+
+    return {
+      abilityId: 'DefendTheDivineWork',
+      abilityName,
+      category: 'healing',
+      healingResult: {
+        amount: hpToRepair,
+      },
+      message: abilityName,
+    };
+  },
+};
+
 // Export all active handlers
 export const activeHandlers: AbilityHandler[] = [
   WarHowlHandler,
@@ -484,4 +585,7 @@ export const activeHandlers: AbilityHandler[] = [
   LightOfSanguiniusHandler,
   EuphoricStrikesHandler,
   DrachnyenHandler,
+  ExemplarOfTheMontkaHandler,
+  ThunderousAssaultHandler,
+  DefendTheDivineWorkHandler,
 ];

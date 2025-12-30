@@ -151,6 +151,10 @@
         "description": "This unit explodes when defeated, dealing {[extraDmgPct]}% of its max <style=Stat_Health>Health</style> as <style=DMG_Toxic>Toxic</style> Damage to all adjacent units except to <style=Faction_DeathGuard>Death Guard</style> units.",
         "name": "Putrid Explosion"
     },
+	"RangedSpecialist": {
+        "description": "If this this unit did not start its turn adjacent to an enemy unit, it deals <style=Stat_Damage>+33%</style> Damage with ranged attacks.",
+        "name": "Ranged Specialist"
+    },
     "RapidAssault": {
         "description": "This unit has <style=Stat_Movement>+1 Movement</style> until it makes either a melee or ranged attack. Its first attack each battle and all following attacks it makes in the same turn deal <style=Stat_Damage>+25% Damage</style>.",
         "name": "Rapid Assault"

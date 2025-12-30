@@ -1823,7 +1823,7 @@
         "FactionId": "Tau",
         "GrandAllianceId": "Xenos",
         "BaseRarity": "Uncommon",
-        "powerMultiplier": 121,
+        "powerMultiplier": 107,
         "Movement": 2,
         "weapons": [{
                 "hits": 1,
@@ -1836,11 +1836,11 @@
         ],
         "stats": {
             "Health": 65,
-            "Damage": 53,
+            "Damage": 40,
             "FixedArmor": 16,
             "ProgressionIndex": 3
         },
-        "traits": ["Hero", "CloseCombatWeakness", "Camouflage"],
+        "traits": ["Hero", "Camouflage", "RangedSpecialist"],
         "activeAbilities": ["SeekerMissileFrequencyLock"],
         "passiveAbilities": ["MV71SniperDroneSquad"],
         "itemSlots": ["I_Crit", "I_Defensive", "I_Booster_Crit"],
@@ -1852,14 +1852,14 @@
         "releaseStatus": "released",
         "unlockQuestIds": ["hero_tauMarksman_01"],
         "upgrades": [["upgHpC017", "upgHpC001", "upgDmgC007", "upgDmgC015", "upgArmC004", "upgArmC005"], ["upgHpC014", "upgHpC008", "upgDmgC005", "upgDmgU012", "upgArmC012", "upgArmU002"], ["upgHpC014", "upgHpU001", "upgDmgU007C", "upgDmgU012", "upgArmC012", "upgArmU014"], ["upgHpU017", "upgHpU007", "upgDmgU004", "upgDmgU017C", "upgArmU003C", "upgArmU014"], ["upgHpU014", "upgHpU013", "upgDmgU007C", "upgDmgR13C", "upgArmU006", "upgArmR002C"], ["upgHpR012C", "upgHpR014", "upgDmgR027", "upgDmgU017C", "upgArmU006", "upgArmR002C"], ["upgHpR027", "upgHpR003C", "upgDmgR006", "upgDmgR011C", "upgArmR007C", "upgArmR014C"], ["upgHpE027C", "upgHpR003C", "upgDmgR008C", "upgDmgE008C", "upgArmR027", "upgArmR002C"], ["upgHpR018", "upgHpE013C", "upgDmgE027C", "upgDmgR017C", "upgArmE027C", "upgArmE014C"], ["upgHpE027C", "upgHpE014C", "upgDmgE027C", "upgDmgE004", "upgArmE027C", "upgArmE003C"], ["upgHpE027C", "upgHpE013C", "upgDmgL027C", "upgDmgE004", "upgArmL027C", "upgArmE014C"], ["upgHpL027C", "upgHpL014C", "upgDmgE027C", "upgDmgL017C", "upgArmE027C", "upgArmL003C"], ["upgHpL127C", "upgHpL013C", "upgDmgL027C", "upgDmgL006C", "upgArmL027C", "upgArmL009C"], ["upgHpL027C", "upgHpL013C", "upgDmgL127C", "upgDmgL006C", "upgArmL127C", "upgArmL003C"], ["upgHpL127C", "upgHpL014C", "upgDmgL127C", "upgDmgL017C", "upgArmL127C", "upgArmL009C"], ["upgHpL127C", "upgHpL017C", "upgDmgL127C", "upgDmgL006C", "upgArmL127C", "upgArmL003C"], ["upgHpL127C", "upgHpL214C", "upgDmgL127C", "upgDmgL214C", "upgArmL127C", "upgArmL214C"], ["upgHpL127C", "upgHpL214C", "upgDmgM214C", "upgDmgL214C", "upgArmM214C", "upgArmL214C"], ["upgHpECS", "upgHpCS", "upgDmgECS", "upgDmgCS", "upgArmECS", "upgArmCS"]],
-        "upgradesStatIncrease": [[8, 8, 7, 7, 2, 2], [11, 11, 5, 11, 2, 3], [8, 17, 13, 8, 2, 4], [16, 16, 10, 16, 5, 3], [20, 20, 14, 19, 3, 7], [29, 21, 21, 21, 4, 9], [27, 36, 22, 29, 8, 8], [44, 35, 28, 36, 8, 11], [37, 62, 45, 36, 12, 12], [62, 62, 56, 45, 15, 15], [78, 78, 76, 50, 21, 18], [97, 97, 72, 86, 21, 26], [121, 121, 99, 99, 30, 30], [152, 152, 124, 124, 38, 38], [191, 191, 156, 156, 47, 47], [238, 238, 194, 194, 58, 58], [299, 299, 244, 244, 74, 74], [162, 162, 142, 122, 43, 36], [144, 181, 118, 147, 36, 44]]
+        "upgradesStatIncrease": [[8, 8, 5, 5, 2, 2], [11, 11, 4, 9, 2, 3], [8, 17, 10, 6, 2, 4], [16, 16, 8, 11, 5, 3], [20, 20, 11, 14, 3, 7], [29, 21, 16, 16, 4, 9], [27, 36, 16, 22, 8, 8], [44, 35, 21, 27, 8, 11], [37, 62, 34, 27, 12, 12], [62, 62, 43, 34, 15, 15], [78, 78, 57, 38, 21, 18], [97, 97, 54, 65, 21, 26], [121, 121, 75, 75, 30, 30], [152, 152, 94, 94, 38, 38], [191, 191, 117, 117, 47, 47], [238, 238, 147, 147, 58, 58], [299, 299, 183, 183, 74, 74], [162, 162, 108, 92, 43, 36], [144, 181, 89, 111, 36, 44]]
     },
     "tauCrisis": {
         "name": "Re'vas",
         "FactionId": "Tau",
         "GrandAllianceId": "Xenos",
         "BaseRarity": "Uncommon",
-        "powerMultiplier": 105,
+        "powerMultiplier": 96,
         "Movement": 3,
         "weapons": [{
                 "hits": 6,
@@ -1872,11 +1872,11 @@
         ],
         "stats": {
             "Health": 105,
-            "Damage": 10,
+            "Damage": 7,
             "FixedArmor": 25,
             "ProgressionIndex": 3
         },
-        "traits": ["Hero", "CloseCombatWeakness", "BigTarget", "Flying", "Mechanical"],
+        "traits": ["Hero", "BigTarget", "Flying", "Mechanical", "RangedSpecialist"],
         "activeAbilities": ["EarlyWarningOverride"],
         "passiveAbilities": ["CyclicIonBlaster"],
         "itemSlots": ["I_Crit", "I_Block", "I_Booster_Block"],
@@ -1888,31 +1888,31 @@
         "releaseStatus": "released",
         "unlockQuestIds": ["hero_tauCrisis_01"],
         "upgrades": [["upgHpC017", "upgHpC017", "upgDmgC009", "upgDmgC015", "upgArmC004", "upgArmC005"], ["upgHpC014", "upgHpC008", "upgDmgC003", "upgDmgU012", "upgArmC012", "upgArmU002"], ["upgHpC014", "upgHpU017", "upgDmgU013C", "upgDmgU004", "upgArmC012", "upgArmU014"], ["upgHpU014", "upgHpU007", "upgDmgU003", "upgDmgU017C", "upgArmU003C", "upgArmU014"], ["upgHpU014", "upgHpU013", "upgDmgU013C", "upgDmgR13C", "upgArmU006", "upgArmR002C"], ["upgHpR012C", "upgHpR014", "upgDmgR027", "upgDmgU017C", "upgArmU006", "upgArmR002C"], ["upgHpR027", "upgHpR017C", "upgDmgR003", "upgDmgR011C", "upgArmR007C", "upgArmR014C"], ["upgHpE027C", "upgHpR017C", "upgDmgR004C", "upgDmgE007C", "upgArmR027", "upgArmR002C"], ["upgHpR018", "upgHpE013C", "upgDmgE027C", "upgDmgR017C", "upgArmE027C", "upgArmE014C"], ["upgHpE027C", "upgHpE014C", "upgDmgE027C", "upgDmgE004", "upgArmE027C", "upgArmE003C"], ["upgHpE027C", "upgHpE013C", "upgDmgL027C", "upgDmgE004", "upgArmL027C", "upgArmE014C"], ["upgHpL027C", "upgHpL014C", "upgDmgE027C", "upgDmgL017C", "upgArmE027C", "upgArmL003C"], ["upgHpL127C", "upgHpL013C", "upgDmgL027C", "upgDmgL006C", "upgArmL027C", "upgArmL009C"], ["upgHpL027C", "upgHpL013C", "upgDmgL127C", "upgDmgL006C", "upgArmL127C", "upgArmL003C"], ["upgHpL127C", "upgHpL014C", "upgDmgL127C", "upgDmgL017C", "upgArmL127C", "upgArmL009C"], ["upgHpL127C", "upgHpL013C", "upgDmgL127C", "upgDmgL002C", "upgArmL127C", "upgArmL003C"], ["upgHpL127C", "upgHpL214C", "upgDmgL127C", "upgDmgL214C", "upgArmL127C", "upgArmL214C"], ["upgHpL127C", "upgHpL214C", "upgDmgM214C", "upgDmgL214C", "upgArmM213C", "upgArmL214C"], ["upgHpECS", "upgHpCS", "upgDmgECS", "upgDmgCS", "upgArmECS", "upgArmCS"]],
-        "upgradesStatIncrease": [[13, 13, 2, 2, 3, 3], [17, 17, 1, 1, 3, 5], [14, 27, 2, 2, 3, 7], [26, 26, 2, 3, 7, 5], [33, 33, 3, 3, 5, 11], [46, 34, 4, 4, 6, 13], [44, 58, 4, 5, 13, 13], [71, 57, 5, 7, 12, 17], [60, 100, 9, 7, 19, 19], [100, 100, 11, 8, 24, 24], [125, 125, 14, 9, 32, 27], [157, 157, 14, 16, 34, 41], [196, 196, 19, 19, 47, 47], [246, 246, 24, 24, 58, 58], [308, 308, 29, 29, 74, 74], [385, 385, 36, 36, 91, 91], [482, 482, 46, 46, 115, 115], [262, 262, 27, 23, 67, 58], [233, 292, 22, 28, 56, 69]]
+        "upgradesStatIncrease": [[13, 13, 1, 1, 3, 3], [17, 17, 1, 1, 3, 5], [14, 27, 2, 1, 3, 7], [26, 26, 1, 2, 7, 5], [33, 33, 2, 3, 5, 11], [46, 34, 3, 3, 6, 13], [44, 58, 3, 3, 13, 13], [71, 57, 4, 4, 12, 17], [60, 100, 6, 5, 19, 19], [100, 100, 7, 6, 24, 24], [125, 125, 10, 7, 32, 27], [157, 157, 10, 11, 34, 41], [196, 196, 13, 13, 47, 47], [246, 246, 17, 17, 58, 58], [308, 308, 20, 20, 74, 74], [385, 385, 26, 26, 91, 91], [482, 482, 32, 32, 115, 115], [262, 262, 18, 16, 67, 58], [233, 292, 16, 19, 56, 69]]
     },
     "tauDarkstrider": {
         "name": "Darkstrider",
         "FactionId": "Tau",
         "GrandAllianceId": "Xenos",
         "BaseRarity": "Rare",
-        "powerMultiplier": 123,
+        "powerMultiplier": 89,
         "Movement": 3,
         "weapons": [{
                 "hits": 3,
                 "DamageProfile": "Physical"
             }, {
-                "hits": 2,
+                "hits": 4,
                 "DamageProfile": "Pulse",
                 "Range": 2
             }
         ],
         "stats": {
             "Health": 75,
-            "Damage": 35,
+            "Damage": 25,
             "FixedArmor": 17,
             "ProgressionIndex": 6
         },
-        "traits": ["Hero", "CloseCombatWeakness", "Infiltrate", "SuppressiveFire"],
+        "traits": ["Hero", "Infiltrate", "RangedSpecialist", "SuppressiveFire"],
         "activeAbilities": ["FightingRetreat"],
         "passiveAbilities": ["StructuralAnalyser"],
         "itemSlots": ["I_Crit", "I_Defensive", "I_Booster_Crit"],
@@ -1924,7 +1924,7 @@
         "releaseStatus": "released",
         "unlockQuestIds": ["hero_tauDarkstrider_01"],
         "upgrades": [["upgHpC001", "upgHpC017", "upgDmgC007", "upgDmgC015", "upgArmC004", "upgArmC005"], ["upgHpC006", "upgHpC008", "upgDmgC005", "upgDmgU012", "upgArmC003", "upgArmU002"], ["upgHpC006", "upgHpU017", "upgDmgU007C", "upgDmgU012", "upgArmC003", "upgArmU014"], ["upgHpU001", "upgHpU007", "upgDmgU004", "upgDmgU017C", "upgArmU003C", "upgArmU014"], ["upgHpU015", "upgHpU017", "upgDmgU007C", "upgDmgR13C", "upgArmU006", "upgArmR002C"], ["upgHpR003C", "upgHpR014", "upgDmgR027", "upgDmgU017C", "upgArmU006", "upgArmR002C"], ["upgHpR027", "upgHpR017C", "upgDmgR006", "upgDmgR011C", "upgArmR007C", "upgArmR014C"], ["upgHpE027C", "upgHpR017C", "upgDmgR008C", "upgDmgR011C", "upgArmR027", "upgArmR002C"], ["upgHpR018", "upgHpE006C", "upgDmgE027C", "upgDmgR017C", "upgArmE027C", "upgArmE014C"], ["upgHpE027C", "upgHpE014C", "upgDmgE027C", "upgDmgE004", "upgArmE027C", "upgArmE003C"], ["upgHpE027C", "upgHpE001C", "upgDmgL027C", "upgDmgE004", "upgArmL027C", "upgArmE014C"], ["upgHpL027C", "upgHpL014C", "upgDmgE027C", "upgDmgL017C", "upgArmE027C", "upgArmL003C"], ["upgHpL127C", "upgHpL001C", "upgDmgL027C", "upgDmgL006C", "upgArmL027C", "upgArmL009C"], ["upgHpL027C", "upgHpL001C", "upgDmgL127C", "upgDmgL006C", "upgArmL127C", "upgArmL003C"], ["upgHpL127C", "upgHpL014C", "upgDmgL127C", "upgDmgL017C", "upgArmL127C", "upgArmL009C"], ["upgHpL127C", "upgHpL017C", "upgDmgL127C", "upgDmgL006C", "upgArmL127C", "upgArmL003C"], ["upgHpL127C", "upgHpL213C", "upgDmgL127C", "upgDmgL213C", "upgArmL127C", "upgArmL213C"], ["upgHpL127C", "upgHpL213C", "upgDmgM213C", "upgDmgL213C", "upgArmM213C", "upgArmL213C"], ["upgHpECS", "upgHpCS", "upgDmgECS", "upgDmgCS", "upgArmECS", "upgArmCS"]],
-        "upgradesStatIncrease": [[10, 10, 5, 5, 2, 2], [12, 12, 3, 7, 2, 4], [9, 19, 8, 6, 2, 4], [19, 19, 7, 10, 5, 4], [23, 23, 9, 13, 3, 7], [33, 25, 14, 14, 4, 9], [31, 42, 14, 19, 9, 9], [51, 40, 21, 21, 9, 11], [43, 71, 30, 24, 13, 13], [72, 72, 37, 29, 16, 16], [89, 89, 50, 34, 22, 18], [112, 112, 47, 57, 23, 28], [140, 140, 66, 66, 32, 32], [176, 176, 82, 82, 40, 40], [219, 219, 102, 102, 50, 50], [276, 276, 129, 129, 62, 62], [344, 344, 160, 160, 78, 78], [187, 187, 94, 81, 46, 39], [167, 208, 78, 97, 38, 47]]
+        "upgradesStatIncrease": [[10, 10, 3, 3, 2, 2], [12, 12, 3, 5, 2, 4], [9, 19, 6, 4, 2, 4], [19, 19, 5, 7, 5, 4], [23, 23, 7, 9, 3, 7], [33, 25, 10, 10, 4, 9], [31, 42, 10, 14, 9, 9], [51, 40, 15, 15, 9, 11], [43, 71, 21, 17, 13, 13], [72, 72, 27, 21, 16, 16], [89, 89, 35, 24, 22, 18], [112, 112, 34, 41, 23, 28], [140, 140, 47, 47, 32, 32], [176, 176, 58, 58, 40, 40], [219, 219, 74, 74, 50, 50], [276, 276, 91, 91, 62, 62], [344, 344, 115, 115, 78, 78], [187, 187, 67, 58, 46, 39], [167, 208, 56, 69, 38, 47]]
     },
     "tauAunShi": {
         "name": "Aun'Shi",
@@ -1970,7 +1970,7 @@
         "FactionId": "Tau",
         "GrandAllianceId": "Xenos",
         "BaseRarity": "Legendary",
-        "powerMultiplier": 90,
+        "powerMultiplier": 75,
         "Movement": 4,
         "weapons": [{
                 "hits": 2,
@@ -1983,11 +1983,11 @@
         ],
         "stats": {
             "Health": 80,
-            "Damage": 27,
+            "Damage": 25,
             "FixedArmor": 18,
             "ProgressionIndex": 12
         },
-        "traits": ["Hero", "CloseCombatWeakness", "Camouflage", "Flying", "Infiltrate"],
+        "traits": ["Hero", "Camouflage", "Flying", "Infiltrate", "RangedSpecialist"],
         "activeAbilities": ["ExemplarOfTheKauyon"],
         "passiveAbilities": ["DefenderOfTheGreaterGood"],
         "itemSlots": ["I_Crit", "I_Block", "I_Booster_Crit"],
@@ -2006,7 +2006,7 @@
             }
         },
         "upgrades": [["upgHpC017", "upgHpC017", "upgDmgC009", "upgDmgC015", "upgArmC004", "upgArmC005"], ["upgHpC014", "upgHpC008", "upgDmgC003", "upgDmgU012", "upgArmC012", "upgArmU002"], ["upgHpC014", "upgHpU017", "upgDmgU013C", "upgDmgU004", "upgArmC012", "upgArmU014"], ["upgHpU014", "upgHpU007", "upgDmgU003", "upgDmgU017C", "upgArmU003C", "upgArmU014"], ["upgHpU014", "upgHpU013", "upgDmgU013C", "upgDmgR13C", "upgArmU006", "upgArmR002C"], ["upgHpR012C", "upgHpR014", "upgDmgR027", "upgDmgU017C", "upgArmU006", "upgArmR002C"], ["upgHpR027", "upgHpR017C", "upgDmgR003", "upgDmgR011C", "upgArmR007C", "upgArmR014C"], ["upgHpE027C", "upgHpR017C", "upgDmgR004C", "upgDmgE007C", "upgArmR027", "upgArmR002C"], ["upgHpR018", "upgHpE013C", "upgDmgE027C", "upgDmgR017C", "upgArmE027C", "upgArmE014C"], ["upgHpE027C", "upgHpE014C", "upgDmgE027C", "upgDmgE004", "upgArmE027C", "upgArmE003C"], ["upgHpE027C", "upgHpE013C", "upgDmgL027C", "upgDmgE004", "upgArmL027C", "upgArmE014C"], ["upgHpL027C", "upgHpL014C", "upgDmgE027C", "upgDmgL017C", "upgArmE027C", "upgArmL003C"], ["upgHpL127C", "upgHpL013C", "upgDmgL027C", "upgDmgL006C", "upgArmL027C", "upgArmL009C"], ["upgHpL027C", "upgHpL013C", "upgDmgL127C", "upgDmgL006C", "upgArmL127C", "upgArmL003C"], ["upgHpL127C", "upgHpL014C", "upgDmgL127C", "upgDmgL017C", "upgArmL127C", "upgArmL009C"], ["upgHpL127C", "upgHpL013C", "upgDmgL127C", "upgDmgL006C", "upgArmL127C", "upgArmL003C"], ["upgHpL127C", "upgHpL214C", "upgDmgL127C", "upgDmgL214C", "upgArmL127C", "upgArmL214C"], ["upgHpL127C", "upgHpL214C", "upgDmgM213C", "upgDmgL214C", "upgArmM214C", "upgArmL214C"], ["upgHpECS", "upgHpCS", "upgDmgECS", "upgDmgCS", "upgArmECS", "upgArmCS"]],
-        "upgradesStatIncrease": [[10, 10, 4, 4, 3, 3], [13, 13, 2, 5, 1, 3], [10, 21, 7, 4, 2, 5], [20, 20, 5, 8, 5, 4], [25, 25, 7, 10, 4, 7], [35, 26, 11, 11, 5, 9], [33, 45, 11, 14, 9, 9], [54, 43, 15, 18, 9, 13], [46, 76, 23, 18, 14, 14], [76, 76, 29, 23, 17, 17], [96, 96, 38, 26, 23, 19], [119, 119, 37, 44, 25, 29], [150, 150, 50, 50, 34, 34], [187, 187, 64, 64, 42, 42], [234, 234, 79, 79, 53, 53], [294, 294, 99, 99, 66, 66], [367, 367, 124, 124, 82, 82], [200, 200, 72, 62, 48, 42], [178, 222, 60, 75, 40, 50]]
+        "upgradesStatIncrease": [[10, 10, 3, 3, 3, 3], [13, 13, 3, 5, 1, 3], [10, 21, 6, 4, 2, 5], [20, 20, 5, 7, 5, 4], [25, 25, 7, 9, 4, 7], [35, 26, 10, 10, 5, 9], [33, 45, 10, 14, 9, 9], [54, 43, 13, 17, 9, 13], [46, 76, 21, 17, 14, 14], [76, 76, 27, 21, 17, 17], [96, 96, 35, 24, 23, 19], [119, 119, 34, 41, 25, 29], [150, 150, 47, 47, 34, 34], [187, 187, 58, 58, 42, 42], [234, 234, 74, 74, 53, 53], [294, 294, 91, 91, 66, 66], [367, 367, 115, 115, 82, 82], [200, 200, 67, 58, 48, 42], [178, 222, 56, 69, 40, 50]]
     },
     "tauFarsight": {
         "name": "Farsight",
@@ -2239,6 +2239,40 @@
         },
         "upgrades": [["upgHpC015", "upgHpC004", "upgDmgC003", "upgDmgC011", "upgArmC013", "upgArmC002"], ["upgHpC001", "upgHpC002", "upgDmgU014", "upgDmgU015C", "upgArmC006", "upgArmC001"], ["upgHpU001", "upgHpU004C", "upgDmgC013", "upgDmgC010", "upgArmU009", "upgArmU001"], ["upgHpU018C", "upgHpU012", "upgDmgU014", "upgDmgU010", "upgArmU013", "upgArmU003C"], ["upgHpU001", "upgHpR015C", "upgDmgU018C", "upgDmgU011", "upgArmR005", "upgArmU001"], ["upgHpR003C", "upgHpU006", "upgDmgR031", "upgDmgR010C", "upgArmU004C", "upgArmR015"], ["upgHpR031", "upgHpR005", "upgDmgR13C", "upgDmgR005", "upgArmR013C", "upgArmR003C"], ["upgHpE031C", "upgHpR004C", "upgDmgR002", "upgDmgE006C", "upgArmR031", "upgArmR001C"], ["upgHpR018", "upgHpE001C", "upgDmgE031C", "upgDmgR015C", "upgArmE031C", "upgArmE013"], ["upgHpE031C", "upgHpE003", "upgDmgE031C", "upgDmgE011", "upgArmE031C", "upgArmE004C"], ["upgHpL111", "upgHpE002C", "upgDmgL031C", "upgDmgE006C", "upgArmE031C", "upgArmE001C"], ["upgHpE031C", "upgHpL009C", "upgDmgE031C", "upgDmgL015C", "upgArmL203", "upgArmL004C"], ["upgHpL031C", "upgHpL001C", "upgDmgL003", "upgDmgL005C", "upgArmL031C", "upgArmL010C"], ["upgHpL131C", "upgHpL002C", "upgDmgL031C", "upgDmgL015C", "upgArmL031C", "upgArmL011C"], ["upgHpL031C", "upgHpL009C", "upgDmgL131C", "upgDmgL008C", "upgArmL131C", "upgArmL010C"], ["upgHpL131C", "upgHpL017C", "upgDmgL131C", "upgDmgL009C", "upgArmL131C", "upgArmL004C"], ["upgHpL131C", "upgHpL213C", "upgDmgL131C", "upgDmgL213C", "upgArmL131C", "upgArmL213C"], ["upgHpL131C", "upgHpL213C", "upgDmgM213C", "upgDmgL213C", "upgArmM214C", "upgArmL213C"], ["upgHpECS", "upgHpCS", "upgDmgECS", "upgDmgCS", "upgArmECS", "upgArmCS"]],
         "upgradesStatIncrease": [[13, 13, 2, 2, 3, 3], [16, 16, 2, 2, 4, 4], [15, 23, 3, 3, 5, 5], [30, 20, 3, 3, 4, 7], [21, 41, 5, 4, 9, 6], [51, 26, 5, 6, 9, 9], [49, 49, 8, 6, 12, 12], [67, 54, 6, 11, 12, 17], [57, 95, 12, 9, 20, 16], [106, 84, 14, 12, 23, 23], [120, 120, 19, 15, 29, 29], [135, 162, 19, 23, 32, 39], [187, 187, 24, 28, 45, 45], [234, 234, 33, 33, 56, 56], [293, 293, 41, 41, 71, 71], [367, 367, 51, 51, 88, 88], [459, 459, 65, 65, 110, 110], [250, 250, 37, 32, 64, 55], [222, 278, 31, 39, 53, 67]]
+    },
+    "spaceWolfPriest": {
+        "name": "Baldr",
+        "FactionId": "SpaceWolves",
+        "GrandAllianceId": "Imperial",
+        "BaseRarity": "Rare",
+        "powerMultiplier": 97,
+        "Movement": 3,
+        "weapons": [{
+                "hits": 3,
+                "DamageProfile": "Power"
+            }
+        ],
+        "stats": {
+            "Health": 90,
+            "Damage": 25,
+            "FixedArmor": 21,
+            "ProgressionIndex": 6
+        },
+        "traits": ["Hero", "Healer", "FinalJustice", "Terrifying"],
+        "activeAbilities": ["RitesOfMorkai"],
+        "passiveAbilities": ["HealingBalms"],
+        "itemSlots": ["I_Crit", "I_Block", "I_Booster_Crit"],
+        "itemSlotsRelic": [2],
+        "eligibilityRequirements": {
+            "canDropIfHeroUnlocked": true,
+            "canDropIfHeroNotUnlocked": true,
+            "timestampIfHeroUnlocked": 1769385600000,
+            "timestampIfHeroNotUnlocked": 1771372800000
+        },
+        "releaseStatus": "1767830400000",
+        "unlockQuestIds": ["hero_spaceWolfPriest_01"],
+        "upgrades": [["upgHpC015", "upgHpC004", "upgDmgC010", "upgDmgC011", "upgArmC002", "upgArmC013"], ["upgHpC001", "upgHpC007", "upgDmgU010", "upgDmgU015C", "upgArmC013", "upgArmC001"], ["upgHpU001", "upgHpU005C", "upgDmgC013", "upgDmgC003", "upgArmU005", "upgArmU009"], ["upgHpU018C", "upgHpU012", "upgDmgU010", "upgDmgU014", "upgArmU009", "upgArmU010C"], ["upgHpU001", "upgHpR015C", "upgDmgU018C", "upgDmgU011", "upgArmR005", "upgArmU001"], ["upgHpR003C", "upgHpU006", "upgDmgR031", "upgDmgR012C", "upgArmU010C", "upgArmR015"], ["upgHpR031", "upgHpR005", "upgDmgR13C", "upgDmgR005", "upgArmR003C", "upgArmR012C"], ["upgHpE031C", "upgHpR006C", "upgDmgR002", "upgDmgE009C", "upgArmR031", "upgArmR001C"], ["upgHpR014", "upgHpE006C", "upgDmgE031C", "upgDmgR015C", "upgArmE031C", "upgArmE013"], ["upgHpE031C", "upgHpE012", "upgDmgE031C", "upgDmgE011", "upgArmE031C", "upgArmE004C"], ["upgHpL111", "upgHpE002C", "upgDmgL031C", "upgDmgE009C", "upgArmE031C", "upgArmE006C"], ["upgHpE031C", "upgHpL009C", "upgDmgE031C", "upgDmgL015C", "upgArmL203", "upgArmL004C"], ["upgHpL031C", "upgHpL011C", "upgDmgL204", "upgDmgL009C", "upgArmL031C", "upgArmL006C"], ["upgHpL131C", "upgHpL002C", "upgDmgL031C", "upgDmgL015C", "upgArmL031C", "upgArmL010C"], ["upgHpL031C", "upgHpL009C", "upgDmgL131C", "upgDmgL008C", "upgArmL131C", "upgArmL006C"], ["upgHpL131C", "upgHpL017C", "upgDmgL131C", "upgDmgL005C", "upgArmL131C", "upgArmL004C"], ["upgHpL131C", "upgHpL213C", "upgDmgL131C", "upgDmgL213C", "upgArmL131C", "upgArmL213C"], ["upgHpL131C", "upgHpL213C", "upgDmgM213C", "upgDmgL213C", "upgArmM211C", "upgArmL213C"], ["upgHpECS", "upgHpCS", "upgDmgECS", "upgDmgCS", "upgArmECS", "upgArmCS"]],
+        "upgradesStatIncrease": [[12, 12, 3, 3, 3, 3], [14, 14, 3, 5, 3, 3], [14, 21, 5, 5, 4, 4], [26, 18, 6, 6, 4, 7], [19, 37, 10, 6, 8, 5], [47, 23, 8, 11, 8, 8], [44, 44, 14, 11, 10, 10], [60, 48, 11, 19, 11, 15], [51, 86, 21, 17, 18, 14], [96, 76, 27, 21, 20, 20], [107, 107, 32, 27, 25, 25], [122, 147, 34, 41, 29, 34], [168, 168, 42, 51, 39, 39], [211, 211, 59, 59, 49, 49], [264, 264, 73, 73, 62, 62], [330, 330, 92, 92, 77, 77], [413, 413, 115, 115, 96, 96], [225, 225, 67, 57, 57, 48], [200, 250, 56, 69, 47, 58]]
     },
     "thousTzaangor": {
         "name": "Yazaghor",
@@ -2641,7 +2675,7 @@
         "FactionId": "Tyranids",
         "GrandAllianceId": "Xenos",
         "BaseRarity": "Rare",
-        "powerMultiplier": 107,
+        "powerMultiplier": 115,
         "Movement": 2,
         "weapons": [{
                 "hits": 1,
@@ -2654,11 +2688,11 @@
         ],
         "stats": {
             "Health": 85,
-            "Damage": 25,
+            "Damage": 20,
             "FixedArmor": 17,
             "ProgressionIndex": 6
         },
-        "traits": ["Hero", "CloseCombatWeakness", "Flying", "Psyker", "ShadowInTheWarp", "Synapse"],
+        "traits": ["Hero", "RangedSpecialist", "Flying", "Psyker", "ShadowInTheWarp", "Synapse"],
         "activeAbilities": ["SpiritLeech"],
         "passiveAbilities": ["Neuroparasite"],
         "itemSlots": ["I_Crit", "I_Block", "I_Booster_Block"],
@@ -2670,7 +2704,7 @@
         "releaseStatus": "released",
         "unlockQuestIds": ["hero_tyranNeurothrope_01"],
         "upgrades": [["upgHpC013", "upgHpC010", "upgDmgC003", "upgDmgC003", "upgArmC005", "upgArmC005"], ["upgHpC017", "upgHpC009", "upgDmgU014", "upgDmgU016C", "upgArmC005", "upgArmC007"], ["upgHpU017", "upgHpU010C", "upgDmgC008", "upgDmgC014", "upgArmU007", "upgArmC007"], ["upgHpU010C", "upgHpU009", "upgDmgU014", "upgDmgU014", "upgArmU007", "upgArmU004C"], ["upgHpU017", "upgHpR009C", "upgDmgU008C", "upgDmgU014", "upgArmR015", "upgArmU007"], ["upgHpR017C", "upgHpU009", "upgDmgR033", "upgDmgR14C", "upgArmU004C", "upgArmR015"], ["upgHpR033", "upgHpR008", "upgDmgR14C", "upgDmgR005", "upgArmR002C", "upgArmR002C"], ["upgHpE033C", "upgHpR009C", "upgDmgR005", "upgDmgE009C", "upgArmR033", "upgArmR004C"], ["upgHpR019", "upgHpE013C", "upgDmgE033C", "upgDmgR016C", "upgArmE033C", "upgArmE008"], ["upgHpE033C", "upgHpE015", "upgDmgE033C", "upgDmgE010", "upgArmE033C", "upgArmE003C"], ["upgHpL113", "upgHpE008C", "upgDmgL033C", "upgDmgE009C", "upgArmE033C", "upgArmE005C"], ["upgHpE033C", "upgHpL012C", "upgDmgE033C", "upgDmgL016C", "upgArmL202", "upgArmE003C"], ["upgHpL033C", "upgHpL013C", "upgDmgL202", "upgDmgL010C", "upgArmL033C", "upgArmL003C"], ["upgHpL133C", "upgHpL012C", "upgDmgL033C", "upgDmgL016C", "upgArmL033C", "upgArmL005C"], ["upgHpL033C", "upgHpL013C", "upgDmgL133C", "upgDmgL009C", "upgArmL133C", "upgArmL005C"], ["upgHpL133C", "upgHpL017C", "upgDmgL133C", "upgDmgL010C", "upgArmL133C", "upgArmL003C"], ["upgHpL133C", "upgHpL212C", "upgDmgL133C", "upgDmgL212C", "upgArmL133C", "upgArmL212C"], ["upgHpL133C", "upgHpL212C", "upgDmgM212C", "upgDmgL212C", "upgArmM212C", "upgArmL212C"], ["upgHpECS", "upgHpCS", "upgDmgECS", "upgDmgCS", "upgArmECS", "upgArmCS"]],
-        "upgradesStatIncrease": [[11, 11, 3, 3, 2, 2], [13, 13, 3, 5, 3, 3], [14, 20, 5, 5, 4, 2], [25, 17, 6, 6, 4, 5], [17, 35, 10, 6, 6, 4], [44, 22, 8, 11, 7, 7], [42, 42, 14, 11, 8, 8], [57, 45, 11, 19, 9, 12], [48, 81, 21, 17, 14, 11], [90, 72, 27, 21, 17, 17], [102, 102, 32, 27, 20, 20], [115, 138, 34, 41, 25, 25], [159, 159, 42, 51, 32, 32], [199, 199, 59, 59, 40, 40], [249, 249, 73, 73, 50, 50], [312, 312, 92, 92, 62, 62], [390, 390, 115, 115, 78, 78], [213, 213, 67, 57, 46, 39], [188, 236, 56, 69, 38, 47]]
+        "upgradesStatIncrease": [[11, 11, 3, 3, 2, 2], [13, 13, 2, 3, 3, 3], [14, 20, 4, 4, 4, 2], [25, 17, 5, 5, 4, 5], [17, 35, 8, 5, 6, 4], [44, 22, 6, 9, 7, 7], [42, 42, 11, 8, 8, 8], [57, 45, 9, 16, 9, 12], [48, 81, 17, 13, 14, 11], [90, 72, 21, 17, 17, 17], [102, 102, 26, 22, 20, 20], [115, 138, 27, 33, 25, 25], [159, 159, 34, 40, 32, 32], [199, 199, 47, 47, 40, 40], [249, 249, 59, 59, 50, 50], [312, 312, 73, 73, 62, 62], [390, 390, 92, 92, 78, 78], [213, 213, 54, 46, 46, 39], [188, 236, 44, 56, 38, 47]]
     },
     "tyranTyrantGuard": {
         "name": "Tyrant Guard",
@@ -3625,11 +3659,9 @@
         "itemSlotsRelic": [0],
         "eligibilityRequirements": {
             "canDropIfHeroUnlocked": true,
-            "canDropIfHeroNotUnlocked": true,
-            "timestampIfHeroUnlocked": 1763337600000,
-            "timestampIfHeroNotUnlocked": 1765324800000
+            "canDropIfHeroNotUnlocked": true
         },
-        "releaseStatus": "1761782400000",
+        "releaseStatus": "released",
         "unlockQuestIds": ["hero_custoKyrus_01"],
         "upgrades": [["upgHpC015", "upgHpC004", "upgDmgC009", "upgDmgC011", "upgArmC005", "upgArmC013"], ["upgHpC003", "upgHpC002", "upgDmgU012", "upgDmgU015C", "upgArmC013", "upgArmC001"], ["upgHpU002", "upgHpU004C", "upgDmgC001", "upgDmgC010", "upgArmU006", "upgArmU009"], ["upgHpU018C", "upgHpU017", "upgDmgU012", "upgDmgU010", "upgArmU009", "upgArmU004C"], ["upgHpU002", "upgHpR017C", "upgDmgU001C", "upgDmgU011", "upgArmR005", "upgArmU001"], ["upgHpR020C", "upgHpU006", "upgDmgR037", "upgDmgR010C", "upgArmU004C", "upgArmR015"], ["upgHpR037", "upgHpR005", "upgDmgR001C", "upgDmgR002", "upgArmR002C", "upgArmR012C"], ["upgHpE037C", "upgHpR004C", "upgDmgR005", "upgDmgE006C", "upgArmR037", "upgArmR001C"], ["upgHpR005", "upgHpE001C", "upgDmgE037C", "upgDmgR015C", "upgArmE037C", "upgArmE013"], ["upgHpE037C", "upgHpE017", "upgDmgE037C", "upgDmgE001", "upgArmE037C", "upgArmE003C"], ["upgHpL117", "upgHpE002C", "upgDmgL037C", "upgDmgE006C", "upgArmE037C", "upgArmE006C"], ["upgHpE037C", "upgHpL017C", "upgDmgE037C", "upgDmgL015C", "upgArmL203", "upgArmL003C"], ["upgHpL037C", "upgHpL001C", "upgDmgL001", "upgDmgL005C", "upgArmL037C", "upgArmL006C"], ["upgHpL137C", "upgHpL002C", "upgDmgL037C", "upgDmgL015C", "upgArmL037C", "upgArmL010C"], ["upgHpL037C", "upgHpL009C", "upgDmgL137C", "upgDmgL007C", "upgArmL137C", "upgArmL006C"], ["upgHpL137C", "upgHpL002C", "upgDmgL137C", "upgDmgL006C", "upgArmL137C", "upgArmL003C"], ["upgHpL137C", "upgHpL213C", "upgDmgL137C", "upgDmgL213C", "upgArmL137C", "upgArmL213C"], ["upgHpL137C", "upgHpL213C", "upgDmgM213C", "upgDmgL213C", "upgArmM211C", "upgArmL213C"], ["upgHpECS", "upgHpCS", "upgDmgECS", "upgDmgCS", "upgArmECS", "upgArmCS"]],
         "upgradesStatIncrease": [[12, 12, 3, 3, 3, 3], [15, 15, 3, 5, 3, 3], [15, 22, 5, 5, 5, 5], [28, 19, 6, 6, 4, 6], [20, 39, 10, 6, 8, 6], [49, 25, 8, 11, 9, 9], [46, 46, 14, 11, 10, 10], [64, 52, 11, 19, 12, 15], [54, 90, 21, 17, 18, 15], [101, 80, 27, 21, 21, 21], [114, 114, 32, 27, 27, 27], [128, 154, 34, 41, 29, 35], [178, 178, 42, 51, 42, 42], [222, 222, 59, 59, 51, 51], [279, 279, 73, 73, 64, 64], [348, 348, 92, 92, 81, 81], [436, 436, 115, 115, 101, 101], [238, 238, 67, 57, 59, 51], [211, 263, 56, 69, 49, 61]]
@@ -3867,5 +3899,71 @@
         "unlockQuestIds": ["hero_emperLucius_01"],
         "upgrades": [["upgHpC015", "upgHpC010", "upgDmgC003", "upgDmgC014", "upgArmC013", "upgArmC006"], ["upgHpC013", "upgHpC015", "upgDmgU014", "upgDmgU016C", "upgArmC007", "upgArmC007"], ["upgHpU012", "upgHpU018C", "upgDmgC013", "upgDmgC003", "upgArmU009", "upgArmU007"], ["upgHpU018C", "upgHpU012", "upgDmgU014", "upgDmgU014", "upgArmU007", "upgArmU003C"], ["upgHpU012", "upgHpR015C", "upgDmgU018C", "upgDmgU019", "upgArmR015", "upgArmU007"], ["upgHpR015C", "upgHpU009", "upgDmgR039", "upgDmgR012C", "upgArmU003C", "upgArmR015"], ["upgHpR039", "upgHpR008", "upgDmgR13C", "upgDmgR005", "upgArmR004C", "upgArmR003C"], ["upgHpE039C", "upgHpR013C", "upgDmgR003", "upgDmgE009C", "upgArmR039", "upgArmR004C"], ["upgHpR019", "upgHpE007C", "upgDmgE039C", "upgDmgR016C", "upgArmE039C", "upgArmE013"], ["upgHpE039C", "upgHpE017", "upgDmgE039C", "upgDmgE011", "upgArmE039C", "upgArmE004C"], ["upgHpL119", "upgHpE008C", "upgDmgL039C", "upgDmgE009C", "upgArmE039C", "upgArmE005C"], ["upgHpE039C", "upgHpL009C", "upgDmgE039C", "upgDmgL016C", "upgArmL203", "upgArmL004C"], ["upgHpL039C", "upgHpL009C", "upgDmgL003", "upgDmgL009C", "upgArmL039C", "upgArmL005C"], ["upgHpL139C", "upgHpL012C", "upgDmgL039C", "upgDmgL016C", "upgArmL039C", "upgArmL005C"], ["upgHpL039C", "upgHpL009C", "upgDmgL139C", "upgDmgL008C", "upgArmL139C", "upgArmL005C"], ["upgHpL139C", "upgHpL009C", "upgDmgL139C", "upgDmgL009C", "upgArmL139C", "upgArmL004C"], ["upgHpL139C", "upgHpL213C", "upgDmgL139C", "upgDmgL213C", "upgArmL139C", "upgArmL213C"], ["upgHpL139C", "upgHpL213C", "upgDmgM212C", "upgDmgL213C", "upgArmM212C", "upgArmL213C"], ["upgHpECS", "upgHpCS", "upgDmgECS", "upgDmgCS", "upgArmECS", "upgArmCS"]],
         "upgradesStatIncrease": [[12, 12, 2, 2, 3, 3], [14, 14, 1, 2, 3, 3], [14, 21, 3, 3, 4, 4], [26, 18, 3, 3, 4, 5], [19, 37, 5, 3, 8, 5], [47, 23, 4, 6, 8, 8], [44, 44, 7, 6, 9, 9], [60, 48, 6, 9, 11, 14], [51, 86, 11, 9, 17, 13], [96, 76, 14, 11, 19, 19], [107, 107, 17, 14, 24, 24], [122, 147, 18, 21, 27, 33], [168, 168, 22, 26, 37, 37], [211, 211, 31, 31, 47, 47], [264, 264, 38, 38, 59, 59], [330, 330, 48, 48, 73, 73], [413, 413, 59, 59, 92, 92], [225, 225, 35, 30, 54, 46], [200, 250, 29, 36, 44, 56]]
+    },
+    "votanIronmaster": {
+        "name": "Vynn",
+        "FactionId": "LeaguesOfVotann",
+        "GrandAllianceId": "Xenos",
+        "BaseRarity": "Rare",
+        "powerMultiplier": 142,
+        "Movement": 2,
+        "weapons": [{
+                "hits": 3,
+                "DamageProfile": "Power"
+            }
+        ],
+        "stats": {
+            "Health": 80,
+            "Damage": 25,
+            "FixedArmor": 16,
+            "ProgressionIndex": 6
+        },
+        "traits": ["Hero", "PrioritisedEfficiency", "Mechanic"],
+        "activeAbilities": ["GravitonRifle"],
+        "passiveAbilities": ["EcogSupport"],
+        "itemSlots": ["I_Crit", "I_Defensive", "I_Booster_Crit"],
+        "itemSlotsRelic": [0],
+        "eligibilityRequirements": {
+            "canDropIfHeroUnlocked": false,
+            "canDropIfHeroNotUnlocked": false
+        },
+        "releaseStatus": "1770249600000",
+        "upgrades": [["upgHpC002", "upgHpC008", "upgDmgC010", "upgDmgC015", "upgArmC005", "upgArmC011"], ["upgHpC014", "upgHpC015", "upgDmgU010", "upgDmgU017C", "upgArmC011", "upgArmC012"], ["upgHpU014", "upgHpU018C", "upgDmgC007", "upgDmgC009", "upgArmU006", "upgArmU014"], ["upgHpU004C", "upgHpU016", "upgDmgU010", "upgDmgU012", "upgArmU014", "upgArmU004C"], ["upgHpU014", "upgHpR016C", "upgDmgU007C", "upgDmgU004", "upgArmR010", "upgArmU002"], ["upgHpR012C", "upgHpU007", "upgDmgR040", "upgDmgR011C", "upgArmU004C", "upgArmR006"], ["upgHpR040", "upgHpR014", "upgDmgR008C", "upgDmgR003", "upgArmR002C", "upgArmR014C"], ["upgHpE040C", "upgHpR013C", "upgDmgR006", "upgDmgE008C", "upgArmR040", "upgArmR008C"], ["upgHpR014", "upgHpE007C", "upgDmgE040C", "upgDmgR017C", "upgArmE040C", "upgArmE010"], ["upgHpE040C", "upgHpE015", "upgDmgE040C", "upgDmgE004", "upgArmE040C", "upgArmE003C"], ["upgHpL099", "upgHpE014C", "upgDmgL040C", "upgDmgE008C", "upgArmE040C", "upgArmE014C"], ["upgHpE040C", "upgHpL011C", "upgDmgE040C", "upgDmgL017C", "upgArmL203", "upgArmL003C"], ["upgHpL040C", "upgHpL009C", "upgDmgL204", "upgDmgL006C", "upgArmL040C", "upgArmL009C"], ["upgHpL140C", "upgHpL014C", "upgDmgL040C", "upgDmgL017C", "upgArmL040C", "upgArmL008C"], ["upgHpL040C", "upgHpL001C", "upgDmgL140C", "upgDmgL012C", "upgArmL140C", "upgArmL009C"], ["upgHpL140C", "upgHpL017C", "upgDmgL140C", "upgDmgL005C", "upgArmL140C", "upgArmL003C"], ["upgHpL140C", "upgHpL214C", "upgDmgL140C", "upgDmgL214C", "upgArmL140C", "upgArmL214C"], ["upgHpL140C", "upgHpL214C", "upgDmgM214C", "upgDmgL214C", "upgArmM214C", "upgArmL214C"], ["upgHpECS", "upgHpCS", "upgDmgECS", "upgDmgCS", "upgArmECS", "upgArmCS"]],
+        "upgradesStatIncrease": [[10, 10, 3, 3, 2, 2], [13, 13, 3, 5, 3, 3], [12, 19, 5, 5, 3, 3], [24, 16, 6, 6, 3, 4], [16, 33, 10, 6, 6, 4], [41, 21, 8, 11, 7, 7], [39, 39, 14, 11, 7, 7], [54, 43, 11, 19, 9, 11], [46, 76, 21, 17, 13, 11], [84, 68, 27, 21, 15, 15], [96, 96, 32, 27, 20, 20], [108, 130, 34, 41, 21, 25], [150, 150, 42, 51, 30, 30], [187, 187, 59, 59, 38, 38], [234, 234, 73, 73, 47, 47], [294, 294, 92, 92, 58, 58], [367, 367, 115, 115, 74, 74], [200, 200, 67, 57, 43, 36], [178, 222, 56, 69, 36, 44]]
+    },
+    "votanUthar": {
+        "name": "Uthar",
+        "FactionId": "LeaguesOfVotann",
+        "GrandAllianceId": "Xenos",
+        "BaseRarity": "Legendary",
+        "powerMultiplier": 89,
+        "Movement": 2,
+        "weapons": [{
+                "hits": 3,
+                "DamageProfile": "Plasma"
+            }, {
+                "hits": 3,
+                "DamageProfile": "Energy",
+                "Range": 2
+            }
+        ],
+        "stats": {
+            "Health": 90,
+            "Damage": 18,
+            "FixedArmor": 23,
+            "ProgressionIndex": 12
+        },
+        "traits": ["Hero", "PrioritisedEfficiency", "Resilient"],
+        "activeAbilities": ["AncestralFortune"],
+        "passiveAbilities": ["GrimEfficiency"],
+        "itemSlots": ["I_Crit", "I_Block", "I_Booster_Crit"],
+        "itemSlotsRelic": [0],
+        "eligibilityRequirements": {
+            "canDropIfHeroUnlocked": false,
+            "canDropIfHeroNotUnlocked": false
+        },
+        "releaseStatus": "1770249600000",
+        "upgrades": [["upgHpC015", "upgHpC008", "upgDmgC012", "upgDmgC015", "upgArmC005", "upgArmC006"], ["upgHpC016", "upgHpC002", "upgDmgU009", "upgDmgU017C", "upgArmC006", "upgArmC013"], ["upgHpU016", "upgHpU004C", "upgDmgC013", "upgDmgC010", "upgArmU006", "upgArmU013"], ["upgHpU018C", "upgHpU017", "upgDmgU009", "upgDmgU010", "upgArmU013", "upgArmU004C"], ["upgHpU016", "upgHpR017C", "upgDmgU018C", "upgDmgU004", "upgArmR010", "upgArmU009"], ["upgHpR016C", "upgHpU007", "upgDmgR040", "upgDmgR010C", "upgArmU004C", "upgArmR005"], ["upgHpR040", "upgHpR014", "upgDmgR13C", "upgDmgR002", "upgArmR002C", "upgArmR013C"], ["upgHpE040C", "upgHpR004C", "upgDmgR005", "upgDmgE006C", "upgArmR040", "upgArmR012C"], ["upgHpR019", "upgHpE001C", "upgDmgE040C", "upgDmgR017C", "upgArmE040C", "upgArmE010"], ["upgHpE040C", "upgHpE015", "upgDmgE040C", "upgDmgE011", "upgArmE040C", "upgArmE003C"], ["upgHpL099", "upgHpE014C", "upgDmgL040C", "upgDmgE006C", "upgArmE040C", "upgArmE011C"], ["upgHpE040C", "upgHpL017C", "upgDmgE040C", "upgDmgL017C", "upgArmL204", "upgArmL003C"], ["upgHpL040C", "upgHpL001C", "upgDmgL003", "upgDmgL005C", "upgArmL040C", "upgArmL011C"], ["upgHpL140C", "upgHpL014C", "upgDmgL040C", "upgDmgL017C", "upgArmL040C", "upgArmL006C"], ["upgHpL040C", "upgHpL009C", "upgDmgL140C", "upgDmgL008C", "upgArmL140C", "upgArmL011C"], ["upgHpL140C", "upgHpL011C", "upgDmgL140C", "upgDmgL012C", "upgArmL140C", "upgArmL003C"], ["upgHpL140C", "upgHpL214C", "upgDmgL140C", "upgDmgL214C", "upgArmL140C", "upgArmL214C"], ["upgHpL140C", "upgHpL214C", "upgDmgM213C", "upgDmgL214C", "upgArmM214C", "upgArmL214C"], ["upgHpECS", "upgHpCS", "upgDmgECS", "upgDmgCS", "upgArmECS", "upgArmCS"]],
+        "upgradesStatIncrease": [[12, 12, 3, 3, 3, 3], [14, 14, 2, 2, 4, 4], [14, 21, 4, 4, 4, 4], [26, 18, 4, 4, 5, 7], [19, 37, 7, 4, 8, 6], [47, 23, 6, 8, 9, 9], [44, 44, 10, 8, 11, 11], [60, 48, 8, 14, 12, 16], [51, 86, 15, 12, 19, 16], [96, 76, 19, 15, 22, 22], [107, 107, 23, 20, 28, 28], [122, 147, 25, 29, 30, 37], [168, 168, 30, 37, 43, 43], [211, 211, 43, 43, 54, 54], [264, 264, 52, 52, 68, 68], [330, 330, 66, 66, 84, 84], [413, 413, 83, 83, 106, 106], [225, 225, 48, 41, 61, 53], [200, 250, 40, 50, 51, 64]]
     }
 }

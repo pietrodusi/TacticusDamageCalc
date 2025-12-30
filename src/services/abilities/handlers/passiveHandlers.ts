@@ -397,6 +397,201 @@ export const RefusalToBeOutdoneHandler: AbilityHandler = {
   },
 };
 
+/**
+ * CyclicIonBlaster (Re'Vas)
+ * Every time Re'Vas performs a normal attack, triggers another attack.
+ * The follow-up attack is 3 hits of Particle damage using avg(minDmg, maxDmg).
+ * If the enemy boss has Markerlight debuff or Mechanical trait, adds +extraDmg damage.
+ * Variables: minDmg, maxDmg, extraDmg
+ * Constants: nrOfHits: 3, damageProfile: Particle
+ */
+export const CyclicIonBlasterHandler: AbilityHandler = {
+  abilityId: 'CyclicIonBlaster',
+  abilityName: 'Cyclic Ion Blaster',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    // Only triggers after normal attacks (ranged for Re'Vas)
+    const isNormalAttack = context.attackType === 'melee' || context.attackType === 'ranged';
+    const applicable = isNormalAttack;
+
+    // Get base damage values
+    const minDamage = values.minDmg as number || 0;
+    const maxDamage = values.maxDmg as number || 0;
+    const extraDmg = values.extraDmg as number || 0;
+    const hits = 3;  // From constants.nrOfHits
+
+    // Check if boss has Mechanical trait or Markerlight debuff
+    const hasMechanical = context.bossTraits?.includes('Mechanical') ?? false;
+    const hasMarkerlight = context.bossDebuffs?.includes('Markerlight') ?? false;
+    const hasMarkerlightOrMechanical = hasMechanical || hasMarkerlight;
+
+    // Add extraDmg if condition is met
+    const bonusDamage = hasMarkerlightOrMechanical ? extraDmg : 0;
+    const effectiveMinDamage = minDamage + bonusDamage;
+    const effectiveMaxDamage = maxDamage + bonusDamage;
+    const avgDamage = Math.round((effectiveMinDamage + effectiveMaxDamage) / 2);
+
+    // Build follow-up attack - inherits attack type from triggering attack
+    // CyclicIonBlaster after ranged → ranged, after melee → melee
+    // This is an "Additional Attack" - shares crit chain with source attack
+    const followUpAttackType: 'melee' | 'ranged' = context.attackType === 'ranged' ? 'ranged' : 'melee';
+    const followUpAttack: FollowUpAttack | undefined = applicable ? {
+      abilityId: 'CyclicIonBlaster',
+      abilityName: 'Cyclic Ion Blaster',
+      damageProfile: 'Particle',
+      minDamage: effectiveMinDamage,
+      maxDamage: effectiveMaxDamage,
+      hits,
+      attackCategory: 'normal',  // Follow-up is a normal attack (same type as triggering attack)
+      triggersOnNormalOnly: true,  // Only triggers on normal attacks
+      followUpAttackType,  // Inherit attack type from triggering attack
+      sharesCritChain: true,  // Additional Attack: continues crit chain from source attack
+    } : undefined;
+
+    // Build bonus text showing the source of the bonus
+    let bonusText = '';
+    if (hasMarkerlightOrMechanical) {
+      const source = hasMechanical && hasMarkerlight ? 'Mechanical/Markerlight' : (hasMechanical ? 'Mechanical' : 'Markerlight');
+      bonusText = ` (+${extraDmg} from ${source})`;
+    }
+
+    return {
+      abilityId: 'CyclicIonBlaster',
+      abilityName: getAbilityNameSync('CyclicIonBlaster'),
+      modifiers: {},  // No modifiers to main attack
+      applicable,
+      reason: applicable
+        ? `Follow-up: ${hits}x ${avgDamage} Particle${bonusText}`
+        : 'Only triggers on normal attacks',
+      requiresToggle: false,
+      followUpAttack,
+    };
+  },
+};
+
+/**
+ * WayOfTheShortBlade (Farsight)
+ * When Farsight or T'au Empire characters perform a melee attack,
+ * they immediately perform their normal ranged attack as a follow-up.
+ *
+ * Also provides armor ignore + damage % bonus to other characters' ranged attacks,
+ * but that part is handled by the buff pool system (wayOfTheShortBladeAuraBuffTemplate).
+ *
+ * This handler handles Farsight's own melee -> ranged follow-up.
+ * T'au Empire teammates get the follow-up via toggle ("Range 2 from Farsight") in battleStore.
+ */
+export const WayOfTheShortBladeHandler: AbilityHandler = {
+  abilityId: 'WayOfTheShortBlade',
+  abilityName: 'Way of the Short Blade',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (_values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    // Only triggers after melee attacks
+    const isMeleeAttack = context.attackType === 'melee';
+    const applicable = isMeleeAttack;
+
+    // Build follow-up attack (uses character's normal ranged stats)
+    // The actual damage values are placeholders - battleStore will use character's ranged stats
+    const followUpAttack: FollowUpAttack | undefined = applicable ? {
+      abilityId: 'WayOfTheShortBlade',
+      abilityName: 'Way of the Short Blade',
+      damageProfile: 'Plasma',  // Placeholder - will be overwritten by character's rangedDamageType
+      minDamage: 0,  // Placeholder - will be overwritten
+      maxDamage: 0,  // Placeholder - will be overwritten
+      hits: 0,  // Placeholder - will be overwritten by character's rangedHits
+      attackCategory: 'normal',  // This IS a normal ranged attack
+      triggersOnMeleeOnly: true,  // Only triggers after melee attacks
+      useCharacterRangedStats: true,  // Use the character's actual ranged attack stats
+    } : undefined;
+
+    return {
+      abilityId: 'WayOfTheShortBlade',
+      abilityName: getAbilityNameSync('WayOfTheShortBlade'),
+      modifiers: {},  // No modifiers to main attack from this handler
+      applicable,
+      reason: applicable
+        ? 'Melee triggers ranged follow-up'
+        : 'Only triggers after melee attacks',
+      requiresToggle: false,
+      followUpAttack,
+    };
+  },
+};
+
+/**
+ * ChampionOfTheFeast (Godswyl)
+ * After moving (or end of turn if no move), deals Power damage.
+ * Note: Armor reduction ignored since bosses have Immune trait.
+ * Always triggers (no toggle needed).
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Power, nrOfHits: 1
+ */
+export const ChampionOfTheFeastHandler: AbilityHandler = {
+  abilityId: 'ChampionOfTheFeast',
+  abilityName: 'Champion Of The Feast',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDamage = values.minDmg as number || 0;
+    const maxDamage = values.maxDmg as number || 0;
+    const avgDamage = Math.round((minDamage + maxDamage) / 2);
+    const hits = values.nrOfHits as number || 1;
+
+    // Always triggers (user confirmed no toggle for movement condition)
+    const applicable = true;
+
+    // Build follow-up attack (special attack)
+    // Note: armorReduction ignored since bosses have Immune trait
+    const followUpAttack: FollowUpAttack | undefined = applicable ? {
+      abilityId: 'ChampionOfTheFeast',
+      abilityName: 'Champion Of The Feast',
+      damageProfile: 'Power',
+      minDamage,
+      maxDamage,
+      hits,
+      attackCategory: 'special',  // Special follow-up attack
+    } : undefined;
+
+    return {
+      abilityId: 'ChampionOfTheFeast',
+      abilityName: getAbilityNameSync('ChampionOfTheFeast'),
+      modifiers: {},
+      applicable,
+      reason: applicable
+        ? `Follow-up: ${hits}x ${avgDamage} Power`
+        : '',
+      requiresToggle: false,
+      followUpAttack,
+    };
+  },
+};
+
+// GalvanicField (Actus) - When Actus repairs another unit, that unit attacks the boss
+// Note: Logic handled in battleStore.executeRepairWithGalvanicField, handler provides metadata only
+export const GalvanicFieldHandler: AbilityHandler = {
+  abilityId: 'GalvanicField',
+  abilityName: 'Galvanic Field',
+  category: 'passive',
+  cooldown: -1,
+
+  // This passive is triggered programmatically when Actus repairs another unit
+  // The actual damage calculation is in battleStore.executeRepairWithGalvanicField
+  evaluatePassive: (_values, _context) => {
+    return {
+      abilityId: 'GalvanicField',
+      abilityName: getAbilityNameSync('GalvanicField'),
+      modifiers: {},
+      applicable: false, // Not automatically applied - triggered via repair action
+      reason: 'Triggers when repairing another unit',
+      requiresToggle: false,
+    };
+  },
+};
+
 // Export all passive handlers
 // Note: LegendaryCommander is now handled via the buff pool system (buffRegistry.ts)
 export const passiveHandlers: AbilityHandler[] = [
@@ -408,5 +603,9 @@ export const passiveHandlers: AbilityHandler[] = [
   LegacyOfCombatHandler,
   TheBetrayerHandler,
   RefusalToBeOutdoneHandler,
+  CyclicIonBlasterHandler,
+  WayOfTheShortBladeHandler,
+  ChampionOfTheFeastHandler,
+  GalvanicFieldHandler,
   // LegendaryCommanderHandler, // Removed: now using buff pool for team-wide LC application
 ];

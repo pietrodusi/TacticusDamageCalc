@@ -334,5 +334,8 @@
     },
     "emperLucius": {
         "img": "/portraits/Lucius.webp"
+	},
+	"spaceWolfPriest": {
+		"img": "/portraits/Baldr.webp"
 	}
 }

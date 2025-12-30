@@ -4,7 +4,16 @@ import type { AbilityCooldownState, AbilityStatModifier } from '../services/abil
 import type { PooledBuff } from './buff';
 import type { BuffSource } from '../services/damage/types';
 
-export type ActionType = 'move' | 'attack' | 'meleeAttack' | 'rangedAttack' | 'ability' | 'wait';
+export type ActionType = 'move' | 'attack' | 'meleeAttack' | 'rangedAttack' | 'ability' | 'wait' | 'repair';
+
+// Pending repair action state for Actus's Mechanic trait and DefendTheDivineWork ability
+export interface PendingRepairAction {
+  repairerId: string;                    // Actus's character ID
+  repairType: 'mechanic' | 'ddw';        // Single repair vs multi-select (Defend the Divine Work)
+  selectedTargets?: string[];            // Character IDs selected for repair
+  attackTypeChoices?: Record<string, 'melee' | 'ranged'>;  // Attack type choice per target
+  pendingAttackChoices?: string[];       // Target IDs still needing attack type choice
+}
 
 export interface BattleCharacter extends TeamMember {
   currentHealth: number;
@@ -118,6 +127,9 @@ export interface DamageBreakdown {
   extraHitsSources: BuffSource[];   // Sources of extra hits with values
   damVarMod: number;            // baseDamage + flatModifiers + critBonus
   targetArmor: number;
+  armorIgnored?: number;        // Amount of armor ignored by buffs
+  armorIgnoredSources?: BuffSource[]; // Sources of armor ignored with values
+  effectiveArmor?: number;      // Actual armor used in calculation (targetArmor - armorIgnored)
   afterArmor: number;           // damVarMod - armor
   pierceRatio: number;
   pierceFloor: number;          // damVarMod * pierceRatio
@@ -146,6 +158,7 @@ export interface FollowUpAttackLog {
   damage: number;
   hits: number;
   damageType: string;
+  attackType?: 'melee' | 'ranged';  // Attack type for display
   // Full breakdown for consistent display with main attack
   breakdown?: DamageBreakdown;
   // Applied buffs for display
@@ -171,6 +184,7 @@ export interface BattleLogEntry {
   message: string;
   followUpAttacks?: FollowUpAttackLog[];  // Follow-up attacks from passives
   appliedBuffs?: AppliedBuffInfo[];  // Buffs that were applied during this action
+  attackType?: 'melee' | 'ranged';  // Attack type for display in battle log
 }
 
 export interface BattleState {
@@ -185,6 +199,10 @@ export interface BattleState {
   ignoreCrit: boolean;
   // Buff pool - all active buffs in battle
   buffPool: PooledBuff[];
+  // Cumulative boss armor reduction from abilities (e.g., ChampionOfTheFeast)
+  bossArmorReduction: number;
+  // Pending repair action for Actus's Mechanic/DDW abilities
+  pendingRepairAction?: PendingRepairAction;
 }
 
 export interface BattleSimulationConfig {
