@@ -217,6 +217,114 @@ export const wayOfTheShortBladeAuraBuffTemplate: BuffTemplate = {
   requiredToggles: ['adjacentToBoss'],
 };
 
+/**
+ * Doom (non-Aeldari) buff template (Eldryon passive)
+ * Friendly units (non-Aeldari) deal +extraDmg with normal attacks
+ * Condition: Boss is at range 2 from Eldryon (toggle: bossRange2FromEldryon)
+ */
+export const doomNonAeldariBuffTemplate: BuffTemplate = {
+  buffId: 'doom_non_aeldari',
+  name: 'Doom',
+  sourceAbilityId: 'Doom',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      // Does NOT apply to Eldryon himself
+      if (context.attacker.id === buff.sourceCharacterId) return false;
+
+      // Does NOT apply to Aeldari characters (they get the stronger buff)
+      if (context.attacker.faction === 'Aeldari') return false;
+
+      // Only applies to normal attacks
+      if (context.attackCategory !== 'normal') return false;
+
+      // Check if boss is at range 2 from Eldryon (toggle)
+      const toggleId = `bossRange2FromEldryon`;
+      const isInRange = context.battleState.team.some(
+        c => c.passiveAbilities.includes('Doom') && c.abilityToggles?.[toggleId]
+      );
+      return isInRange;
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg as number) || 0,
+  }),
+  // No duration - permanent aura-style buff (evaluated each attack)
+  requiredToggles: ['bossRange2FromEldryon'],
+};
+
+/**
+ * Doom (Aeldari) buff template (Eldryon passive)
+ * Friendly Aeldari units deal +extraDmg_2 with ALL attacks (normal and special)
+ * Condition: Boss is at range 2 from Eldryon (toggle: bossRange2FromEldryon)
+ */
+export const doomAeldariBuffTemplate: BuffTemplate = {
+  buffId: 'doom_aeldari',
+  name: 'Doom',
+  sourceAbilityId: 'Doom',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      // Does NOT apply to Eldryon himself
+      if (context.attacker.id === buff.sourceCharacterId) return false;
+
+      // Only applies to Aeldari characters
+      if (context.attacker.faction !== 'Aeldari') return false;
+
+      // Applies to ALL attacks (normal and special)
+
+      // Check if boss is at range 2 from Eldryon (toggle)
+      const toggleId = `bossRange2FromEldryon`;
+      const isInRange = context.battleState.team.some(
+        c => c.passiveAbilities.includes('Doom') && c.abilityToggles?.[toggleId]
+      );
+      return isInRange;
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg_2 as number) || 0,
+  }),
+  // No duration - permanent aura-style buff (evaluated each attack)
+  requiredToggles: ['bossRange2FromEldryon'],
+};
+
+/**
+ * Structural Analyser aura buff template (Darkstrider passive)
+ * Friendly T'au Empire units adjacent to Darkstrider deal +extraDmg with ranged attacks
+ * Condition: Boss has Markerlight AND character is adjacent to Darkstrider (toggle)
+ */
+export const structuralAnalyserBuffTemplate: BuffTemplate = {
+  buffId: 'structural_analyser_aura',
+  name: 'Structural Analyser',
+  sourceAbilityId: 'StructuralAnalyser',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      // Does NOT apply to Darkstrider himself
+      if (context.attacker.id === buff.sourceCharacterId) return false;
+
+      // Only applies to ranged attacks
+      if (context.attackType !== 'ranged') return false;
+
+      // Only if boss has Markerlight
+      if (!context.battleState.bossHasMarkerlight) return false;
+
+      // Check if attacker is T'au Empire
+      const isTauEmpire = context.attacker.faction === "T'au Empire" || context.attacker.faction === 'Tau';
+      if (!isTauEmpire) return false;
+
+      // Check if "Adjacent to Darkstrider" toggle is active
+      const toggleId = `StructuralAnalyser_${buff.sourceCharacterId}_adjacent`;
+      return context.attacker.abilityToggles?.[toggleId] ?? false;
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg as number) || 0,
+  }),
+  // No duration - permanent aura-style buff (evaluated each attack)
+  // No requiredToggles since the toggle is dynamic (based on Darkstrider's ID)
+};
+
 // Registry of all buff templates by ability ID
 export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   WarHowl: warHowlBuffTemplate,
@@ -228,6 +336,11 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   ExemplarOfTheMontka: exemplarOfTheMontkaBuffTemplate,
   // WayOfTheShortBlade aura is a permanent buff, registered by buff ID
   way_of_the_short_blade_aura: wayOfTheShortBladeAuraBuffTemplate,
+  // Doom aura buffs (Eldryon passive)
+  doom_non_aeldari: doomNonAeldariBuffTemplate,
+  doom_aeldari: doomAeldariBuffTemplate,
+  // Structural Analyser aura (Darkstrider passive)
+  structural_analyser_aura: structuralAnalyserBuffTemplate,
 };
 
 /**

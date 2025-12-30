@@ -72,7 +72,8 @@ export const TheQuickeningHandler: AbilityHandler = {
 
 /**
  * Executioner (Eldryon)
- * Ranged Psychic damage attack
+ * Ranged Psychic damage attack that scales with turn count
+ * Deals average of (minDmg + maxDmg) / 2 multiplied by the current turn number
  * Variables: minDmg, maxDmg
  * Constants: range: 2
  */
@@ -82,24 +83,28 @@ export const ExecutionerHandler: AbilityHandler = {
   category: 'damage',
   cooldown: -1,
 
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('Executioner');
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
-    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const baseAvgDmg = (minDmg + maxDmg) / 2;
+
+    // Damage scales with the number of turns that have started
+    const turnMultiplier = context.currentTurn || 1;
+    const scaledAvgDmg = Math.round(baseAvgDmg * turnMultiplier);
 
     return {
       abilityId: 'Executioner',
       abilityName,
       category: 'damage',
       damageResult: {
-        minDamage: minDmg,
-        maxDamage: maxDmg,
-        averageDamage: avgDmg,
+        minDamage: Math.round(minDmg * turnMultiplier),
+        maxDamage: Math.round(maxDmg * turnMultiplier),
+        averageDamage: scaledAvgDmg,
         hits: 1,
         damageProfile: 'Psychic' as DamageType,
       },
-      message: abilityName,
+      message: `${abilityName} (Turn ${turnMultiplier})`,
     };
   },
 };
@@ -571,6 +576,36 @@ export const DefendTheDivineWorkHandler: AbilityHandler = {
   },
 };
 
+/**
+ * FightingRetreat (Darkstrider)
+ * Buff ability that applies Markerlight to boss and enables RangedSpecialist trait override.
+ * Does NOT end turn if Darkstrider is adjacent to boss, and allows re-movement.
+ * The actual turn/movement logic is handled in CalculatorPage and battleStore.
+ * Variables: dmgReduction (not used - enemy debuffs not simulated)
+ */
+export const FightingRetreatHandler: AbilityHandler = {
+  abilityId: 'FightingRetreat',
+  abilityName: 'Fighting Retreat',
+  category: 'buff',
+  cooldown: -1,  // One-time use per battle
+  endsTurn: false,  // Default: doesn't end turn (conditional logic in CalculatorPage)
+
+  executeActive: (_values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('FightingRetreat');
+
+    return {
+      abilityId: 'FightingRetreat',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {},
+        duration: 1,  // Lasts until end of turn
+      },
+      message: abilityName,
+    };
+  },
+};
+
 // Export all active handlers
 export const activeHandlers: AbilityHandler[] = [
   WarHowlHandler,
@@ -588,4 +623,5 @@ export const activeHandlers: AbilityHandler[] = [
   ExemplarOfTheMontkaHandler,
   ThunderousAssaultHandler,
   DefendTheDivineWorkHandler,
+  FightingRetreatHandler,
 ];

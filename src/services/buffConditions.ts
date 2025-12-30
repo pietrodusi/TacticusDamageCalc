@@ -35,6 +35,9 @@ export function getCharacterBuffConditions(
   // Add "Adjacent to Boss" condition (only if team has buffs that require it)
   conditions.push(...getAdjacentToBossCondition(character, team));
 
+  // Add "Boss at Range 2 from Eldryon" condition (only if team has Eldryon with Doom)
+  conditions.push(...getBossRange2FromEldryonCondition(character, team));
+
   // Add own passive ability conditions
   conditions.push(...getOwnPassiveConditions(character));
 
@@ -95,6 +98,18 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
       source: 'Ranged Specialist',
       effect: 'Enables positional bonuses (Position)',
       isActive: character.abilityToggles['RangedSpecialist_adjacentToEnemy'] ?? false,
+      category: 'self',
+    });
+  }
+
+  // Fighting Retreat (Darkstrider) - Adjacent to boss toggle for turn/movement benefits
+  if (character.activeAbilities?.includes('FightingRetreat')) {
+    conditions.push({
+      id: 'FightingRetreat_adjacentToBoss',
+      label: 'Adjacent to Boss',
+      source: 'Fighting Retreat',
+      effect: 'Can move again, turn not ended',
+      isActive: character.abilityToggles['FightingRetreat_adjacentToBoss'] ?? false,
       category: 'self',
     });
   }
@@ -238,6 +253,33 @@ function getAuraConditions(
         }
       }
     }
+
+    // Structural Analyser (Darkstrider) - provides ranged damage bonus to adjacent T'au allies
+    if (teammate.passiveAbilities.includes('StructuralAnalyser')) {
+      // Check if character is T'au Empire (not Darkstrider himself)
+      const isTauEmpire = character.faction === "T'au Empire" || character.faction === 'Tau';
+
+      if (isTauEmpire) {
+        const levelIndex = teammate.abilityLevels?.['StructuralAnalyser'] ?? 54;
+        const values = getAbilityValues('StructuralAnalyser', levelIndex);
+        const abilityName = getAbilityNameSync('StructuralAnalyser');
+
+        if (values) {
+          const extraDmg = values.extraDmg as number || 0;
+          const toggleId = `StructuralAnalyser_${teammate.id}_adjacent`;
+
+          conditions.push({
+            id: toggleId,
+            label: `Adjacent to ${teammate.name}`,
+            source: abilityName,
+            sourceCharacter: teammate.name,
+            effect: `+${extraDmg} ranged dmg (vs Markerlight)`,
+            isActive: character.abilityToggles[toggleId] ?? false,
+            category: 'aura',
+          });
+        }
+      }
+    }
   }
 
   return conditions;
@@ -269,6 +311,52 @@ function getAdjacentToBossCondition(
     isActive: character.abilityToggles[toggleId] ?? false,
     category: 'self',
   });
+
+  return conditions;
+}
+
+/**
+ * Get "Boss at Range 2 from Eldryon" condition
+ * Only shows for Eldryon if team has Doom ability
+ * When active, all teammates get damage bonus from Doom
+ */
+function getBossRange2FromEldryonCondition(
+  character: BattleCharacter,
+  team: BattleCharacter[]
+): BuffCondition[] {
+  const conditions: BuffCondition[] = [];
+
+  // Check if any buff in the team requires this toggle
+  const requiredToggles = getTeamRequiredToggles(team);
+  if (!requiredToggles.has('bossRange2FromEldryon')) {
+    return conditions;
+  }
+
+  // Only show this toggle for Eldryon (the character with Doom)
+  if (!character.passiveAbilities.includes('Doom')) {
+    return conditions;
+  }
+
+  // Get Doom values for effect description
+  const levelIndex = character.abilityLevels?.['Doom'] ?? 54;
+  const values = getAbilityValues('Doom', levelIndex);
+  const abilityName = getAbilityNameSync('Doom');
+
+  if (values) {
+    const extraDmg = values.extraDmg as number || 0;
+    const extraDmg_2 = values.extraDmg_2 as number || 0;
+
+    // Add "Boss at Range 2" toggle
+    const toggleId = 'bossRange2FromEldryon';
+    conditions.push({
+      id: toggleId,
+      label: 'Boss at Range 2',
+      source: abilityName,
+      effect: `Allies: +${extraDmg} normal dmg, Aeldari: +${extraDmg_2} all dmg`,
+      isActive: character.abilityToggles[toggleId] ?? false,
+      category: 'self',
+    });
+  }
 
   return conditions;
 }

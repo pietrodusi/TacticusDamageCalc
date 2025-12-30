@@ -1,4 +1,4 @@
-import { Skull, Shield, Sword, Heart } from 'lucide-react';
+import { Skull, Shield, Sword, Heart, Target } from 'lucide-react';
 import type { Boss } from '../../types';
 import { getBossRankDisplayName } from '../../services/dataService';
 
@@ -6,12 +6,16 @@ interface BattleBossCardProps {
   boss: Boss;
   totalDamageDealt: number;
   bossArmorReduction?: number;
+  bossHasMarkerlight?: boolean;
+  onMarkerlightChange?: (hasMarkerlight: boolean) => void;
 }
 
 export function BattleBossCard({
   boss,
   totalDamageDealt,
   bossArmorReduction = 0,
+  bossHasMarkerlight = false,
+  onMarkerlightChange,
 }: BattleBossCardProps) {
   const remainingHealth = Math.max(0, boss.health - totalDamageDealt);
   const healthPercentage = (remainingHealth / boss.health) * 100;
@@ -107,6 +111,27 @@ export function BattleBossCard({
                   {trait}
                 </span>
               ))}
+            </div>
+          )}
+
+          {/* Boss Debuffs */}
+          {onMarkerlightChange && (
+            <div className="mt-2 pt-2 border-t border-gray-700/50">
+              <label className="flex items-center gap-2 cursor-pointer text-xs">
+                <input
+                  type="checkbox"
+                  checked={bossHasMarkerlight}
+                  onChange={(e) => onMarkerlightChange(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-offset-gray-800"
+                />
+                <Target size={12} className={bossHasMarkerlight ? 'text-yellow-400' : 'text-gray-500'} />
+                <span className={bossHasMarkerlight ? 'text-yellow-400' : 'text-gray-400'}>
+                  Markerlight
+                </span>
+                <span className="text-gray-500 text-[10px]">
+                  (T'au +15% ranged dmg)
+                </span>
+              </label>
             </div>
           )}
         </div>

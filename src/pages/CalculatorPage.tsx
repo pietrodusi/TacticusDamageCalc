@@ -62,6 +62,8 @@ export function CalculatorPage() {
     setIgnoreCrit,
     setCharacterTurnEnded,
     executeRepairWithGalvanicField,
+    markAbilityUsed,
+    setBossMarkerlight,
   } = useBattleStore();
 
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
@@ -279,7 +281,13 @@ export function CalculatorPage() {
         // Only modify current turn flags if not editing past turn
         if (!isEditingPastTurn) {
           // Check if this ability ends the turn
-          const endsTurn = abilityId ? abilityEndsTurn(abilityId) : true;
+          let endsTurn = abilityId ? abilityEndsTurn(abilityId) : true;
+
+          // Fighting Retreat: Only ends turn if NOT adjacent to boss
+          if (abilityId === 'FightingRetreat') {
+            const isAdjacentToBoss = character.abilityToggles['FightingRetreat_adjacentToBoss'] ?? false;
+            endsTurn = !isAdjacentToBoss;
+          }
 
           if (endsTurn) {
             setCharacterActed(characterId, true);
@@ -433,6 +441,11 @@ export function CalculatorPage() {
     if (!isEditingPastTurn) {
       setCharacterActed(repairContext.repairerId, true);
       setCharacterTurnEnded(repairContext.repairerId, true);
+
+      // Mark DefendTheDivineWork as used (one-time per battle)
+      if (repairContext.repairType === 'ddw') {
+        markAbilityUsed(repairContext.repairerId, 'DefendTheDivineWork');
+      }
     }
 
     // Execute repair and get log entries
@@ -643,6 +656,8 @@ export function CalculatorPage() {
                 boss={battleState.boss}
                 totalDamageDealt={battleState.totalDamageDealt}
                 bossArmorReduction={battleState.bossArmorReduction}
+                bossHasMarkerlight={battleState.bossHasMarkerlight}
+                onMarkerlightChange={setBossMarkerlight}
               />
             </>
           )}

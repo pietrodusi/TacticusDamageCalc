@@ -103,6 +103,8 @@ export interface AttackerStats {
   abilityModifiers?: AbilityModifiers;
   // User-controlled toggles for trait conditions (e.g., CrushingStrike "has not moved")
   abilityToggles?: Record<string, boolean>;
+  // Fighting Retreat override for RangedSpecialist trait
+  fightingRetreatActive?: boolean;
   // Crit chain offset for additional attacks
   // If this attack shares a crit chain with a source attack (e.g., Cyclic Ion Blaster),
   // set this to the number of hits in the preceding attack(s).

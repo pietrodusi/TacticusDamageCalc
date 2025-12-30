@@ -338,6 +338,7 @@ export class DamageCalculator {
           currentTurn: attacker.currentTurn,
           targetTraits: defender.traits,
           abilityToggles: attacker.abilityToggles,
+          fightingRetreatActive: attacker.fightingRetreatActive,
         }
       );
       traitModifiers = traitEval.modifiers;

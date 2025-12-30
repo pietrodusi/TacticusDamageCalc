@@ -551,7 +551,7 @@
         "name": "Fields of Fire"
     },
     "FightingRetreat": {
-        "description": "Adjacent enemies gain a <style=Debuff_Markerlight>Markerlight</style>. They also have <style=Stat_Hits>{[hitsReduction]}</style> fewer hits, to a minimum of one, and deal <style=Stat_Damage>-{[dmgReduction]} Damage</style> for one round. <style=Faction_Tau>Darkstrider</style> and adjacent allied units ignore their <style=Combat_Weakness>Close Combat Weakness</style> trait for ranged attacks until the end of this turn.\n\nUsing <i>Fighting Retreat</i> does not end <style=Faction_Tau>Darkstrider</style>'s turn if he is adjacent to an enemy, and he can move again if already moved in this turn.",
+        "description": "Adjacent enemies gain a Markerlight. They also have 1 fewer hits, to a minimum of one, and deal -{[dmgReduction]} Damage for one round. Until the end of this turn, Darkstrider and adjacent allied units with the Ranged Specialist trait gain the effect of the trait even if they started their turn adjacent to an enemy unit.\n\nUsing Fighting Retreat does not end Darkstrider's turn if he is adjacent to an enemy, and he can move again if already moved in this turn.",
         "name": "Fighting Retreat"
     },
     "FireAndReposition": {

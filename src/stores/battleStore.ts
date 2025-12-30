@@ -94,9 +94,11 @@ interface BattleStore {
   toggleAbility: (characterId: string, abilityId: string) => void;
   isAbilityReady: (characterId: string, abilityId: string) => boolean;
   executeAbility: (characterId: string, abilityId: string) => BattleLogEntry;
+  markAbilityUsed: (characterId: string, abilityId: string) => void;
 
   // Battle settings
   setIgnoreCrit: (ignore: boolean) => void;
+  setBossMarkerlight: (hasMarkerlight: boolean) => void;
 
   // Repair action (Actus's Mechanic trait and DefendTheDivineWork)
   setPendingRepairAction: (action: import('../types').PendingRepairAction | null) => void;
@@ -145,6 +147,32 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Initialize Doom aura buffs if Eldryon is in team
+    const eldryon = battleCharacters.find(c => c.passiveAbilities.includes('Doom'));
+    if (eldryon) {
+      const doomNonAeldariTemplate = getBuffTemplate('doom_non_aeldari');
+      const doomAeldariTemplate = getBuffTemplate('doom_aeldari');
+      const doomValues = getAbilityValues('Doom', eldryon.abilityLevels?.Doom ?? 54);
+
+      if (doomValues && doomNonAeldariTemplate) {
+        buffPool = addBuffToPool(buffPool, doomNonAeldariTemplate, eldryon, doomValues as Record<string, number>, 1);
+      }
+      if (doomValues && doomAeldariTemplate) {
+        buffPool = addBuffToPool(buffPool, doomAeldariTemplate, eldryon, doomValues as Record<string, number>, 1);
+      }
+    }
+
+    // Initialize Structural Analyser aura buff if Darkstrider is in team
+    const darkstrider = battleCharacters.find(c => c.passiveAbilities.includes('StructuralAnalyser'));
+    if (darkstrider) {
+      const saTemplate = getBuffTemplate('structural_analyser_aura');
+      const saValues = getAbilityValues('StructuralAnalyser', darkstrider.abilityLevels?.StructuralAnalyser ?? 54);
+
+      if (saValues && saTemplate) {
+        buffPool = addBuffToPool(buffPool, saTemplate, darkstrider, saValues as Record<string, number>, 1);
+      }
+    }
+
     set({
       battleState: {
         turn: 1,
@@ -157,6 +185,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         ignoreCrit: false,
         buffPool, // Buff pool with LC buffs if Trajann present
         bossArmorReduction: 0, // Cumulative boss armor reduction from abilities
+        bossHasMarkerlight: false, // Markerlight debuff on boss
       },
       currentTurnActions: [],
     });
@@ -196,6 +225,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       hasQualifiedForLCDamage: false,
       pendingLCQualification: false,
       hasUsedFirstSpecialAttackThisTurn: false,  // Reset per-character LC +2 hits tracking
+      // Reset Darkstrider's Fighting Retreat flag for new turn
+      fightingRetreatActive: false,
       // Increment attackTurnsCount if character attacked this turn (for LegacyOfCombat bonus)
       attackTurnsCount: char.attacksThisTurn > 0 ? char.attackTurnsCount + 1 : char.attackTurnsCount,
       // Advance ability cooldowns
@@ -540,6 +571,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       attacksThisTurn: attacker.attacksThisTurn,
       abilityModifiers: undefined, // Will be set by evaluating passives
       abilityToggles: attacker.abilityToggles, // For trait condition toggles (e.g., CrushingStrike)
+      fightingRetreatActive: attacker.fightingRetreatActive, // Darkstrider's Fighting Retreat override
     };
 
     // Find Trajann for LC +2 hits check
@@ -706,6 +738,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
     const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
 
+    // Markerlight debuff: T'au Empire ranged attacks deal +15% damage
+    const isTauEmpire = attacker.faction === "T'au Empire" || attacker.faction === 'Tau';
+    const markerlightMultiplier = (isTauEmpire && attackType === 'ranged' && battleState.bossHasMarkerlight) ? 1.15 : 1;
+
     // Log buff effects if any are active
     const hasActiveBuffs = attacker.activeBuffs.length > 0 || applicablePoolBuffs.length > 0;
     if (hasActiveBuffs) {
@@ -746,6 +782,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       currentTurn,
       abilityModifiers: undefined, // Will be set by evaluating passives
       abilityToggles: attacker.abilityToggles, // For trait condition toggles (e.g., CrushingStrike)
+      fightingRetreatActive: attacker.fightingRetreatActive, // Darkstrider's Fighting Retreat override
     };
 
     // Find Trajann for LC +2 hits check
@@ -922,10 +959,18 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       (sum, buff) => sum + (buff.extraHits || 0), 0
     ) + poolExtraHits;
 
-    // Combine damage multipliers: passive mods + active buff multiplier
-    const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier;
+    // Combine damage multipliers: passive mods + active buff multiplier + markerlight
+    const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * markerlightMultiplier;
     // Combine flat damage bonuses: passive mods + active buff bonus
     const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus;
+
+    // Add Markerlight buff source for display
+    if (markerlightMultiplier > 1) {
+      buffSources.push({
+        name: 'Markerlight',
+        damageMultiplier: markerlightMultiplier,
+      });
+    }
 
     // Update active buff sources with damage multiplier for proper tracking
     // The earlier loop already added buff sources, now update them with multiplier info
@@ -1275,6 +1320,19 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           }
         }
 
+        // Markerlight debuff: T'au Empire ranged attacks deal +15% damage (follow-up attacks)
+        const followUpIsTauEmpire = attacker.faction === "T'au Empire" || attacker.faction === 'Tau';
+        const followUpMarkerlightMultiplier = (followUpIsTauEmpire && effectiveAttackType === 'ranged' && currentBattleState.bossHasMarkerlight) ? 1.15 : 1;
+        const finalFollowUpMultiplier = followUpDamageMultiplier * followUpMarkerlightMultiplier;
+
+        // Add Markerlight buff source for display
+        if (followUpMarkerlightMultiplier > 1) {
+          followUpBuffSources.push({
+            name: 'Markerlight',
+            damageMultiplier: followUpMarkerlightMultiplier,
+          });
+        }
+
         const followUpStats: AttackerStats = {
           baseDamage: multipliedDamage,  // Just the ability base damage (avg of min/max * multiplier)
           damageType: effectiveDamageProfile,  // Use effective damage profile (may be from character's ranged)
@@ -1297,11 +1355,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           // Pass ability toggles for trait evaluation (e.g., RangedSpecialist adjacency check)
           abilityToggles: attacker.abilityToggles,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
-          abilityModifiers: (lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || followUpDamageMultiplier !== 1) ? {
+          abilityModifiers: (lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1) ? {
             baseDamageBonus: lcExtraDmg + auraDmgBonus > 0 ? lcExtraDmg + auraDmgBonus : undefined,
             extraHits: lcExtraHits + auraHitsBonus > 0 ? lcExtraHits + auraHitsBonus : undefined,
             armorIgnored: followUpArmorIgnored > 0 ? followUpArmorIgnored : undefined,
-            baseDamageMultiplier: followUpDamageMultiplier !== 1 ? followUpDamageMultiplier : undefined,
+            baseDamageMultiplier: finalFollowUpMultiplier !== 1 ? finalFollowUpMultiplier : undefined,
             buffSources: followUpBuffSources,
           } : undefined,
         };
@@ -1701,6 +1759,19 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Structural Analyser: Darkstrider's ranged attacks apply Markerlight to boss
+    if (attackType === 'ranged' && attacker.passiveAbilities.includes('StructuralAnalyser')) {
+      const currentState = get().battleState;
+      if (currentState && !currentState.bossHasMarkerlight) {
+        set({
+          battleState: {
+            ...currentState,
+            bossHasMarkerlight: true,
+          },
+        });
+      }
+    }
+
     return {
       timestamp: Date.now(),
       characterId: attackerId,
@@ -1751,6 +1822,25 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     if (!cooldownState) return false;
 
     return isAbilityReady(cooldownState);
+  },
+
+  // Mark an ability as used (put it on cooldown)
+  markAbilityUsed: (characterId, abilityId) => {
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            team: state.battleState.team.map((char) =>
+              char.id === characterId
+                ? {
+                    ...char,
+                    abilityCooldowns: useAbility(char.abilityCooldowns, abilityId),
+                  }
+                : char
+            ),
+          }
+        : null,
+    }));
   },
 
   // Execute an active ability and calculate damage
@@ -2376,6 +2466,45 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           name: abilityName,
           effect: `HP → ${newHp}, +${hits}x Piercing follow-up`,
         });
+      } else if (abilityId === 'FightingRetreat') {
+        // Special handling for Fighting Retreat (Darkstrider)
+        // 1. Auto-enable Markerlight on boss
+        // 2. If adjacent to boss: reset hasMoved + set fightingRetreatActive for RangedSpecialist override
+        const isFRAdjacentToBoss = character.abilityToggles['FightingRetreat_adjacentToBoss'] ?? false;
+
+        set((state) => ({
+          battleState: state.battleState
+            ? {
+                ...state.battleState,
+                // Auto-enable Markerlight on boss
+                bossHasMarkerlight: true,
+                team: state.battleState.team.map((char) =>
+                  char.id === characterId
+                    ? {
+                        ...char,
+                        hasUsedAbilityThisTurn: true,
+                        hasQualifiedForLCDamage: isAdjacentToBoss,
+                        // If adjacent to boss: reset hasMoved to allow re-movement
+                        hasMoved: isFRAdjacentToBoss ? false : char.hasMoved,
+                        // Set fightingRetreatActive for RangedSpecialist override (persists until end of turn)
+                        fightingRetreatActive: true,
+                      }
+                    : char
+                ),
+              }
+            : null,
+        }));
+        console.log(`[Fighting Retreat activated: Markerlight → ON${isFRAdjacentToBoss ? ', can move again' : ''}, RangedSpecialist override active]`);
+
+        // Add to appliedBuffs for BattleLog display
+        const frEffects = ['Markerlight', 'RangedSpecialist override'];
+        if (isFRAdjacentToBoss) {
+          frEffects.push('Movement reset');
+        }
+        appliedBuffs.push({
+          name: abilityName,
+          effect: frEffects.join(', '),
+        });
       } else if (buffTemplate) {
         // Use new buff pool system
         const abilityValues = getAbilityValues(abilityId, levelIndex) || {};
@@ -2880,6 +3009,19 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       battleState: {
         ...battleState,
         ignoreCrit: ignore,
+      },
+    });
+  },
+
+  // Set boss Markerlight debuff
+  setBossMarkerlight: (hasMarkerlight) => {
+    const { battleState } = get();
+    if (!battleState) return;
+
+    set({
+      battleState: {
+        ...battleState,
+        bossHasMarkerlight: hasMarkerlight,
       },
     });
   },

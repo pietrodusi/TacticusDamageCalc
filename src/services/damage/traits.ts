@@ -34,6 +34,7 @@ export interface TraitContext {
   currentTurn: number | undefined;              // Current battle turn (for RapidAssault)
   targetTraits?: string[];                      // Target's traits (e.g., BigTarget, Vehicle)
   abilityToggles?: Record<string, boolean>;     // User-controlled toggles for trait conditions
+  fightingRetreatActive?: boolean;              // Darkstrider's Fighting Retreat override for RangedSpecialist
 }
 
 /**
@@ -127,6 +128,11 @@ const TRAIT_EFFECTS: Record<string, TraitEffect> = {
       // RangedSpecialist: +33% ranged damage when NOT adjacent to enemy
       if (ctx.attackType !== 'ranged') {
         return { applicable: false, multiplier: 1, reason: 'Only applies to ranged attacks' };
+      }
+
+      // Fighting Retreat override: if active, always apply the trait
+      if (ctx.fightingRetreatActive) {
+        return { applicable: true, multiplier: 1.33, reason: 'Fighting Retreat active' };
       }
 
       // If adjacent to enemy, no bonus (positional bonuses like Position apply instead)

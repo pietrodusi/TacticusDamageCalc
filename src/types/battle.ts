@@ -52,6 +52,8 @@ export interface BattleCharacter extends TeamMember {
   drachnyenMinDmg?: number;   // Cached damage values for Drachnyen follow-up
   drachnyenMaxDmg?: number;
   drachnyenHits?: number;
+  // Darkstrider's Fighting Retreat ability tracking
+  fightingRetreatActive?: boolean;  // When true, RangedSpecialist applies regardless of adjacency toggle
 }
 
 export interface Buff {
@@ -203,6 +205,8 @@ export interface BattleState {
   bossArmorReduction: number;
   // Pending repair action for Actus's Mechanic/DDW abilities
   pendingRepairAction?: PendingRepairAction;
+  // Boss debuffs - Markerlight gives T'au Empire +15% ranged damage
+  bossHasMarkerlight: boolean;
 }
 
 export interface BattleSimulationConfig {
