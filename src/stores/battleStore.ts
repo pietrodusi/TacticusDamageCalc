@@ -1162,6 +1162,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     let cumulativeHitsForCritChain = result.totalHits;
     // Track cumulative boss armor reduction from follow-up attacks (e.g., ChampionOfTheFeast)
     let followUpArmorReductionTotal = 0;
+    // Track if any follow-up ranged attack occurred (for Structural Analyser Markerlight)
+    let hadFollowUpRangedAttack = false;
 
     if (eligibleFollowUps.length > 0) {
       console.log('\n--- FOLLOW-UP ATTACKS ---');
@@ -1190,6 +1192,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           effectiveHits = rangedStats.hits;
           effectiveDamageProfile = rangedStats.damageType as DamageType;
           effectiveAttackType = 'ranged';  // This is a ranged follow-up
+        }
+
+        // Track if this is a ranged follow-up (for Structural Analyser)
+        if (effectiveAttackType === 'ranged') {
+          hadFollowUpRangedAttack = true;
         }
 
         // Calculate average damage for the follow-up attack
@@ -1760,7 +1767,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     // Structural Analyser: Darkstrider's ranged attacks apply Markerlight to boss
-    if (attackType === 'ranged' && attacker.passiveAbilities.includes('StructuralAnalyser')) {
+    // Applies to both main ranged attacks and follow-up ranged attacks (e.g., Way of the Short Blade)
+    if ((attackType === 'ranged' || hadFollowUpRangedAttack) && attacker.passiveAbilities.includes('StructuralAnalyser')) {
       const currentState = get().battleState;
       if (currentState && !currentState.bossHasMarkerlight) {
         set({
@@ -1769,6 +1777,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             bossHasMarkerlight: true,
           },
         });
+        console.log('[Structural Analyser: Markerlight enabled on boss after ranged attack]');
       }
     }
 
@@ -2469,8 +2478,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       } else if (abilityId === 'FightingRetreat') {
         // Special handling for Fighting Retreat (Darkstrider)
         // 1. Auto-enable Markerlight on boss
-        // 2. If adjacent to boss: reset hasMoved + set fightingRetreatActive for RangedSpecialist override
-        const isFRAdjacentToBoss = character.abilityToggles['FightingRetreat_adjacentToBoss'] ?? false;
+        // 2. Reset Darkstrider's hasMoved to allow re-movement
+        // 3. Set fightingRetreatActive on Darkstrider AND T'au teammates adjacent to Darkstrider
+
+        // Find the toggle ID for "Adjacent to Darkstrider"
+        const adjacentToggleId = `StructuralAnalyser_${characterId}_adjacent`;
 
         set((state) => ({
           battleState: state.battleState
@@ -2478,32 +2490,41 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 ...state.battleState,
                 // Auto-enable Markerlight on boss
                 bossHasMarkerlight: true,
-                team: state.battleState.team.map((char) =>
-                  char.id === characterId
-                    ? {
+                team: state.battleState.team.map((char) => {
+                  if (char.id === characterId) {
+                    // Darkstrider himself
+                    return {
+                      ...char,
+                      hasUsedAbilityThisTurn: true,
+                      hasQualifiedForLCDamage: isAdjacentToBoss,
+                      // Always reset hasMoved to allow re-movement
+                      hasMoved: false,
+                      // Set fightingRetreatActive for RangedSpecialist override (persists until end of turn)
+                      fightingRetreatActive: true,
+                    };
+                  } else {
+                    // Check if this T'au teammate is adjacent to Darkstrider
+                    const isAdjacentToDarkstrider = char.abilityToggles?.[adjacentToggleId] ?? false;
+                    const isTauEmpire = char.faction === "T'au Empire" || char.faction === 'Tau';
+
+                    if (isTauEmpire && isAdjacentToDarkstrider) {
+                      return {
                         ...char,
-                        hasUsedAbilityThisTurn: true,
-                        hasQualifiedForLCDamage: isAdjacentToBoss,
-                        // If adjacent to boss: reset hasMoved to allow re-movement
-                        hasMoved: isFRAdjacentToBoss ? false : char.hasMoved,
-                        // Set fightingRetreatActive for RangedSpecialist override (persists until end of turn)
                         fightingRetreatActive: true,
-                      }
-                    : char
-                ),
+                      };
+                    }
+                    return char;
+                  }
+                }),
               }
             : null,
         }));
-        console.log(`[Fighting Retreat activated: Markerlight → ON${isFRAdjacentToBoss ? ', can move again' : ''}, RangedSpecialist override active]`);
+        console.log('[Fighting Retreat activated: Markerlight → ON, Movement reset, RangedSpecialist override active for Darkstrider and adjacent T\'au allies]');
 
         // Add to appliedBuffs for BattleLog display
-        const frEffects = ['Markerlight', 'RangedSpecialist override'];
-        if (isFRAdjacentToBoss) {
-          frEffects.push('Movement reset');
-        }
         appliedBuffs.push({
           name: abilityName,
-          effect: frEffects.join(', '),
+          effect: 'Markerlight, Movement reset, RangedSpecialist override',
         });
       } else if (buffTemplate) {
         // Use new buff pool system

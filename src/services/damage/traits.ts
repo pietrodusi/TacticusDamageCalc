@@ -130,9 +130,15 @@ const TRAIT_EFFECTS: Record<string, TraitEffect> = {
         return { applicable: false, multiplier: 1, reason: 'Only applies to ranged attacks' };
       }
 
-      // Fighting Retreat override: if active, always apply the trait
+      // Fighting Retreat override: if active AND adjacent to Darkstrider, apply trait even if adjacent to enemy
       if (ctx.fightingRetreatActive) {
-        return { applicable: true, multiplier: 1.33, reason: 'Fighting Retreat active' };
+        // Check if character has "Adjacent to Darkstrider" toggle active
+        const hasAdjacentToDarkstrider = Object.keys(ctx.abilityToggles || {}).some(
+          key => key.startsWith('StructuralAnalyser_') && key.endsWith('_adjacent') && ctx.abilityToggles![key]
+        );
+        if (hasAdjacentToDarkstrider) {
+          return { applicable: true, multiplier: 1.33, reason: 'Fighting Retreat + Adjacent to Darkstrider' };
+        }
       }
 
       // If adjacent to enemy, no bonus (positional bonuses like Position apply instead)

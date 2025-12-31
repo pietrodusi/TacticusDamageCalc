@@ -102,18 +102,6 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     });
   }
 
-  // Fighting Retreat (Darkstrider) - Adjacent to boss toggle for turn/movement benefits
-  if (character.activeAbilities?.includes('FightingRetreat')) {
-    conditions.push({
-      id: 'FightingRetreat_adjacentToBoss',
-      label: 'Adjacent to Boss',
-      source: 'Fighting Retreat',
-      effect: 'Can move again, turn not ended',
-      isActive: character.abilityToggles['FightingRetreat_adjacentToBoss'] ?? false,
-      category: 'self',
-    });
-  }
-
   return conditions;
 }
 
