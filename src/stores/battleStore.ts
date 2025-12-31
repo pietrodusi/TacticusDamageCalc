@@ -1361,6 +1361,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           critChainOffset: followUp.sharesCritChain ? cumulativeHitsForCritChain : undefined,
           // Pass ability toggles for trait evaluation (e.g., RangedSpecialist adjacency check)
           abilityToggles: attacker.abilityToggles,
+          // Pass Fighting Retreat flag for RangedSpecialist override
+          fightingRetreatActive: attacker.fightingRetreatActive,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
           abilityModifiers: (lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1) ? {
             baseDamageBonus: lcExtraDmg + auraDmgBonus > 0 ? lcExtraDmg + auraDmgBonus : undefined,
@@ -1533,6 +1535,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         firstAttackTurn: attacker.firstAttackTurn ?? currentTurn,
         currentTurn,
         abilityToggles: attacker.abilityToggles,
+        fightingRetreatActive: attacker.fightingRetreatActive,
         // Pass bonuses via abilityModifiers for proper source tracking in breakdown
         abilityModifiers: hasDrachnyenModifiers ? {
           baseDamageBonus: drachnyenExtraDmg > 0 ? drachnyenExtraDmg : undefined,
@@ -2070,6 +2073,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           attacksThisTurn: character.attacksThisTurn,
           firstAttackTurn: character.firstAttackTurn,
           currentTurn: battleState.turn,
+          abilityToggles: character.abilityToggles,
+          fightingRetreatActive: character.fightingRetreatActive,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
           abilityModifiers: (componentTotalDmgBonus > 0 || componentTotalHitsBonus > 0) ? {
             baseDamageBonus: componentTotalDmgBonus > 0 ? componentTotalDmgBonus : undefined,
@@ -2284,6 +2289,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         attacksThisTurn: character.attacksThisTurn,
         firstAttackTurn: character.firstAttackTurn,
         currentTurn: battleState.turn,
+        abilityToggles: character.abilityToggles,
+        fightingRetreatActive: character.fightingRetreatActive,
         // Pass bonuses via abilityModifiers for proper source tracking in breakdown
         abilityModifiers: hasModifiers ? {
           baseDamageBonus: totalDmgBonus > 0 ? totalDmgBonus : undefined,
@@ -2855,6 +2862,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           critChainOffset: followUp.sharesCritChain ? cumulativeHitsForCritChain : undefined,
           // Pass ability toggles for trait evaluation (e.g., RangedSpecialist adjacency check)
           abilityToggles: character.abilityToggles,
+          // Pass Fighting Retreat flag for RangedSpecialist override
+          fightingRetreatActive: character.fightingRetreatActive,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
           abilityModifiers: hasFollowUpModifiers ? {
             baseDamageBonus: lcExtraDmg + auraDmgBonus > 0 ? lcExtraDmg + auraDmgBonus : undefined,
