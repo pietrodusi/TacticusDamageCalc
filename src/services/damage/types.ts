@@ -69,6 +69,16 @@ export interface BuffSource {
 }
 
 /**
+ * Damage caps applied at different calculation stages
+ * See: https://tacticus.fandom.com/wiki/HDTW_DamCap
+ */
+export interface DamageCaps {
+  baseDamageCap?: number;      // Cap 1: "Its Own Damage" - caps base damage BEFORE modifiers (e.g., Galvanic Field)
+  preArmorCap?: number;         // Cap 2: "Pre-Armour Damage" - caps DamVarMod before armor reduction (e.g., Psychic Stalk)
+  finalDamageCap?: number;      // Cap 3: "The Hit" - caps per-hit damage after armor/multipliers (e.g., Astartes Banner)
+}
+
+/**
  * Ability stat modifiers from passive abilities
  */
 export interface AbilityModifiers {
@@ -105,6 +115,8 @@ export interface AttackerStats {
   abilityToggles?: Record<string, boolean>;
   // Fighting Retreat override for RangedSpecialist trait
   fightingRetreatActive?: boolean;
+  // Damage caps applied at different calculation stages
+  damageCaps?: DamageCaps;
   // Crit chain offset for additional attacks
   // If this attack shares a crit chain with a source attack (e.g., Cyclic Ion Blaster),
   // set this to the number of hits in the preceding attack(s).
@@ -197,6 +209,16 @@ export interface DamageResult {
   // Trait modifiers applied
   traitModifiers: TraitModifier[];
   traitMultiplier: number;      // Combined multiplier from all traits
+
+  // Damage caps applied during calculation
+  capsApplied?: {
+    baseDamageCap?: { original: number; capped: number };
+    preArmorCap?: {
+      nonCrit: { original: number; capped: number };
+      crit: { original: number; capped: number };
+    };
+    finalDamageCap?: { original: number; capped: number };
+  };
 }
 
 /**

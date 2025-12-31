@@ -75,6 +75,84 @@ Each ability has a handler implementing `AbilityHandler` interface:
 - `getBossStatModifiers(bossId)` - Get aggregated stat reductions for a boss
 - `getBossAtRank(bossId, rank, applyModifiers)` - Get boss with optional modifiers
 
+## Damage Cap System
+
+The calculator implements a 3-tier damage cap system based on the [Tacticus wiki](https://tacticus.fandom.com/wiki/HDTW_DamCap). Caps are applied at different stages of damage calculation to correctly model various ability effects.
+
+### Three Damage Cap Types
+
+1. **Cap 1: "Its Own Damage" (`baseDamageCap`)**
+   - Caps base damage BEFORE any modifiers are applied
+   - Applied after reading character's base damage stat
+   - Example: Actus's Galvanic Field - caps base damage before `dmgPct` multiplier
+   - Location in calculator: After line 103 (before flatModifiers, critDamage, armor)
+
+2. **Cap 2: "Pre-Armour Damage" (`preArmorCap`)**
+   - Caps damage after pre-armour modifiers (flat bonuses, crit damage) but before armor reduction
+   - Applied to both non-crit (d0) and crit (d1) damage paths
+   - Example: Ahriman's Psychic Stalk
+   - Location in calculator: After DamVarMod calculation (lines 274-294)
+
+3. **Cap 3: "The Hit" (`finalDamageCap`)**
+   - Caps per-hit damage after ALL modifiers (armor, pierce, global multipliers, global damage bonus)
+   - Applied just before calculating total damage
+   - Example: Thoread's Astartes Banner, Vitruvius's Master Annihilator
+   - Location in calculator: After line 447 (final stage before totalDamage)
+
+### Sequential Application
+
+Caps apply sequentially in calculation order. Earlier caps reduce values used in later stages:
+- Base damage cap → affects DamVarMod calculation
+- Pre-armor cap → affects armor/pierce calculation
+- Final damage cap → affects total damage
+
+### Implementation
+
+**Type Definitions** (`src/services/damage/types.ts`):
+```typescript
+interface DamageCaps {
+  baseDamageCap?: number;      // Cap 1
+  preArmorCap?: number;         // Cap 2
+  finalDamageCap?: number;      // Cap 3
+}
+
+interface AttackerStats {
+  // ... other fields
+  damageCaps?: DamageCaps;
+}
+```
+
+**Usage in BattleStore** (`src/stores/battleStore.ts`):
+```typescript
+executeAttack(characterId, targetId, attackType, {
+  baseDamageCap: 500,    // Cap base damage to 500
+  damageMultiplier: 0.8, // Then apply 80% multiplier
+});
+```
+
+**Applied in Calculator** (`src/services/damage/calculator.ts`):
+- Cap 1: Line 109-116 (effectiveBaseDamage)
+- Cap 2: Line 295-313 (cappedDamVarMod0/1)
+- Cap 3: Line 448-455 (cappedPerHitDamage)
+
+### Galvanic Field Example
+
+Before fix (WRONG):
+```
+baseDamage: 1000
+→ × 0.8 dmgPct = 800
+→ (armor/multipliers applied)
+→ capped to 500 ❌
+```
+
+After fix (CORRECT):
+```
+baseDamage: 1000
+→ capped to 500 (Cap 1) ✓
+→ × 0.8 dmgPct = 400
+→ (armor/multipliers applied)
+```
+
 ## Build & Deploy
 
 ```bash

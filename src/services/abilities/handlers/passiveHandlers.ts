@@ -572,6 +572,7 @@ export const ChampionOfTheFeastHandler: AbilityHandler = {
 
 // GalvanicField (Actus) - When Actus repairs another unit, that unit attacks the boss
 // Note: Logic handled in battleStore.executeRepairWithGalvanicField, handler provides metadata only
+// Uses Cap 1 ("Its Own Damage") to cap base damage BEFORE dmgPct multiplier is applied
 export const GalvanicFieldHandler: AbilityHandler = {
   abilityId: 'GalvanicField',
   abilityName: 'Galvanic Field',
@@ -580,6 +581,7 @@ export const GalvanicFieldHandler: AbilityHandler = {
 
   // This passive is triggered programmatically when Actus repairs another unit
   // The actual damage calculation is in battleStore.executeRepairWithGalvanicField
+  // maxDmg uses baseDamageCap (Cap 1) to cap base damage before dmgPct and other modifiers
   evaluatePassive: (_values, _context) => {
     return {
       abilityId: 'GalvanicField',

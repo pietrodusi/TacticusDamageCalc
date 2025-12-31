@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, FollowUpAttackLog, Boss, AppliedBuffInfo, BuffEvaluationContext, DamageType } from '../types';
 import { calculateStats, calculateEquipmentStats } from '../services/dataService';
-import { DamageCalculator, type AttackerStats, type DefenderStats } from '../services/damage';
+import { DamageCalculator, type AttackerStats, type DefenderStats, type DamageCaps } from '../services/damage';
 import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, resetCooldowns, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
 import { getApplicableBuffs, combineBuffEffects, addBuffToPool, getBuffTemplate, expireBuffs } from '../services/buffs';
 
@@ -10,7 +10,10 @@ const MAX_TURNS = 6;
 // Options for executeAttack to support Galvanic Field triggered attacks
 interface ExecuteAttackOptions {
   damageMultiplier?: number;    // GalvanicField dmgPct (e.g., 0.80 for 80%)
-  perHitDamageCap?: number;     // GalvanicField maxDmg per hit
+  perHitDamageCap?: number;     // DEPRECATED - use finalDamageCap instead
+  baseDamageCap?: number;        // NEW: Cap 1 - "Its Own Damage" (e.g., Galvanic Field)
+  preArmorCap?: number;          // NEW: Cap 2 - "Pre-Armour Damage" (e.g., Psychic Stalk)
+  finalDamageCap?: number;       // NEW: Cap 3 - "The Hit" (e.g., Astartes Banner)
   skipStateUpdates?: boolean;   // Don't update hasActed, hasAttackedThisBattle, etc.
   abilityName?: string;         // For log display (e.g., "Galvanic Field")
 }
@@ -764,6 +767,16 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       ? attacker.calculatedDamage * options.damageMultiplier
       : attacker.calculatedDamage;
 
+    // Build damage caps from options
+    const damageCaps: DamageCaps | undefined =
+      options?.baseDamageCap || options?.preArmorCap || options?.finalDamageCap || options?.perHitDamageCap
+        ? {
+            baseDamageCap: options.baseDamageCap,
+            preArmorCap: options.preArmorCap,
+            finalDamageCap: options.finalDamageCap ?? options.perHitDamageCap, // Backwards compat
+          }
+        : undefined;
+
     const attackerStats: AttackerStats = {
       baseDamage: effectiveBaseDamage, // Use actual base damage (or modified for Galvanic Field)
       damageType,
@@ -783,6 +796,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       abilityModifiers: undefined, // Will be set by evaluating passives
       abilityToggles: attacker.abilityToggles, // For trait condition toggles (e.g., CrushingStrike)
       fightingRetreatActive: attacker.fightingRetreatActive, // Darkstrider's Fighting Retreat override
+      damageCaps, // Damage caps from options (Cap 1, Cap 2, Cap 3)
     };
 
     // Find Trajann for LC +2 hits check
@@ -1014,18 +1028,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Calculate damage with logging enabled
     const calculator = new DamageCalculator(true);
-    let result = calculator.calculate(attackerStats, defenderStats);
-
-    // Apply per-hit damage cap (for Galvanic Field maxDmg)
-    if (options?.perHitDamageCap && result.perHitDamage > options.perHitDamageCap) {
-      const cappedPerHit = options.perHitDamageCap;
-      const cappedDamage = Math.round(cappedPerHit * result.totalHits);
-      result = {
-        ...result,
-        damage: cappedDamage,
-        perHitDamage: cappedPerHit,
-      };
-    }
+    const result = calculator.calculate(attackerStats, defenderStats);
 
     // Print detailed calculation log to console
     console.group(`=== TURN ${currentTurn}: ${attacker.name} ${attackType.toUpperCase()} ATTACK ===`);
@@ -1242,7 +1245,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           lcHitsAppliedInNormalFollowUps = true;
         }
 
-        if (lcExtraDmg > 0 || lcExtraHits > 0) {
+        // Only show pool buff log if Trajann (Legendary Commander) is in the team
+        if ((lcExtraDmg > 0 || lcExtraHits > 0) && currentBattleState.team.some(c => c.passiveAbilities.includes('LegendaryCommander'))) {
           console.log(`[Pool Buff applied: +${lcExtraDmg} dmg, +${lcExtraHits} hits]`);
         }
 
@@ -1392,7 +1396,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           : '';
         const categoryText = followUp.attackCategory === 'special' ? ' [SPECIAL]' : '';
         const attackTypeText = `[${effectiveAttackType.toUpperCase()}/${effectiveAttackCategory}]`;
-        const lcText = lcExtraDmg > 0 || lcExtraHits > 0 ? ` [+LC: ${lcExtraDmg} dmg, ${lcExtraHits} hits]` : '';
+        // Only show LC text if Trajann (Legendary Commander) is in the team
+        const lcText = (lcExtraDmg > 0 || lcExtraHits > 0) && currentBattleState.team.some(c => c.passiveAbilities.includes('LegendaryCommander'))
+          ? ` [+LC: ${lcExtraDmg} dmg, ${lcExtraHits} hits]` : '';
         const auraText = auraDmgBonus > 0 || auraHitsBonus > 0 ? ` [+Aura: ${auraDmgBonus} dmg, ${auraHitsBonus} hits]` : '';
         console.log(`\n${followUp.abilityName} ${attackTypeText}${categoryText}: ${followUpResult.totalHits}x ${followUp.damageProfile}${bonusText}${lcText}${auraText}`);
         followUpCalculator.printLogs();
@@ -1493,7 +1499,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const drachnyenArmorIgnored = drachnyenPoolEffects.armorIgnored || 0;
       const drachnyenDamageMultiplier = drachnyenPoolEffects.baseDamageMultiplier || 1;
 
-      if (drachnyenExtraDmg > 0 || drachnyenExtraHits > 0) {
+      // Only show pool buff log if Trajann (Legendary Commander) is in the team
+      if ((drachnyenExtraDmg > 0 || drachnyenExtraHits > 0) && currentBattleStateForDrachnyen.team.some(c => c.passiveAbilities.includes('LegendaryCommander'))) {
         console.log(`[Pool Buff applied to Drach'nyen: +${drachnyenExtraDmg} dmg, +${drachnyenExtraHits} hits]`);
       }
 
@@ -2191,7 +2198,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const lcExtraHits = singleAbilityPoolEffects.extraHits || 0;
       if (lcExtraHits > 0) lcHitsAppliedToAbility = true;
 
-      if (lcExtraDmg > 0 || lcExtraHits > 0) {
+      // Only show pool buff log if Trajann (Legendary Commander) is in the team
+      if ((lcExtraDmg > 0 || lcExtraHits > 0) && battleState.team.some(c => c.passiveAbilities.includes('LegendaryCommander'))) {
         console.log(`[Pool Buff applied to ability: +${lcExtraDmg} dmg, +${lcExtraHits} hits]`);
       }
 
@@ -2747,7 +2755,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           lcHitsAppliedInFollowUps = true;
         }
 
-        if (lcExtraDmg > 0 || lcExtraHits > 0) {
+        // Only show pool buff log if Trajann (Legendary Commander) is in the team
+        if ((lcExtraDmg > 0 || lcExtraHits > 0) && currentBattleStateForFollowUp.team.some(c => c.passiveAbilities.includes('LegendaryCommander'))) {
           console.log(`[Pool Buff applied to ${followUp.abilityName}: +${lcExtraDmg} dmg, +${lcExtraHits} hits]`);
         }
 
@@ -2889,7 +2898,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const bonusText = (followUp.damageMultiplier || 1) > 1
           ? ` (×${followUp.damageMultiplier?.toFixed(2)} from attack turns)`
           : '';
-        const lcText = lcExtraDmg > 0 || lcExtraHits > 0 ? ` [+LC: ${lcExtraDmg} dmg, ${lcExtraHits} hits]` : '';
+        // Only show LC text if Trajann (Legendary Commander) is in the team
+        const lcText = (lcExtraDmg > 0 || lcExtraHits > 0) && currentBattleStateForFollowUp.team.some(c => c.passiveAbilities.includes('LegendaryCommander'))
+          ? ` [+LC: ${lcExtraDmg} dmg, ${lcExtraHits} hits]` : '';
         const auraText = auraDmgBonus > 0 || auraHitsBonus > 0 ? ` [+Aura: ${auraDmgBonus} dmg, ${auraHitsBonus} hits]` : '';
         console.log(`\n${followUp.abilityName}: ${followUpResult.totalHits}x ${followUp.damageProfile}${bonusText}${lcText}${auraText}`);
         followUpCalc.printLogs();
@@ -3136,7 +3147,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         // This handles the full attack pipeline: passives, buffs, follow-ups (like Way of the Short Blade)
         const attackLog = get().executeAttack(targetId, 'boss', attackType, {
           damageMultiplier: dmgPct / 100,  // Convert percentage to multiplier
-          perHitDamageCap: maxDmgPerHit,
+          baseDamageCap: maxDmgPerHit,     // Cap base damage (Cap 1: "Its Own Damage")
           skipStateUpdates: true,  // Don't update hasActed, attacksThisTurn, etc.
           abilityName: 'Galvanic Field',
         });

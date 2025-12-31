@@ -103,6 +103,18 @@ export class DamageCalculator {
     const baseDamage = attacker.baseDamage;
     let effectiveHits = attacker.hits;
 
+    // === CAP 1: Apply Base Damage Cap ("Its Own Damage") ===
+    // Caps base damage BEFORE any modifiers are applied (e.g., Galvanic Field)
+    let effectiveBaseDamage = baseDamage;
+    let baseDamageCapApplied: { original: number; capped: number } | undefined;
+
+    if (attacker.damageCaps?.baseDamageCap !== undefined && baseDamage > attacker.damageCaps.baseDamageCap) {
+      effectiveBaseDamage = attacker.damageCaps.baseDamageCap;
+      baseDamageCapApplied = { original: baseDamage, capped: effectiveBaseDamage };
+      this.log('DAMAGE_CAP', 'Base Damage Cap (Cap 1: "Its Own Damage")',
+        `${baseDamage} → ${effectiveBaseDamage}`);
+    }
+
     // === STEP 1: Calculate Flat Modifiers ===
     let flatModifiers = 0;
     const flatModifierSources: BuffSource[] = [];
@@ -271,15 +283,49 @@ export class DamageCalculator {
 
     // === STEP 3: Calculate DamVarMod for both paths ===
     // d0 path: non-crit hits
-    const damVarMod0 = baseDamage + flatModifiers;
+    const damVarMod0 = effectiveBaseDamage + flatModifiers;
     // d1 path: crit hits (add crit damage)
-    const damVarMod1 = baseDamage + flatModifiers + effectiveCritDamage;
+    const damVarMod1 = effectiveBaseDamage + flatModifiers + effectiveCritDamage;
 
-    this.log('DAMVARMOD', 'Base Damage', baseDamage);
+    this.log('DAMVARMOD', 'Base Damage', effectiveBaseDamage);
     this.log('DAMVARMOD', '+ Flat Modifiers', flatModifiers);
     this.log('DAMVARMOD', '= DamVarMod (non-crit)', damVarMod0.toFixed(2));
     this.log('DAMVARMOD', '+ Crit Damage', effectiveCritDamage);
     this.log('DAMVARMOD', '= DamVarMod (crit)', damVarMod1.toFixed(2));
+
+    // === CAP 2: Apply Pre-Armor Damage Cap ("Pre-Armour Damage") ===
+    // Caps DamVarMod BEFORE armor reduction (e.g., Psychic Stalk)
+    let cappedDamVarMod0 = damVarMod0;
+    let cappedDamVarMod1 = damVarMod1;
+    let preArmorCapApplied: {
+      nonCrit: { original: number; capped: number };
+      crit: { original: number; capped: number };
+    } | undefined;
+
+    if (attacker.damageCaps?.preArmorCap !== undefined) {
+      const cap = attacker.damageCaps.preArmorCap;
+      const nonCritCapped = damVarMod0 > cap;
+      const critCapped = damVarMod1 > cap;
+
+      if (nonCritCapped) {
+        cappedDamVarMod0 = cap;
+        this.log('DAMAGE_CAP', 'Pre-Armor Cap (non-crit, Cap 2: "Pre-Armour Damage")',
+          `${damVarMod0.toFixed(2)} → ${cap.toFixed(2)}`);
+      }
+
+      if (critCapped) {
+        cappedDamVarMod1 = cap;
+        this.log('DAMAGE_CAP', 'Pre-Armor Cap (crit, Cap 2: "Pre-Armour Damage")',
+          `${damVarMod1.toFixed(2)} → ${cap.toFixed(2)}`);
+      }
+
+      if (nonCritCapped || critCapped) {
+        preArmorCapApplied = {
+          nonCrit: { original: damVarMod0, capped: cappedDamVarMod0 },
+          crit: { original: damVarMod1, capped: cappedDamVarMod1 },
+        };
+      }
+    }
 
     // === STEP 4: Apply Armor/Pierce to BOTH paths ===
     const pierceRatio = PIERCE_RATIOS[attacker.damageType];
@@ -287,14 +333,14 @@ export class DamageCalculator {
     // Calculate effective armor (reduced by armor ignored, min 0)
     const effectiveArmor = Math.max(0, defender.armor - armorIgnored);
 
-    // Non-crit path (d0)
-    const afterArmor0 = calculateArmorReduction(damVarMod0, effectiveArmor);
-    const pierceFloor0 = calculatePierceFloor(damVarMod0, attacker.damageType);
+    // Non-crit path (d0) - use capped DamVarMod
+    const afterArmor0 = calculateArmorReduction(cappedDamVarMod0, effectiveArmor);
+    const pierceFloor0 = calculatePierceFloor(cappedDamVarMod0, attacker.damageType);
     const d0 = applyPierceMaximum(afterArmor0, pierceFloor0);
 
-    // Crit path (d1)
-    const afterArmor1 = calculateArmorReduction(damVarMod1, effectiveArmor);
-    const pierceFloor1 = calculatePierceFloor(damVarMod1, attacker.damageType);
+    // Crit path (d1) - use capped DamVarMod
+    const afterArmor1 = calculateArmorReduction(cappedDamVarMod1, effectiveArmor);
+    const pierceFloor1 = calculatePierceFloor(cappedDamVarMod1, attacker.damageType);
     const d1 = applyPierceMaximum(afterArmor1, pierceFloor1);
 
     if (armorIgnored > 0) {
@@ -400,14 +446,26 @@ export class DamageCalculator {
     const perHitBeforeBonus = afterArmorPierce * globalMultiplier;
     const perHitDamage = perHitBeforeBonus + globalDamageBonus;
 
+    // === CAP 3: Apply Final Damage Cap ("The Hit") ===
+    // Caps per-hit damage AFTER all modifiers (e.g., Astartes Banner, Master Annihilator)
+    let cappedPerHitDamage = perHitDamage;
+    let finalDamageCapApplied: { original: number; capped: number } | undefined;
+
+    if (attacker.damageCaps?.finalDamageCap !== undefined && perHitDamage > attacker.damageCaps.finalDamageCap) {
+      cappedPerHitDamage = attacker.damageCaps.finalDamageCap;
+      finalDamageCapApplied = { original: perHitDamage, capped: cappedPerHitDamage };
+      this.log('DAMAGE_CAP', 'Final Damage Cap (Cap 3: "The Hit")',
+        `${perHitDamage.toFixed(2)} → ${cappedPerHitDamage.toFixed(2)}`);
+    }
+
     if (globalDamageBonus > 0) {
       this.log('GLOBAL_BONUS', 'After Multiplier', perHitBeforeBonus.toFixed(2));
       this.log('GLOBAL_BONUS', '+ Global Damage Bonus', `+${globalDamageBonus}`);
     }
-    this.log('RESULT', 'Per Hit Damage', perHitDamage.toFixed(2));
+    this.log('RESULT', 'Per Hit Damage', cappedPerHitDamage.toFixed(2));
 
     // === STEP 7: Calculate Total Damage ===
-    const totalDamage = calculateTotalDamage(perHitDamage, effectiveHits);
+    const totalDamage = calculateTotalDamage(cappedPerHitDamage, effectiveHits);
     const damage = Math.round(totalDamage);
 
     this.log('RESULT', `Total (${effectiveHits} hits)`, damage);
@@ -415,7 +473,7 @@ export class DamageCalculator {
     // === Build Result ===
     return {
       damage,
-      perHitDamage,
+      perHitDamage: cappedPerHitDamage,
       totalHits: effectiveHits,
 
       // Calculation breakdown for Battle Log
@@ -472,6 +530,15 @@ export class DamageCalculator {
       pierceRatio,
       traitModifiers,
       traitMultiplier,
+
+      // Damage caps applied
+      capsApplied: (baseDamageCapApplied || preArmorCapApplied || finalDamageCapApplied)
+        ? {
+            baseDamageCap: baseDamageCapApplied,
+            preArmorCap: preArmorCapApplied,
+            finalDamageCap: finalDamageCapApplied,
+          }
+        : undefined,
     };
   }
 }
