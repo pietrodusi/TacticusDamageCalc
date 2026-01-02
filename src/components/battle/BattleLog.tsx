@@ -140,7 +140,11 @@ function DamageBreakdownDisplay({ breakdown, sourceName }: { breakdown: DamageBr
           </div>
         )}
         <div className="flex justify-between text-gray-500">
-          <span>Pierce ({(breakdown.pierceRatio * 100).toFixed(0)}%):</span>
+          <span>Pierce {breakdown.pierceRatioBonus && breakdown.pierceRatioBonus > 0 ? (
+            <>({(breakdown.pierceRatio * 100).toFixed(0)} <span className="text-green-400">+{breakdown.pierceRatioBonus.toFixed(0)} {breakdown.pierceRatioBonusSources && breakdown.pierceRatioBonusSources.length > 0 ? `(${breakdown.pierceRatioBonusSources.map(s => s.name).join(', ')})` : ''}</span>%):</>
+          ) : (
+            <>({(breakdown.pierceRatio * 100).toFixed(0)}%):</>
+          )}</span>
           <span>{breakdown.pierceFloor.toFixed(0)}</span>
         </div>
         <div className="flex justify-between text-gray-400">

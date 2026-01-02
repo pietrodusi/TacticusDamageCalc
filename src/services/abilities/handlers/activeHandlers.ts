@@ -606,6 +606,42 @@ export const FightingRetreatHandler: AbilityHandler = {
   },
 };
 
+/**
+ * CrusadeOfWrath (Helbrecht)
+ * Buff that grants all friendly units within range 2:
+ * - +extraDmg damage for melee attacks
+ * - +extraPierceRatio% pierce ratio for melee attacks
+ * Duration: 2 rounds (this round and next)
+ * After using, Helbrecht can still attack
+ * Variables: extraDmg, extraPierceRatio
+ * Constants: range: 2
+ */
+export const CrusadeOfWrathHandler: AbilityHandler = {
+  abilityId: 'CrusadeOfWrath',
+  abilityName: 'Crusade Of Wrath',
+  category: 'buff',
+  cooldown: -1,
+  endsTurn: false, // Helbrecht can still attack after using this ability
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('CrusadeOfWrath');
+
+    return {
+      abilityId: 'CrusadeOfWrath',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {
+          baseDamageBonus: values.extraDmg as number || 0,
+          pierceRatioBonus: values.extraPierceRatio as number || 0,
+        },
+        duration: 2, // Lasts this round and next
+      },
+      message: abilityName,
+    };
+  },
+};
+
 // Export all active handlers
 export const activeHandlers: AbilityHandler[] = [
   WarHowlHandler,
@@ -624,4 +660,5 @@ export const activeHandlers: AbilityHandler[] = [
   ThunderousAssaultHandler,
   DefendTheDivineWorkHandler,
   FightingRetreatHandler,
+  CrusadeOfWrathHandler,
 ];

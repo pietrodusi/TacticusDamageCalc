@@ -44,6 +44,10 @@ Each ability has a handler implementing `AbilityHandler` interface:
 ### Trajann
 - **LegendaryCommander** (Passive/Aura): Team-wide buff after ability use
 
+### Helbrecht
+- **Crusade Of Wrath** (Active, Buff): Grants damage and pierce ratio bonus to allies within range 2 for melee attacks, lasts 2 rounds, doesn't end turn
+- **Destroy The Witch** (Passive): Helbrecht and adjacent allies deal bonus damage with melee attacks against Psyker bosses
+
 ### Dante, Kariyan, Kharn
 - Active abilities implemented
 

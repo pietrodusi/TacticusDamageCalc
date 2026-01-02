@@ -66,6 +66,7 @@ export interface BuffSource {
   critChanceBonus?: number;  // Crit chance bonus
   critDamageBonus?: number;  // Crit damage bonus
   armorIgnored?: number;  // Armor reduction before damage calculation
+  pierceRatioBonus?: number; // Bonus pierce ratio percentage (e.g., 10 for +10%)
 }
 
 /**
@@ -89,6 +90,7 @@ export interface AbilityModifiers {
   critChanceBonus?: number;        // +% crit chance
   critDamageBonus?: number;        // Flat crit damage bonus
   armorIgnored?: number;           // Reduces target armor before damage calculation
+  pierceRatioBonus?: number;       // Bonus pierce ratio percentage (e.g., 10 for +10%)
   buffSources?: BuffSource[];      // Sources of the buffs for display
 }
 
@@ -192,6 +194,8 @@ export interface DamageResult {
   armorIgnored: number;         // Amount of armor ignored
   armorIgnoredSources: BuffSource[]; // Sources with armorIgnored values
   effectiveArmor: number;       // Actual armor used in calculation (armor - armorIgnored)
+  pierceRatioBonus: number;     // Pierce ratio bonus percentage (e.g., 10 for +10%)
+  pierceRatioBonusSources: BuffSource[]; // Sources with pierceRatioBonus values
 
   // Stats used in calculation (for logging)
   attackerStats: AttackerStats;
@@ -204,7 +208,8 @@ export interface DamageResult {
   critDamageTotalBonus: number; // Total crit damage bonus (equipment + abilities)
   effectiveCritChance: number;  // Total crit chance (base + bonus, 0-1)
   effectiveCritDamage: number;  // Total crit damage (base + bonus)
-  pierceRatio: number;          // Pierce ratio for damage type
+  pierceRatio: number;          // Base pierce ratio for damage type
+  effectivePierceRatio: number; // Total pierce ratio (base + bonus)
 
   // Trait modifiers applied
   traitModifiers: TraitModifier[];

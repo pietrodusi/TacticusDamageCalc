@@ -48,6 +48,7 @@ export interface PooledBuffEffect {
   critChanceBonus?: number;
   critDamageBonus?: number;
   armorIgnored?: number;  // Reduces target armor before damage calculation
+  pierceRatioBonus?: number;  // Bonus pierce ratio percentage (e.g., 10 for +10%)
   attackType?: 'melee' | 'ranged';  // Restrict buff to specific attack type
 }
 

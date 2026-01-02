@@ -123,11 +123,13 @@ export class DamageCalculator {
     let extraHits = 0;
     let globalDamageBonus = 0;
     let armorIgnored = 0;
+    let pierceRatioBonus = 0;
     const critChanceSources: BuffSource[] = [];
     const critDamageSources: BuffSource[] = [];
     const extraHitsSources: BuffSource[] = [];
     const globalDamageBonusSources: BuffSource[] = [];
     const armorIgnoredSources: BuffSource[] = [];
+    const pierceRatioBonusSources: BuffSource[] = [];
 
     if (attacker.abilityModifiers) {
       const mods = attacker.abilityModifiers;
@@ -240,6 +242,24 @@ export class DamageCalculator {
         }
         this.log('FLAT_MODIFIERS', 'Armor Ignored', `-${mods.armorIgnored} armor`);
       }
+
+      // Pierce ratio bonus - track sources
+      if (mods.pierceRatioBonus) {
+        pierceRatioBonus += mods.pierceRatioBonus;
+        // Track sources from buffSources with individual values
+        if (mods.buffSources) {
+          for (const source of mods.buffSources) {
+            if (source.pierceRatioBonus && source.pierceRatioBonus > 0) {
+              pierceRatioBonusSources.push({
+                name: source.name,
+                sourceName: source.sourceName,
+                pierceRatioBonus: source.pierceRatioBonus,
+              });
+            }
+          }
+        }
+        this.log('FLAT_MODIFIERS', 'Pierce Ratio Bonus', `+${mods.pierceRatioBonus}%`);
+      }
     }
 
     // === STEP 2: Calculate Effective Crit Stats ===
@@ -328,19 +348,20 @@ export class DamageCalculator {
     }
 
     // === STEP 4: Apply Armor/Pierce to BOTH paths ===
-    const pierceRatio = PIERCE_RATIOS[attacker.damageType];
+    const basePierceRatio = PIERCE_RATIOS[attacker.damageType];
+    const effectivePierceRatio = basePierceRatio + (pierceRatioBonus / 100);
 
     // Calculate effective armor (reduced by armor ignored, min 0)
     const effectiveArmor = Math.max(0, defender.armor - armorIgnored);
 
     // Non-crit path (d0) - use capped DamVarMod
     const afterArmor0 = calculateArmorReduction(cappedDamVarMod0, effectiveArmor);
-    const pierceFloor0 = calculatePierceFloor(cappedDamVarMod0, attacker.damageType);
+    const pierceFloor0 = calculatePierceFloor(cappedDamVarMod0, attacker.damageType, pierceRatioBonus);
     const d0 = applyPierceMaximum(afterArmor0, pierceFloor0);
 
     // Crit path (d1) - use capped DamVarMod
     const afterArmor1 = calculateArmorReduction(cappedDamVarMod1, effectiveArmor);
-    const pierceFloor1 = calculatePierceFloor(cappedDamVarMod1, attacker.damageType);
+    const pierceFloor1 = calculatePierceFloor(cappedDamVarMod1, attacker.damageType, pierceRatioBonus);
     const d1 = applyPierceMaximum(afterArmor1, pierceFloor1);
 
     if (armorIgnored > 0) {
@@ -350,7 +371,11 @@ export class DamageCalculator {
     } else {
       this.log('ARMOR_PIERCE', 'Target Armor', defender.armor);
     }
-    this.log('ARMOR_PIERCE', `Pierce Ratio (${attacker.damageType})`, `${(pierceRatio * 100).toFixed(0)}%`);
+    this.log('ARMOR_PIERCE', `Pierce Ratio (${attacker.damageType})`, `${(basePierceRatio * 100).toFixed(0)}%`);
+    if (pierceRatioBonus > 0) {
+      this.log('ARMOR_PIERCE', 'Pierce Ratio Bonus', `+${pierceRatioBonus}%`);
+      this.log('ARMOR_PIERCE', 'Effective Pierce Ratio', `${(effectivePierceRatio * 100).toFixed(0)}%`);
+    }
     this.log('ARMOR_PIERCE', 'd0 (non-crit): MAX(' + afterArmor0.toFixed(0) + ', ' + pierceFloor0 + ')', d0.toFixed(2));
     this.log('ARMOR_PIERCE', 'd1 (crit): MAX(' + afterArmor1.toFixed(0) + ', ' + pierceFloor1 + ')', d1.toFixed(2));
 
@@ -515,6 +540,8 @@ export class DamageCalculator {
       armorIgnored,
       armorIgnoredSources,
       effectiveArmor,
+      pierceRatioBonus,
+      pierceRatioBonusSources,
 
       // Stats
       attackerStats: attacker,
@@ -527,7 +554,8 @@ export class DamageCalculator {
       critDamageTotalBonus,
       effectiveCritChance,
       effectiveCritDamage,
-      pierceRatio,
+      pierceRatio: basePierceRatio,
+      effectivePierceRatio,
       traitModifiers,
       traitMultiplier,
 

@@ -134,7 +134,10 @@ export interface DamageBreakdown {
   effectiveArmor?: number;      // Actual armor used in calculation (targetArmor - armorIgnored)
   afterArmor: number;           // damVarMod - armor
   pierceRatio: number;
-  pierceFloor: number;          // damVarMod * pierceRatio
+  pierceRatioBonus?: number;    // Pierce ratio bonus percentage (e.g., 10 for +10%)
+  pierceRatioBonusSources?: BuffSource[]; // Sources of pierce ratio bonus with values
+  effectivePierceRatio?: number; // Total pierce ratio (base + bonus)
+  pierceFloor: number;          // damVarMod * effectivePierceRatio
   afterArmorPierce: number;     // MAX(afterArmor, pierceFloor)
   globalMultiplier: number;     // Combined trait + ability multipliers
   globalMultiplierSources: BuffSource[]; // e.g., [{name: "RapidAssault", damageMultiplier: 1.25}]

@@ -325,6 +325,70 @@ export const structuralAnalyserBuffTemplate: BuffTemplate = {
   // No requiredToggles since the toggle is dynamic (based on Darkstrider's ID)
 };
 
+/**
+ * CrusadeOfWrath buff template (Helbrecht active)
+ * All friendly units within range 2 of Helbrecht gain bonus damage and pierce ratio for melee attacks
+ * Duration: 2 rounds (this round and next)
+ * Variables: extraDmg, extraPierceRatio
+ */
+export const crusadeOfWrathBuffTemplate: BuffTemplate = {
+  buffId: 'crusade_of_wrath',
+  name: 'Crusade Of Wrath',
+  sourceAbilityId: 'CrusadeOfWrath',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      // Only applies to melee attacks
+      if (context.attackType !== 'melee') return false;
+
+      // Check if character is within range 2 of Helbrecht (toggle)
+      const toggleId = `CrusadeOfWrath_${buff.sourceCharacterId}_range2`;
+      return context.attacker.abilityToggles?.[toggleId] ?? false;
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg as number) || 0,
+    pierceRatioBonus: (values.extraPierceRatio as number) || 0,
+  }),
+  duration: 2, // Lasts this round and next
+  // No requiredToggles since the toggle is dynamic (based on Helbrecht's ID)
+};
+
+/**
+ * DestroyTheWitch buff template (Helbrecht passive)
+ * Helbrecht and friendly adjacent units deal +extraDmg with melee attacks against Psyker bosses
+ * No duration - permanent aura-style buff
+ * Variables: extraDmg
+ */
+export const destroyTheWitchBuffTemplate: BuffTemplate = {
+  buffId: 'destroy_the_witch',
+  name: 'Destroy The Witch',
+  sourceAbilityId: 'DestroyTheWitch',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      // Only applies to melee attacks
+      if (context.attackType !== 'melee') return false;
+
+      // Only applies against Psyker bosses
+      const bossHasPsykerTrait = context.target?.traits?.includes('Psyker') ?? false;
+      if (!bossHasPsykerTrait) return false;
+
+      // Applies to Helbrecht himself
+      if (context.attacker.id === buff.sourceCharacterId) return true;
+
+      // Applies to characters adjacent to Helbrecht (toggle)
+      const toggleId = `DestroyTheWitch_${buff.sourceCharacterId}_adjacent`;
+      return context.attacker.abilityToggles?.[toggleId] ?? false;
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg as number) || 0,
+  }),
+  // No duration - permanent aura-style buff (evaluated each attack)
+  // No requiredToggles since the toggle is dynamic (based on Helbrecht's ID)
+};
+
 // Registry of all buff templates by ability ID
 export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   WarHowl: warHowlBuffTemplate,
@@ -341,6 +405,9 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   doom_aeldari: doomAeldariBuffTemplate,
   // Structural Analyser aura (Darkstrider passive)
   structural_analyser_aura: structuralAnalyserBuffTemplate,
+  // Helbrecht abilities
+  CrusadeOfWrath: crusadeOfWrathBuffTemplate,
+  destroy_the_witch: destroyTheWitchBuffTemplate,
 };
 
 /**

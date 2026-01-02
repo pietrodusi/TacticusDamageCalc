@@ -31,15 +31,17 @@ export function calculateArmorReduction(damVarMod: number, armor: number): numbe
 /**
  * Calculate pierce floor (minimum damage from pierce ratio)
  *
- * Formula: DamVarMod * PierceRatio
+ * Formula: DamVarMod * (PierceRatio + PierceRatioBonus)
  *
  * @param damVarMod - The damage value (base + modifiers + crit)
  * @param damageType - The type of damage (determines pierce ratio)
+ * @param pierceRatioBonus - Optional bonus to pierce ratio percentage (e.g., 10 for +10%)
  * @returns Minimum damage guaranteed by pierce
  */
-export function calculatePierceFloor(damVarMod: number, damageType: DamageType): number {
-  const pierceRatio = PIERCE_RATIOS[damageType];
-  return Math.floor(damVarMod * pierceRatio);
+export function calculatePierceFloor(damVarMod: number, damageType: DamageType, pierceRatioBonus: number = 0): number {
+  const basePierceRatio = PIERCE_RATIOS[damageType];
+  const effectivePierceRatio = basePierceRatio + (pierceRatioBonus / 100);
+  return Math.floor(damVarMod * effectivePierceRatio);
 }
 
 /**
@@ -183,20 +185,22 @@ export function calculateEffectiveCritDamage(
  * Calculate single hit damage (complete formula - no variance)
  *
  * Full formula for one hit:
- *   MAX[(DamVarMod - Armor), (DamVarMod * PierceRatio)]
+ *   MAX[(DamVarMod - Armor), (DamVarMod * (PierceRatio + PierceRatioBonus))]
  *
  * @param damVarMod - Damage value (base + modifiers + crit)
  * @param armor - Target armor
  * @param damageType - Type of damage
+ * @param pierceRatioBonus - Optional bonus to pierce ratio percentage (e.g., 10 for +10%)
  * @returns Damage for this hit (before global multipliers)
  */
 export function calculateSingleHitDamage(
   damVarMod: number,
   armor: number,
-  damageType: DamageType
+  damageType: DamageType,
+  pierceRatioBonus: number = 0
 ): number {
   const afterArmor = calculateArmorReduction(damVarMod, armor);
-  const pierceFloor = calculatePierceFloor(damVarMod, damageType);
+  const pierceFloor = calculatePierceFloor(damVarMod, damageType, pierceRatioBonus);
   return applyPierceMaximum(afterArmor, pierceFloor);
 }
 

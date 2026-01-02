@@ -268,6 +268,55 @@ function getAuraConditions(
         }
       }
     }
+
+    // Destroy the Witch (Helbrecht passive) - damage bonus for melee attacks vs Psyker bosses
+    if (teammate.passiveAbilities.includes('DestroyTheWitch')) {
+      // Don't show for Helbrecht himself (he always gets the bonus)
+      if (character.id !== teammate.id) {
+        const levelIndex = teammate.abilityLevels?.['DestroyTheWitch'] ?? 54;
+        const values = getAbilityValues('DestroyTheWitch', levelIndex);
+        const abilityName = getAbilityNameSync('DestroyTheWitch');
+
+        if (values) {
+          const extraDmg = values.extraDmg as number || 0;
+          const toggleId = `DestroyTheWitch_${teammate.id}_adjacent`;
+
+          conditions.push({
+            id: toggleId,
+            label: `Adjacent to ${teammate.name}`,
+            source: abilityName,
+            sourceCharacter: teammate.name,
+            effect: `+${extraDmg} melee dmg (vs Psyker)`,
+            isActive: character.abilityToggles[toggleId] ?? false,
+            category: 'aura',
+          });
+        }
+      }
+    }
+
+    // Crusade of Wrath (Helbrecht active) - damage and pierce bonus for melee attacks
+    // Only show if Helbrecht has this active ability
+    if (teammate.activeAbilities.includes('CrusadeOfWrath')) {
+      const levelIndex = teammate.abilityLevels?.['CrusadeOfWrath'] ?? 54;
+      const values = getAbilityValues('CrusadeOfWrath', levelIndex);
+      const abilityName = getAbilityNameSync('CrusadeOfWrath');
+
+      if (values) {
+        const extraDmg = values.extraDmg as number || 0;
+        const extraPierceRatio = values.extraPierceRatio as number || 0;
+        const toggleId = `CrusadeOfWrath_${teammate.id}_range2`;
+
+        conditions.push({
+          id: toggleId,
+          label: `Range 2 from ${teammate.name}`,
+          source: abilityName,
+          sourceCharacter: teammate.name,
+          effect: `+${extraDmg} dmg, +${extraPierceRatio}% pierce (melee)`,
+          isActive: character.abilityToggles[toggleId] ?? false,
+          category: 'aura',
+        });
+      }
+    }
   }
 
   return conditions;

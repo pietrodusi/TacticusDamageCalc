@@ -104,6 +104,7 @@ export function combineBuffEffects(buffs: PooledBuff[]): PooledBuffEffect {
     critChanceBonus: 0,
     critDamageBonus: 0,
     armorIgnored: 0,
+    pierceRatioBonus: 0,
   };
 
   for (const buff of buffs) {
@@ -114,6 +115,7 @@ export function combineBuffEffects(buffs: PooledBuff[]): PooledBuffEffect {
     combined.critChanceBonus! += effects.critChanceBonus || 0;
     combined.critDamageBonus! += effects.critDamageBonus || 0;
     combined.armorIgnored! += effects.armorIgnored || 0;
+    combined.pierceRatioBonus! += effects.pierceRatioBonus || 0;
   }
 
   return combined;

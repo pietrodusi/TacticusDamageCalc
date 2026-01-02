@@ -100,6 +100,9 @@ export interface AbilityStatModifier {
   // Armor reduction
   armorIgnored?: number;           // Reduces target armor before damage calculation
 
+  // Pierce bonus
+  pierceRatioBonus?: number;       // Bonus pierce ratio percentage (e.g., 10 for +10%)
+
   // Crit bonuses
   critChanceBonus?: number;        // +% crit chance (percentage points)
   critDamageBonus?: number;        // Flat crit damage bonus

@@ -176,6 +176,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Initialize Destroy the Witch aura buff if Helbrecht is in team
+    const helbrecht = battleCharacters.find(c => c.passiveAbilities.includes('DestroyTheWitch'));
+    if (helbrecht) {
+      const dtwTemplate = getBuffTemplate('destroy_the_witch');
+      const dtwValues = getAbilityValues('DestroyTheWitch', helbrecht.abilityLevels?.DestroyTheWitch ?? 54);
+
+      if (dtwValues && dtwTemplate) {
+        buffPool = addBuffToPool(buffPool, dtwTemplate, helbrecht, dtwValues as Record<string, number>, 1);
+      }
+    }
+
     set({
       battleState: {
         turn: 1,
@@ -740,6 +751,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const poolExtraHits = poolBuffEffects.extraHits || 0;
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
     const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
+    const poolPierceRatioBonus = poolBuffEffects.pierceRatioBonus || 0;
 
     // Markerlight debuff: T'au Empire ranged attacks deal +15% damage
     const isTauEmpire = attacker.faction === "T'au Empire" || attacker.faction === 'Tau';
@@ -866,7 +878,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Build buff sources for display in damage breakdown
     // Define BuffSource type inline
-    type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number };
+    type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number; pierceRatioBonus?: number };
     const buffSources: BuffSourceType[] = activeAuras.map(a => {
       const source: BuffSourceType = {
         name: a.abilityName,
@@ -950,8 +962,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         source.damageMultiplier = poolBuff.effects.baseDamageMultiplier;
       }
       if (poolBuff.effects.armorIgnored) source.armorIgnored = poolBuff.effects.armorIgnored;
+      if (poolBuff.effects.pierceRatioBonus) source.pierceRatioBonus = poolBuff.effects.pierceRatioBonus;
       // Only add if there's at least one bonus
-      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus || source.damageMultiplier || source.armorIgnored) {
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus || source.damageMultiplier || source.armorIgnored || source.pierceRatioBonus) {
         buffSources.push(source);
       }
     }
@@ -1014,6 +1027,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       critDamageBonus: (combinedMods.critDamageBonus || 0) + buffCritDmgBonus > 0 ? (combinedMods.critDamageBonus || 0) + buffCritDmgBonus : undefined,
       extraHits: (combinedMods.extraHits || 0) + buffExtraHits > 0 ? (combinedMods.extraHits || 0) + buffExtraHits : undefined,
       armorIgnored: totalArmorIgnored > 0 ? totalArmorIgnored : undefined,
+      pierceRatioBonus: poolPierceRatioBonus > 0 ? poolPierceRatioBonus : undefined,
       buffSources,
     };
 
@@ -1631,6 +1645,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       effectiveArmor: result.effectiveArmor,
       afterArmor: result.afterArmor,
       pierceRatio: result.pierceRatio,
+      pierceRatioBonus: result.pierceRatioBonus,
+      pierceRatioBonusSources: result.pierceRatioBonusSources,
+      effectivePierceRatio: result.effectivePierceRatio,
       pierceFloor: result.pierceFloor,
       afterArmorPierce: result.afterArmorPierce,
       globalMultiplier: result.globalMultiplier,
