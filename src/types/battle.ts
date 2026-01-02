@@ -210,6 +210,8 @@ export interface BattleState {
   pendingRepairAction?: PendingRepairAction;
   // Boss debuffs - Markerlight gives T'au Empire +15% ranged damage
   bossHasMarkerlight: boolean;
+  // Count of active abilities used in battle (for Atlacoya's TalonsOfTheEmperor scaling)
+  activeAbilitiesUsedCount: number;
 }
 
 export interface BattleSimulationConfig {

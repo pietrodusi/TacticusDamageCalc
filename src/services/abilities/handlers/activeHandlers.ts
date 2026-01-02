@@ -642,6 +642,56 @@ export const CrusadeOfWrathHandler: AbilityHandler = {
   },
 };
 
+/**
+ * Talons of the Emperor (Atlacoya)
+ * Damage attack that scales with number of abilities used
+ * Deals average(minDmg, maxDmg) + (extraDmg × activeAbilitiesUsedCount)
+ * Deals DirectDamage if boss has Psyker trait OR Atlacoya is adjacent to Custodes
+ * Variables: minDmg, maxDmg, extraDmg
+ * Constants: nrOfHits: 1, damageProfile: Power, damageProfile_2: DirectDamage
+ */
+export const TalonsOfTheEmperorHandler: AbilityHandler = {
+  abilityId: 'TalonsOfTheEmperor',
+  abilityName: 'Talons of the Emperor',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('TalonsOfTheEmperor');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const extraDmg = values.extraDmg as number || 0;
+
+    // Base damage is average of minDmg and maxDmg
+    const baseAvgDmg = (minDmg + maxDmg) / 2;
+
+    // Add extraDmg multiplied by number of active abilities used
+    const abilitiesUsed = context.activeAbilitiesUsedCount || 0;
+    const scaledAvgDmg = Math.round(baseAvgDmg + (extraDmg * abilitiesUsed));
+
+    // Check if damage type should be DirectDamage (Physical in type system)
+    const bossHasPsyker = context.bossTraits?.includes('Psyker') ?? false;
+    const adjacentToCustodes = context.abilityToggles['TalonsOfTheEmperor_adjacentToCustodes'] ?? false;
+    const useDirect = bossHasPsyker || adjacentToCustodes;
+
+    const damageProfile: DamageType = useDirect ? 'Physical' : 'Power';
+
+    return {
+      abilityId: 'TalonsOfTheEmperor',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: scaledAvgDmg,
+        hits: 1,
+        damageProfile,
+      },
+      message: `${abilityName} (${abilitiesUsed} abilities used)`,
+    };
+  },
+};
+
 // Export all active handlers
 export const activeHandlers: AbilityHandler[] = [
   WarHowlHandler,
@@ -661,4 +711,5 @@ export const activeHandlers: AbilityHandler[] = [
   DefendTheDivineWorkHandler,
   FightingRetreatHandler,
   CrusadeOfWrathHandler,
+  TalonsOfTheEmperorHandler,
 ];

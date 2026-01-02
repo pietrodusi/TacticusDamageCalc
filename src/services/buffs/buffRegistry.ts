@@ -389,6 +389,38 @@ export const destroyTheWitchBuffTemplate: BuffTemplate = {
   // No requiredToggles since the toggle is dynamic (based on Helbrecht's ID)
 };
 
+/**
+ * Daughter of the Abyss (Atlacoya passive)
+ * All friendly units deal +extraDmgPct% damage to Psyker bosses when Atlacoya is within range 2
+ * Target: all friendly units
+ * Condition: Boss has Psyker trait AND Atlacoya is within range 2 of boss (toggle)
+ * No duration - permanent aura-style buff
+ * Variables: extraDmgPct
+ */
+export const daughterOfTheAbyssBuffTemplate: BuffTemplate = {
+  buffId: 'daughter_of_the_abyss',
+  name: 'Daughter of the Abyss',
+  sourceAbilityId: 'DaughterOfTheAbyss',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      // Only applies against Psyker bosses
+      const bossHasPsykerTrait = context.target?.traits?.includes('Psyker') ?? false;
+      if (!bossHasPsykerTrait) return false;
+
+      // Check if Atlacoya is within range 2 of boss (toggle)
+      const atlacoyaRange2Toggle = `DaughterOfTheAbyss_${buff.sourceCharacterId}_range2FromBoss`;
+      const atlacoya = context.battleState.team.find(c => c.id === buff.sourceCharacterId);
+      return atlacoya?.abilityToggles?.[atlacoyaRange2Toggle] ?? false;
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageMultiplier: 1 + ((values.extraDmgPct as number) || 0) / 100,
+  }),
+  // No duration - permanent aura-style buff (evaluated each attack)
+  requiredToggles: ['DaughterOfTheAbyss_range2FromBoss'],  // Generic toggle ID (will be character-specific in UI)
+};
+
 // Registry of all buff templates by ability ID
 export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   WarHowl: warHowlBuffTemplate,
@@ -408,6 +440,8 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   // Helbrecht abilities
   CrusadeOfWrath: crusadeOfWrathBuffTemplate,
   destroy_the_witch: destroyTheWitchBuffTemplate,
+  // Atlacoya abilities
+  daughter_of_the_abyss: daughterOfTheAbyssBuffTemplate,
 };
 
 /**

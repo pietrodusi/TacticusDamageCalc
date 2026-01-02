@@ -187,6 +187,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Initialize Daughter of the Abyss aura buff if Atlacoya is in team
+    const atlacoya = battleCharacters.find(c => c.passiveAbilities.includes('DaughterOfTheAbyss'));
+    if (atlacoya) {
+      const dotaTemplate = getBuffTemplate('daughter_of_the_abyss');
+      const dotaValues = getAbilityValues('DaughterOfTheAbyss', atlacoya.abilityLevels?.DaughterOfTheAbyss ?? 54);
+
+      if (dotaValues && dotaTemplate) {
+        buffPool = addBuffToPool(buffPool, dotaTemplate, atlacoya, dotaValues as Record<string, number>, 1);
+      }
+    }
+
     set({
       battleState: {
         turn: 1,
@@ -200,6 +211,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         buffPool, // Buff pool with LC buffs if Trajann present
         bossArmorReduction: 0, // Cumulative boss armor reduction from abilities
         bossHasMarkerlight: false, // Markerlight debuff on boss
+        activeAbilitiesUsedCount: 0, // Count of active abilities used in battle
       },
       currentTurnActions: [],
     });
@@ -1922,11 +1934,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       currentHealth: character.currentHealth,
       maxHealth: character.calculatedHealth,
       currentTurn: battleState.turn,
+      activeAbilitiesUsedCount: battleState.activeAbilitiesUsedCount,
       attackType: 'ability' as const,
       attackCategory: 'ability' as const,
       isFirstSpecialAttackOfTurn: !character.hasUsedFirstSpecialAttackThisTurn,  // Per-character LC tracking
       trajannIsAdjacentToBoss,
       abilityToggles: character.abilityToggles,
+      bossTraits: battleState.boss?.traits,
     };
 
     // Execute the ability
@@ -2434,6 +2448,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 ...state.battleState,
                 totalDamageDealt: state.battleState.totalDamageDealt + totalDamage,
                 buffPool: newBuffPool,
+                activeAbilitiesUsedCount: state.battleState.activeAbilitiesUsedCount + 1,
                 team: state.battleState.team.map((char) => {
                   if (char.id === characterId) {
                     // Update ability user
@@ -2482,6 +2497,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           battleState: state.battleState
             ? {
                 ...state.battleState,
+                activeAbilitiesUsedCount: state.battleState.activeAbilitiesUsedCount + 1,
                 team: state.battleState.team.map((char) =>
                   char.id === characterId
                     ? {
@@ -2522,6 +2538,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 ...state.battleState,
                 // Auto-enable Markerlight on boss
                 bossHasMarkerlight: true,
+                activeAbilitiesUsedCount: state.battleState.activeAbilitiesUsedCount + 1,
                 team: state.battleState.team.map((char) => {
                   if (char.id === characterId) {
                     // Darkstrider himself
@@ -2572,6 +2589,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                   abilityValues as Record<string, number>,
                   state.battleState.turn
                 ),
+                activeAbilitiesUsedCount: state.battleState.activeAbilitiesUsedCount + 1,
                 team: state.battleState.team.map((char) =>
                   char.id === characterId
                     ? {
@@ -2610,6 +2628,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           battleState: state.battleState
             ? {
                 ...state.battleState,
+                activeAbilitiesUsedCount: state.battleState.activeAbilitiesUsedCount + 1,
                 team: state.battleState.team.map((char) =>
                   char.id === characterId
                     ? {
@@ -2652,6 +2671,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         battleState: state.battleState
           ? {
               ...state.battleState,
+              activeAbilitiesUsedCount: state.battleState.activeAbilitiesUsedCount + 1,
               team: state.battleState.team.map((char) =>
                 char.id === characterId
                   ? {

@@ -131,6 +131,7 @@ export interface AbilityContext {
 
   // Battle state
   currentTurn: number;
+  activeAbilitiesUsedCount?: number;  // Count of active abilities used in battle (for TalonsOfTheEmperor)
 
   // Attack info
   attackType: 'melee' | 'ranged' | 'ability';

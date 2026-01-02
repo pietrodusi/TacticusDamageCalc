@@ -41,6 +41,9 @@ export function getCharacterBuffConditions(
   // Add own passive ability conditions
   conditions.push(...getOwnPassiveConditions(character));
 
+  // Add Atlacoya-specific conditions
+  conditions.push(...getAtlacoyaConditions(character, team));
+
   // Add aura conditions from teammates
   conditions.push(...getAuraConditions(character, team));
 
@@ -100,6 +103,62 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
       isActive: character.abilityToggles['RangedSpecialist_adjacentToEnemy'] ?? false,
       category: 'self',
     });
+  }
+
+  return conditions;
+}
+
+/**
+ * Get Atlacoya-specific conditions
+ * Only shows these conditions for Atlacoya
+ */
+function getAtlacoyaConditions(character: BattleCharacter, team: BattleCharacter[]): BuffCondition[] {
+  const conditions: BuffCondition[] = [];
+
+  // Only show for characters with Atlacoya's abilities
+  const hasAtlacoyaAbilities = character.passiveAbilities.includes('DaughterOfTheAbyss') ||
+                                character.activeAbilities.includes('TalonsOfTheEmperor');
+
+  if (!hasAtlacoyaAbilities) return conditions;
+
+  // Adjacent to Adeptus Custodes (for TalonsOfTheEmperor DirectDamage conversion)
+  // Only show if there's at least one other Custodes in the team
+  if (character.activeAbilities.includes('TalonsOfTheEmperor')) {
+    const otherCustodes = team.filter(c =>
+      c.id !== character.id && c.faction === 'Adeptus Custodes'
+    );
+
+    if (otherCustodes.length > 0) {
+      conditions.push({
+        id: 'TalonsOfTheEmperor_adjacentToCustodes',
+        label: 'Adjacent to Adeptus Custodes',
+        source: 'Talons of the Emperor',
+        effect: 'Converts to DirectDamage',
+        isActive: character.abilityToggles['TalonsOfTheEmperor_adjacentToCustodes'] ?? false,
+        category: 'self',
+      });
+    }
+  }
+
+  // Range 2 from Boss (for DaughterOfTheAbyss damage multiplier)
+  if (character.passiveAbilities.includes('DaughterOfTheAbyss')) {
+    const levelIndex = character.abilityLevels?.['DaughterOfTheAbyss'] ?? 54;
+    const values = getAbilityValues('DaughterOfTheAbyss', levelIndex);
+    const abilityName = getAbilityNameSync('DaughterOfTheAbyss');
+
+    if (values) {
+      const extraDmgPct = values.extraDmgPct as number || 0;
+      const toggleId = `DaughterOfTheAbyss_${character.id}_range2FromBoss`;
+
+      conditions.push({
+        id: toggleId,
+        label: 'Range 2 from Boss',
+        source: abilityName,
+        effect: `Team: +${extraDmgPct}% dmg (vs Psyker)`,
+        isActive: character.abilityToggles[toggleId] ?? false,
+        category: 'self',
+      });
+    }
   }
 
   return conditions;
