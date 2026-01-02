@@ -125,7 +125,7 @@ function getAtlacoyaConditions(character: BattleCharacter, team: BattleCharacter
   // Only show if there's at least one other Custodes in the team
   if (character.activeAbilities.includes('TalonsOfTheEmperor')) {
     const otherCustodes = team.filter(c =>
-      c.id !== character.id && c.faction === 'Adeptus Custodes'
+      c.id !== character.id && c.faction === 'Custodes'
     );
 
     if (otherCustodes.length > 0) {
