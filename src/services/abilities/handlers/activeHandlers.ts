@@ -665,16 +665,14 @@ export const TalonsOfTheEmperorHandler: AbilityHandler = {
     // Base damage is average of minDmg and maxDmg
     const baseAvgDmg = (minDmg + maxDmg) / 2;
 
-    // Add extraDmg multiplied by number of active abilities used
+    // Calculate scaling damage from abilities used
     const abilitiesUsed = context.activeAbilitiesUsedCount || 0;
-    const scaledAvgDmg = Math.round(baseAvgDmg + (extraDmg * abilitiesUsed));
+    const scalingBonus = extraDmg * abilitiesUsed;
 
-    // Check if damage type should be DirectDamage (Physical in type system)
+    // Check if damage type should be DirectDamage
     const bossHasPsyker = context.bossTraits?.includes('Psyker') ?? false;
     const adjacentToCustodes = context.abilityToggles['TalonsOfTheEmperor_adjacentToCustodes'] ?? false;
     const useDirect = bossHasPsyker || adjacentToCustodes;
-
-    const damageProfile: DamageType = useDirect ? 'Physical' : 'Power';
 
     return {
       abilityId: 'TalonsOfTheEmperor',
@@ -683,11 +681,16 @@ export const TalonsOfTheEmperorHandler: AbilityHandler = {
       damageResult: {
         minDamage: minDmg,
         maxDamage: maxDmg,
-        averageDamage: scaledAvgDmg,
+        averageDamage: baseAvgDmg,
         hits: 1,
-        damageProfile,
+        damageProfile: useDirect ? 'DirectDamage' : 'Power',  // DirectDamage is now supported
       },
-      message: `${abilityName} (${abilitiesUsed} abilities used)`,
+      // Add scaling bonus as ability modifier
+      abilityModifiers: scalingBonus > 0 ? {
+        abilityName: `${abilityName} (+${extraDmg} × ${abilitiesUsed})`,
+        baseDamageBonus: scalingBonus,
+      } : undefined,
+      message: `${abilityName} (${abilitiesUsed} abilities used)${useDirect ? ' [Direct Damage]' : ''}`,
     };
   },
 };

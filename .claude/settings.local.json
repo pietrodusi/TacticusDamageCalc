@@ -28,7 +28,8 @@
       "Bash(node test-json-parse.js:*)",
       "Bash(node:*)",
       "WebFetch(domain:tacticus.fandom.com)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

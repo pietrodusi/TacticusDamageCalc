@@ -135,7 +135,7 @@ export function DamagePerTurnChart({ turnHistory, team }: DamagePerTurnChartProp
           </button>
         </div>
       </div>
-      <div className="h-64">
+      <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -152,6 +152,7 @@ export function DamagePerTurnChart({ turnHistory, team }: DamagePerTurnChartProp
               stroke="#9ca3af"
               tick={{ fill: '#9ca3af', fontSize: 12 }}
               tickFormatter={formatYAxis}
+              domain={[0, 500000]}
             />
             <Tooltip
               contentStyle={{

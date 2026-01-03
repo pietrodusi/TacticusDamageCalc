@@ -1,4 +1,4 @@
-import { Skull, Shield, Sword, Heart, Target } from 'lucide-react';
+import { Skull, Shield, Sword, Heart, Target, Zap } from 'lucide-react';
 import type { Boss } from '../../types';
 import { getBossRankDisplayName } from '../../services/dataService';
 
@@ -8,6 +8,12 @@ interface BattleBossCardProps {
   bossArmorReduction?: number;
   bossHasMarkerlight?: boolean;
   onMarkerlightChange?: (hasMarkerlight: boolean) => void;
+  // Prophet of Gork and Mork tracking
+  prophetOfGorkAndMork?: {
+    attackThreshold: number;
+    damageReductionPct: number;
+  };
+  bossAttacksReceivedThisTurn?: number;
 }
 
 export function BattleBossCard({
@@ -16,6 +22,8 @@ export function BattleBossCard({
   bossArmorReduction = 0,
   bossHasMarkerlight = false,
   onMarkerlightChange,
+  prophetOfGorkAndMork,
+  bossAttacksReceivedThisTurn = 0,
 }: BattleBossCardProps) {
   const remainingHealth = Math.max(0, boss.health - totalDamageDealt);
   const healthPercentage = (remainingHealth / boss.health) * 100;
@@ -111,6 +119,24 @@ export function BattleBossCard({
                   {trait}
                 </span>
               ))}
+            </div>
+          )}
+
+          {/* Prophet of Gork and Mork - Attack Counter */}
+          {prophetOfGorkAndMork && (
+            <div className="mt-2 pt-2 border-t border-gray-700/50">
+              <div className="flex items-center gap-2 text-xs">
+                <Zap size={12} className={bossAttacksReceivedThisTurn >= prophetOfGorkAndMork.attackThreshold ? 'text-green-400' : 'text-orange-400'} />
+                <span className="text-gray-400">Prophet of Gork and Mork:</span>
+                <span className={bossAttacksReceivedThisTurn >= prophetOfGorkAndMork.attackThreshold ? 'text-green-400 font-medium' : 'text-orange-400'}>
+                  {bossAttacksReceivedThisTurn}/{prophetOfGorkAndMork.attackThreshold} attacks
+                </span>
+                {bossAttacksReceivedThisTurn >= prophetOfGorkAndMork.attackThreshold && (
+                  <span className="px-1.5 py-0.5 bg-green-900/50 text-green-400 rounded text-[10px]">
+                    -{prophetOfGorkAndMork.damageReductionPct}% dmg
+                  </span>
+                )}
+              </div>
             </div>
           )}
 

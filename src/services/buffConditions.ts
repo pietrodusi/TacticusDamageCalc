@@ -32,6 +32,26 @@ export function getCharacterBuffConditions(
 ): BuffCondition[] {
   const conditions: BuffCondition[] = [];
 
+  // Add universal "High Ground" condition for all characters
+  conditions.push({
+    id: 'HighGround',
+    label: 'High Ground',
+    source: 'Position',
+    effect: '+50% damage',
+    isActive: character.abilityToggles['HighGround'] ?? false,
+    category: 'self',
+  });
+
+  // Add universal "War Machine" condition for all characters
+  conditions.push({
+    id: 'WarMachine',
+    label: 'War Machine',
+    source: 'Guild Raid',
+    effect: '+16% damage',
+    isActive: character.abilityToggles['WarMachine'] ?? false,
+    category: 'self',
+  });
+
   // Add "Adjacent to Boss" condition (only if team has buffs that require it)
   conditions.push(...getAdjacentToBossCondition(character, team));
 
@@ -270,7 +290,7 @@ function getAuraConditions(
           const isRangeActive = character.abilityToggles[rangeToggleId] ?? false;
           conditions.push({
             id: rangeToggleId,
-            label: 'Range 2 from adjacent enemy',
+            label: 'Range 2 from Boss',
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `-${armorIgnored} armor, +${extraDmgPct}% dmg`,
@@ -301,20 +321,35 @@ function getAuraConditions(
       }
     }
 
-    // Structural Analyser (Darkstrider) - provides ranged damage bonus to adjacent T'au allies
+    // Structural Analyser (Darkstrider) - provides ranged damage bonus
+    // T'au Empire units: Range 2 from Darkstrider
+    // Non-Tau units with ranged attacks: Adjacent to Darkstrider
     if (teammate.passiveAbilities.includes('StructuralAnalyser')) {
-      // Check if character is T'au Empire (not Darkstrider himself)
       const isTauEmpire = character.faction === "T'au Empire" || character.faction === 'Tau';
+      const hasRangedAttack = character.rangedHits !== undefined && character.rangedHits > 0;
 
-      if (isTauEmpire) {
-        const levelIndex = teammate.abilityLevels?.['StructuralAnalyser'] ?? 54;
-        const values = getAbilityValues('StructuralAnalyser', levelIndex);
-        const abilityName = getAbilityNameSync('StructuralAnalyser');
+      const levelIndex = teammate.abilityLevels?.['StructuralAnalyser'] ?? 54;
+      const values = getAbilityValues('StructuralAnalyser', levelIndex);
+      const abilityName = getAbilityNameSync('StructuralAnalyser');
 
-        if (values) {
-          const extraDmg = values.extraDmg as number || 0;
+      if (values) {
+        const extraDmg = values.extraDmg as number || 0;
+
+        if (isTauEmpire) {
+          // T'au Empire units: Range 2 from Darkstrider
+          const toggleId = `StructuralAnalyser_${teammate.id}_range2`;
+          conditions.push({
+            id: toggleId,
+            label: `Range 2 from ${teammate.name}`,
+            source: abilityName,
+            sourceCharacter: teammate.name,
+            effect: `+${extraDmg} ranged dmg (vs Markerlight)`,
+            isActive: character.abilityToggles[toggleId] ?? false,
+            category: 'aura',
+          });
+        } else if (hasRangedAttack) {
+          // Non-Tau units with ranged attacks: Adjacent to Darkstrider
           const toggleId = `StructuralAnalyser_${teammate.id}_adjacent`;
-
           conditions.push({
             id: toggleId,
             label: `Adjacent to ${teammate.name}`,

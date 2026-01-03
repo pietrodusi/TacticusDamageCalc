@@ -956,6 +956,51 @@ export function getBossStatModifiers(bossId: string): BossStatModifiers {
   return result;
 }
 
+/**
+ * Get boss ability constant modifiers
+ * Returns the total increase to apply to each constant for a given ability
+ * Example: ProphetOfGorkAndMork's nrOfAttacks can be increased by modifiers
+ */
+export function getBossAbilityConstantModifiers(
+  bossId: string,
+  abilityId: string
+): Record<string, number> {
+  const result: Record<string, number> = {};
+
+  // Find the modifier entry where this boss ID is the main boss (first unitId)
+  const modEntry = Object.values(bossMods).find(
+    entry => entry.unitIds[0] === bossId
+  );
+
+  if (!modEntry) return result;
+
+  // Collect all unique modifier IDs from all tracks
+  const allModifierIds = new Set<string>();
+  for (const track of modEntry.modifiers) {
+    for (const stage of track) {
+      for (const modId of stage) {
+        allModifierIds.add(modId);
+      }
+    }
+  }
+
+  // Process each modifier
+  for (const modId of allModifierIds) {
+    const modDetail = bossModDetails[modId];
+    if (!modDetail) continue;
+
+    // Only process ability constant increase modifiers for the target ability
+    if (modDetail.type === 'bossAbilityConstantIncrease' && modDetail.target === abilityId) {
+      const constantName = modDetail.subtarget;
+      if (constantName) {
+        result[constantName] = (result[constantName] || 0) + modDetail.amount;
+      }
+    }
+  }
+
+  return result;
+}
+
 // Get boss stats at a specific rank (13-18 = Legendary 1 to Mythic 1)
 // Stats are reduced by all applicable modifiers from guildBossMods if applyModifiers is true
 export function getBossAtRank(bossId: string, rank: BossRank, applyModifiers: boolean = true): Boss | null {
@@ -996,6 +1041,7 @@ export function getBossAtRank(bossId: string, rank: BossRank, applyModifiers: bo
     armor: Math.floor(statsForRank.FixedArmor * armorMultiplier),
     rank: rank,
     abilityLevel: statsForRank.AbilityLevel,
+    applyModifiers,  // Pass through whether minion-killed modifiers were applied
   };
 }
 

@@ -9,7 +9,6 @@
  */
 
 import {
-  PIERCE_RATIOS,
   type AttackerStats,
   type DefenderStats,
   type DamageResult,
@@ -17,6 +16,8 @@ import {
   type TraitModifier,
   type BuffSource,
 } from './types';
+
+import { getPierceRatio } from './damageProfileLoader';
 
 import {
   calculateArmorReduction,
@@ -348,7 +349,7 @@ export class DamageCalculator {
     }
 
     // === STEP 4: Apply Armor/Pierce to BOTH paths ===
-    const basePierceRatio = PIERCE_RATIOS[attacker.damageType];
+    const basePierceRatio = getPierceRatio(attacker.damageType);
     const effectivePierceRatio = basePierceRatio + (pierceRatioBonus / 100);
 
     // Calculate effective armor (reduced by armor ignored, min 0)

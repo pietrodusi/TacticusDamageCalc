@@ -219,7 +219,7 @@ function mapDamageProfile(profile: string | undefined): DamageType | undefined {
     Gauss: 'Gauss',
     Particle: 'Particle',
     Pulse: 'Pulse',
-    DirectDamage: 'Physical', // DirectDamage maps to Physical for calculation
+    DirectDamage: 'DirectDamage',  // DirectDamage is now a first-class type
   };
 
   return typeMap[profile];

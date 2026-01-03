@@ -12,8 +12,8 @@
  * This file contains pure functions for each step of the calculation.
  */
 
-import { PIERCE_RATIOS } from './types';
 import type { DamageType } from '../../types';
+import { getPierceRatio } from './damageProfileLoader';
 
 /**
  * Calculate damage after armor reduction
@@ -39,7 +39,7 @@ export function calculateArmorReduction(damVarMod: number, armor: number): numbe
  * @returns Minimum damage guaranteed by pierce
  */
 export function calculatePierceFloor(damVarMod: number, damageType: DamageType, pierceRatioBonus: number = 0): number {
-  const basePierceRatio = PIERCE_RATIOS[damageType];
+  const basePierceRatio = getPierceRatio(damageType);
   const effectivePierceRatio = basePierceRatio + (pierceRatioBonus / 100);
   return Math.floor(damVarMod * effectivePierceRatio);
 }

@@ -290,8 +290,9 @@ export const doomAeldariBuffTemplate: BuffTemplate = {
 
 /**
  * Structural Analyser aura buff template (Darkstrider passive)
- * Friendly T'au Empire units adjacent to Darkstrider deal +extraDmg with ranged attacks
- * Condition: Boss has Markerlight AND character is adjacent to Darkstrider (toggle)
+ * Friendly units deal +extraDmg with ranged attacks against targets with Markerlight
+ * - T'au Empire units: Range 2 from Darkstrider (toggle: _range2)
+ * - Non-Tau units: Adjacent to Darkstrider (toggle: _adjacent)
  */
 export const structuralAnalyserBuffTemplate: BuffTemplate = {
   buffId: 'structural_analyser_aura',
@@ -309,13 +310,18 @@ export const structuralAnalyserBuffTemplate: BuffTemplate = {
       // Only if boss has Markerlight
       if (!context.battleState.bossHasMarkerlight) return false;
 
-      // Check if attacker is T'au Empire
+      // Check the appropriate toggle based on faction
       const isTauEmpire = context.attacker.faction === "T'au Empire" || context.attacker.faction === 'Tau';
-      if (!isTauEmpire) return false;
 
-      // Check if "Adjacent to Darkstrider" toggle is active
-      const toggleId = `StructuralAnalyser_${buff.sourceCharacterId}_adjacent`;
-      return context.attacker.abilityToggles?.[toggleId] ?? false;
+      if (isTauEmpire) {
+        // T'au Empire: check Range 2 toggle
+        const toggleId = `StructuralAnalyser_${buff.sourceCharacterId}_range2`;
+        return context.attacker.abilityToggles?.[toggleId] ?? false;
+      } else {
+        // Non-Tau: check Adjacent toggle
+        const toggleId = `StructuralAnalyser_${buff.sourceCharacterId}_adjacent`;
+        return context.attacker.abilityToggles?.[toggleId] ?? false;
+      }
     },
   },
   getEffects: (values) => ({

@@ -187,6 +187,12 @@ export interface FollowUpAttack {
   sharesCritChain?: boolean;
   // Permanent boss armor reduction (for ChampionOfTheFeast)
   armorReduction?: number;
+  // Conditional damage bonus (e.g., CyclicIonBlaster extraDmg from Markerlight/Mechanical)
+  // This is passed through abilityModifiers.baseDamageBonus for proper Modifiers display
+  conditionalDamageBonus?: {
+    amount: number;
+    sourceName: string;  // e.g., "Markerlight", "Mechanical", "Mechanical/Markerlight"
+  };
 }
 
 /**
@@ -269,6 +275,10 @@ export interface ActiveAbilityResult {
     effect: AbilityStatModifier;
     duration: number;
   };
+
+  // Ability-specific stat modifiers (for damage abilities that need to show modifiers in breakdown)
+  // e.g., TalonsOfTheEmperor scaling damage
+  abilityModifiers?: AbilityStatModifier;
 
   // Log message
   message: string;

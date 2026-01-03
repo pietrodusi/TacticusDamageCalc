@@ -21,7 +21,6 @@
 
 // Types
 export {
-  PIERCE_RATIOS,
   type AttackerStats,
   type DefenderStats,
   type HitResult,
@@ -55,3 +54,10 @@ export {
 
 // Calculator
 export { DamageCalculator, calculateDamage } from './calculator';
+
+// Damage Profile Loader
+export {
+  getPierceRatio,
+  getDamageProfileTraits,
+  hasDamageProfileTrait,
+} from './damageProfileLoader';

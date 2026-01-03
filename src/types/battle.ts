@@ -212,6 +212,12 @@ export interface BattleState {
   bossHasMarkerlight: boolean;
   // Count of active abilities used in battle (for Atlacoya's TalonsOfTheEmperor scaling)
   activeAbilitiesUsedCount: number;
+  // Prophet of Gork and Mork (Ghazghkull) - damage reduction after X attacks per turn
+  bossAttacksReceivedThisTurn: number;
+  prophetOfGorkAndMork?: {
+    attackThreshold: number;      // nrOfAttacks (with modifiers applied)
+    damageReductionPct: number;   // dmgPctReduction (90)
+  };
 }
 
 export interface BattleSimulationConfig {

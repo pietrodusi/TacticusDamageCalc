@@ -1,43 +1,7 @@
 import type { DamageType } from '../../types';
 
-/**
- * Pierce ratios by damage type
- * These determine the minimum percentage of damage that bypasses armor
- * Based on Tacticus game mechanics
- */
-export const PIERCE_RATIOS: Record<DamageType, number> = {
-  // Melee physical damage
-  Physical: 0.25,    // 25% pierce
-  Chain: 0.25,       // 25% pierce (chainswords, etc.)
-  Piercing: 0.50,    // 50% pierce
-  Power: 0.50,       // 50% pierce (power weapons)
-  Eviscerate: 0.50,  // 50% pierce (eviscerator weapons)
-
-  // Ranged ballistic
-  Bolter: 0.25,      // 25% pierce
-  HeavyRound: 0.25,  // 25% pierce (heavy bolters, autocannons)
-  Projectile: 0.25,  // 25% pierce (sluggas, etc.)
-  Las: 0.25,         // 25% pierce (lasguns)
-
-  // Ranged energy
-  Plasma: 0.50,      // 50% pierce
-  Melta: 0.75,       // 75% pierce (anti-armor)
-  Flame: 0.50,       // 50% pierce
-  Energy: 0.50,      // 50% pierce
-  Blast: 0.25,       // 25% pierce (explosive)
-
-  // Psychic
-  Psychic: 0.75,     // 75% pierce
-
-  // Xenos
-  Bio: 0.50,         // 50% pierce (Tyranid bio weapons)
-  Toxic: 0.50,       // 50% pierce
-  Gauss: 0.75,       // 75% pierce (Necron)
-  Particle: 0.50,    // 50% pierce (Necron)
-  Pulse: 0.50,       // 50% pierce (Tau)
-};
-
-// Damage variance removed - using single average value only
+// PIERCE_RATIOS constant removed - now loaded dynamically from damageProfiles.json
+// Use getPierceRatio() from damageProfileLoader instead
 
 /**
  * Trait modifier result from trait evaluation

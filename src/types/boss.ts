@@ -65,6 +65,8 @@ export interface Boss {
   armor: number;
   rank: BossRank;
   abilityLevel: number;
+  // Whether minion-killed modifiers were applied to this boss
+  applyModifiers?: boolean;
 }
 
 // Boss traits data from guildBossTraits.json

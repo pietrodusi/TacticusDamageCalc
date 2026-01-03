@@ -53,8 +53,8 @@ export function CalculatorPage() {
     setCharacterActed,
     executeAttack,
     executeAbility,
-    resetCharacterTurn,
     resetCharacterTurnAtTurn,
+    restoreTurnStart,
     editingTurn,
     setEditingTurn,
     getActiveTurn,
@@ -158,24 +158,16 @@ export function CalculatorPage() {
 
   const isLastTurn = battleState?.turn === 6;
 
-  const handleUndoActions = (characterId: string) => {
+  const handleUndoActions = (_characterId: string) => {
     if (!battleState) return;
 
     const currentTurn = battleState.turn;
 
-    // Calculate damage to subtract from this character's actions this turn
-    const characterEntries = battleLog.filter(
-      entry => entry.characterId === characterId && entry.turn === currentTurn
-    );
-    const damageToSubtract = calculateDamageFromEntries(characterEntries);
+    // Restore entire turn to start state using snapshot
+    restoreTurnStart();
 
-    // Reset character turn in store (resets flags and subtracts damage)
-    resetCharacterTurn(characterId, damageToSubtract);
-
-    // Remove this character's log entries for the current turn
-    setBattleLog(prev => prev.filter(
-      entry => !(entry.characterId === characterId && entry.turn === currentTurn)
-    ));
+    // Remove ALL log entries for the current turn (entire turn is reset)
+    setBattleLog(prev => prev.filter(entry => entry.turn !== currentTurn));
   };
 
   const handleUndoCharacterTurn = (characterId: string, turn: number) => {
@@ -283,10 +275,9 @@ export function CalculatorPage() {
           // Check if this ability ends the turn
           let endsTurn = abilityId ? abilityEndsTurn(abilityId) : true;
 
-          // Fighting Retreat: Only ends turn if NOT adjacent to boss
+          // Fighting Retreat: Never ends Darkstrider's turn
           if (abilityId === 'FightingRetreat') {
-            const isAdjacentToBoss = character.abilityToggles['FightingRetreat_adjacentToBoss'] ?? false;
-            endsTurn = !isAdjacentToBoss;
+            endsTurn = false;
           }
 
           if (endsTurn) {
@@ -649,18 +640,28 @@ export function CalculatorPage() {
         {/* Right Column: Boss Card + Battle Log */}
         <div className="space-y-3">
           {/* Boss Card - shown if boss is selected */}
-          {battleState.boss && (
-            <>
-              <h2 className="text-lg font-semibold text-gray-100">Enemy Boss</h2>
-              <BattleBossCard
-                boss={battleState.boss}
-                totalDamageDealt={battleState.totalDamageDealt}
-                bossArmorReduction={battleState.bossArmorReduction}
-                bossHasMarkerlight={battleState.bossHasMarkerlight}
-                onMarkerlightChange={setBossMarkerlight}
-              />
-            </>
-          )}
+          {battleState.boss && (() => {
+            // Only show Markerlight if team has T'au Empire characters or CyclicIonBlaster
+            const hasMarkerlightRelevance = battleState.team.some(char =>
+              char.faction === "T'au Empire" || char.faction === 'Tau' ||
+              char.passiveAbilities.includes('CyclicIonBlaster')
+            );
+
+            return (
+              <>
+                <h2 className="text-lg font-semibold text-gray-100">Enemy Boss</h2>
+                <BattleBossCard
+                  boss={battleState.boss}
+                  totalDamageDealt={battleState.totalDamageDealt}
+                  bossArmorReduction={battleState.bossArmorReduction}
+                  bossHasMarkerlight={battleState.bossHasMarkerlight}
+                  onMarkerlightChange={hasMarkerlightRelevance ? setBossMarkerlight : undefined}
+                  prophetOfGorkAndMork={battleState.prophetOfGorkAndMork}
+                  bossAttacksReceivedThisTurn={battleState.bossAttacksReceivedThisTurn}
+                />
+              </>
+            );
+          })()}
 
           {/* Battle Log */}
           <h2 className="text-lg font-semibold text-gray-100">Battle Log</h2>

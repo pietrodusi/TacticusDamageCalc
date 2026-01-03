@@ -416,7 +416,7 @@ export const CyclicIonBlasterHandler: AbilityHandler = {
     const isNormalAttack = context.attackType === 'melee' || context.attackType === 'ranged';
     const applicable = isNormalAttack;
 
-    // Get base damage values
+    // Get base damage values (without conditional bonus)
     const minDamage = values.minDmg as number || 0;
     const maxDamage = values.maxDmg as number || 0;
     const extraDmg = values.extraDmg as number || 0;
@@ -427,27 +427,33 @@ export const CyclicIonBlasterHandler: AbilityHandler = {
     const hasMarkerlight = context.bossDebuffs?.includes('Markerlight') ?? false;
     const hasMarkerlightOrMechanical = hasMechanical || hasMarkerlight;
 
-    // Add extraDmg if condition is met
+    // Calculate average damage for display (includes conditional bonus)
     const bonusDamage = hasMarkerlightOrMechanical ? extraDmg : 0;
-    const effectiveMinDamage = minDamage + bonusDamage;
-    const effectiveMaxDamage = maxDamage + bonusDamage;
-    const avgDamage = Math.round((effectiveMinDamage + effectiveMaxDamage) / 2);
+    const avgDamage = Math.round((minDamage + maxDamage) / 2 + bonusDamage);
 
     // Build follow-up attack - inherits attack type from triggering attack
     // CyclicIonBlaster after ranged → ranged, after melee → melee
     // This is an "Additional Attack" - shares crit chain with source attack
     const followUpAttackType: 'melee' | 'ranged' = context.attackType === 'ranged' ? 'ranged' : 'melee';
+
+    // Build conditional damage bonus for proper Modifiers display
+    const conditionalDamageBonus = hasMarkerlightOrMechanical ? {
+      amount: extraDmg,
+      sourceName: hasMechanical && hasMarkerlight ? 'Mechanical/Markerlight' : (hasMechanical ? 'Mechanical' : 'Markerlight'),
+    } : undefined;
+
     const followUpAttack: FollowUpAttack | undefined = applicable ? {
       abilityId: 'CyclicIonBlaster',
       abilityName: 'Cyclic Ion Blaster',
       damageProfile: 'Particle',
-      minDamage: effectiveMinDamage,
-      maxDamage: effectiveMaxDamage,
+      minDamage,  // Base damage without bonus
+      maxDamage,  // Base damage without bonus
       hits,
       attackCategory: 'normal',  // Follow-up is a normal attack (same type as triggering attack)
       triggersOnNormalOnly: true,  // Only triggers on normal attacks
       followUpAttackType,  // Inherit attack type from triggering attack
       sharesCritChain: true,  // Additional Attack: continues crit chain from source attack
+      conditionalDamageBonus,  // Bonus passed through abilityModifiers for Modifiers display
     } : undefined;
 
     // Build bonus text showing the source of the bonus

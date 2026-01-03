@@ -16,6 +16,7 @@ export type DamageType =
   | 'Energy'
   | 'Blast'
   | 'Psychic'
+  | 'DirectDamage'
   | 'Bio'
   | 'Toxic'
   | 'Gauss'

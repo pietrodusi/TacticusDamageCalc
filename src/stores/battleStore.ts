@@ -1,11 +1,21 @@
 import { create } from 'zustand';
 import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, FollowUpAttackLog, Boss, AppliedBuffInfo, BuffEvaluationContext, DamageType } from '../types';
-import { calculateStats, calculateEquipmentStats } from '../services/dataService';
+import { calculateStats, calculateEquipmentStats, getBossAbilityConstantModifiers } from '../services/dataService';
 import { DamageCalculator, type AttackerStats, type DefenderStats, type DamageCaps } from '../services/damage';
 import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, resetCooldowns, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
 import { getApplicableBuffs, combineBuffEffects, addBuffToPool, getBuffTemplate, expireBuffs } from '../services/buffs';
 
 const MAX_TURNS = 6;
+
+// Safe deep clone function - uses structuredClone with JSON fallback
+function deepClone<T>(obj: T): T {
+  try {
+    return structuredClone(obj);
+  } catch {
+    // Fallback to JSON for environments where structuredClone fails
+    return JSON.parse(JSON.stringify(obj));
+  }
+}
 
 // Options for executeAttack to support Galvanic Field triggered attacks
 interface ExecuteAttackOptions {
@@ -61,6 +71,7 @@ function createBattleCharacter(character: TeamMember, index: number): BattleChar
 
 interface BattleStore {
   battleState: BattleState | null;
+  turnStartSnapshot: BattleState | null;  // Snapshot of state at turn start for undo
   currentTurnActions: TurnAction[];
   editingTurn: number | null; // null = current turn, number = editing a past turn
 
@@ -82,6 +93,7 @@ interface BattleStore {
   clearCharacterActions: (characterId: string) => void;
   resetCharacterTurn: (characterId: string, damageToSubtract: number) => void;
   resetCharacterTurnAtTurn: (characterId: string, turn: number, damageToSubtract: number) => void;
+  restoreTurnStart: () => void;  // Restore entire turn to start state
 
   // Character state
   updateCharacterHealth: (characterId: string, newHealth: number) => void;
@@ -115,6 +127,7 @@ interface BattleStore {
 
 export const useBattleStore = create<BattleStore>((set, get) => ({
   battleState: null,
+  turnStartSnapshot: null,
   currentTurnActions: [],
   editingTurn: null,
 
@@ -198,21 +211,51 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Initialize Prophet of Gork and Mork if boss has the passive ability
+    let prophetOfGorkAndMork: BattleState['prophetOfGorkAndMork'] = undefined;
+    if (boss?.passiveAbilities?.includes('ProphetOfGorkAndMork')) {
+      // Get base values from abilities.json
+      const prophetValues = getAbilityValues('ProphetOfGorkAndMork', 0); // Constants don't vary by level
+      if (prophetValues) {
+        const baseNrOfAttacks = prophetValues.nrOfAttacks as number || 4;
+        const baseDmgPctReduction = prophetValues.dmgPctReduction as number || 90;
+
+        // Only apply ability modifiers if minions killed (boss.applyModifiers is true)
+        const bossId = boss.id;
+        const modifiers = boss.applyModifiers
+          ? getBossAbilityConstantModifiers(bossId, 'ProphetOfGorkAndMork')
+          : {};
+        const nrOfAttacksIncrease = modifiers.nrOfAttacks || 0;
+
+        prophetOfGorkAndMork = {
+          attackThreshold: baseNrOfAttacks + nrOfAttacksIncrease,
+          damageReductionPct: baseDmgPctReduction,
+        };
+
+        console.log(`[Prophet of Gork and Mork initialized: ${prophetOfGorkAndMork.attackThreshold} attacks to trigger -${prophetOfGorkAndMork.damageReductionPct}% damage]`);
+      }
+    }
+
+    const newBattleState: BattleState = {
+      turn: 1,
+      maxTurns: MAX_TURNS,
+      team: battleCharacters,
+      boss: boss, // Store the boss in battle state
+      turnHistory: [],
+      totalDamageDealt: 0,
+      isComplete: false,
+      ignoreCrit: false,
+      buffPool, // Buff pool with LC buffs if Trajann present
+      bossArmorReduction: 0, // Cumulative boss armor reduction from abilities
+      bossHasMarkerlight: false, // Markerlight debuff on boss
+      activeAbilitiesUsedCount: 0, // Count of active abilities used in battle
+      bossAttacksReceivedThisTurn: 0, // Prophet of Gork and Mork counter
+      prophetOfGorkAndMork, // Prophet ability data (if boss has it)
+    };
+
     set({
-      battleState: {
-        turn: 1,
-        maxTurns: MAX_TURNS,
-        team: battleCharacters,
-        boss: boss, // Store the boss in battle state
-        turnHistory: [],
-        totalDamageDealt: 0,
-        isComplete: false,
-        ignoreCrit: false,
-        buffPool, // Buff pool with LC buffs if Trajann present
-        bossArmorReduction: 0, // Cumulative boss armor reduction from abilities
-        bossHasMarkerlight: false, // Markerlight debuff on boss
-        activeAbilitiesUsedCount: 0, // Count of active abilities used in battle
-      },
+      battleState: newBattleState,
+      turnStartSnapshot: deepClone(newBattleState),  // Snapshot for turn 1 undo
       currentTurnActions: [],
     });
   },
@@ -275,22 +318,27 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const lcBuffsRemaining = updatedBuffPool.filter(b => b.buffId.startsWith('legendary_commander'));
     console.log(`[NextTurn] Turn ${newTurn}: ${updatedBuffPool.length} buffs in pool (${lcBuffsRemaining.length} LC buffs)`);
 
+    const newBattleState: BattleState = {
+      ...battleState,
+      turn: newTurn,
+      team: resetTeam,
+      buffPool: updatedBuffPool,
+      turnHistory: [
+        ...battleState.turnHistory,
+        {
+          turnNumber: battleState.turn,
+          actions: currentTurnActions,
+          log: turnLog || [],
+        },
+      ],
+      isComplete,
+      // Reset Prophet of Gork and Mork attack counter for new turn
+      bossAttacksReceivedThisTurn: 0,
+    };
+
     set({
-      battleState: {
-        ...battleState,
-        turn: newTurn,
-        team: resetTeam,
-        buffPool: updatedBuffPool,
-        turnHistory: [
-          ...battleState.turnHistory,
-          {
-            turnNumber: battleState.turn,
-            actions: currentTurnActions,
-            log: turnLog || [],
-          },
-        ],
-        isComplete,
-      },
+      battleState: newBattleState,
+      turnStartSnapshot: deepClone(newBattleState),  // Snapshot for new turn undo
       currentTurnActions: [],
     });
   },
@@ -485,6 +533,46 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     });
   },
 
+  restoreTurnStart: () => {
+    const { turnStartSnapshot, battleState } = get();
+    if (!turnStartSnapshot || !battleState) return;
+
+    // Preserve current abilityToggles (user checkbox preferences like Doom, High Ground, etc.)
+    const currentToggles = new Map(
+      battleState.team.map(char => [char.id, char.abilityToggles])
+    );
+
+    const restoredState = deepClone(turnStartSnapshot);
+
+    // Restore abilityToggles from current state (preserve user preferences)
+    restoredState.team = restoredState.team.map(char => ({
+      ...char,
+      abilityToggles: currentToggles.get(char.id) || char.abilityToggles,
+    }));
+
+    // CRITICAL: Restore customEvaluator functions in buffPool
+    // deepClone uses JSON serialization which strips functions
+    // We need to restore them from the original buff templates
+    restoredState.buffPool = restoredState.buffPool.map(buff => {
+      const template = getBuffTemplate(buff.buffId);
+      if (template?.defaultTargetCondition?.customEvaluator && buff.targetCondition.type === 'custom') {
+        return {
+          ...buff,
+          targetCondition: {
+            ...buff.targetCondition,
+            customEvaluator: template.defaultTargetCondition.customEvaluator,
+          },
+        };
+      }
+      return buff;
+    });
+
+    set({
+      battleState: restoredState,
+      currentTurnActions: [],
+    });
+  },
+
   updateCharacterHealth: (characterId, newHealth) => {
     set((state) => {
       if (!state.battleState) return state;
@@ -625,6 +713,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         trajannIsAdjacentToBoss,
         abilityToggles: attacker.abilityToggles,
         bossTraits: battleState.boss?.traits,
+        bossDebuffs: battleState.bossHasMarkerlight ? ['Markerlight'] : [],
       }
     );
 
@@ -769,6 +858,12 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const isTauEmpire = attacker.faction === "T'au Empire" || attacker.faction === 'Tau';
     const markerlightMultiplier = (isTauEmpire && attackType === 'ranged' && battleState.bossHasMarkerlight) ? 1.15 : 1;
 
+    // High Ground: +50% damage multiplier when toggle is enabled
+    const highGroundMultiplier = attacker.abilityToggles['HighGround'] ? 1.5 : 1;
+
+    // War Machine: +16% damage multiplier when toggle is enabled
+    const warMachineMultiplier = attacker.abilityToggles['WarMachine'] ? 1.16 : 1;
+
     // Log buff effects if any are active
     const hasActiveBuffs = attacker.activeBuffs.length > 0 || applicablePoolBuffs.length > 0;
     if (hasActiveBuffs) {
@@ -850,8 +945,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         // Laviscus's Refusal to be Outdone passive
         outrage: attacker.outrage,
         outrageContributorCount: attacker.outrageContributors?.length || 0,
-        // Boss state for abilities that check boss traits
+        // Boss state for abilities that check boss traits/debuffs
         bossTraits: battleState.boss?.traits,
+        bossDebuffs: battleState.bossHasMarkerlight ? ['Markerlight'] : [],
       }
     );
 
@@ -998,8 +1094,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       (sum, buff) => sum + (buff.extraHits || 0), 0
     ) + poolExtraHits;
 
-    // Combine damage multipliers: passive mods + active buff multiplier + markerlight
-    const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * markerlightMultiplier;
+    // Combine damage multipliers: passive mods + active buff multiplier + markerlight + high ground + war machine
+    const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * markerlightMultiplier * highGroundMultiplier * warMachineMultiplier;
     // Combine flat damage bonuses: passive mods + active buff bonus
     const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus;
 
@@ -1008,6 +1104,22 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       buffSources.push({
         name: 'Markerlight',
         damageMultiplier: markerlightMultiplier,
+      });
+    }
+
+    // Add High Ground buff source for display
+    if (highGroundMultiplier > 1) {
+      buffSources.push({
+        name: 'High Ground',
+        damageMultiplier: highGroundMultiplier,
+      });
+    }
+
+    // Add War Machine buff source for display
+    if (warMachineMultiplier > 1) {
+      buffSources.push({
+        name: 'War Machine',
+        damageMultiplier: warMachineMultiplier,
       });
     }
 
@@ -1088,10 +1200,27 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     console.log('\n--- SUMMARY ---');
     console.log(`Damage: ${result.damage.toLocaleString()}`);
 
+    // Prophet of Gork and Mork: Track attacks and apply damage reduction
+    // Reduction applies AFTER threshold is reached (attacks 5+ if threshold is 4)
+    let prophetAttackCounter = battleState.bossAttacksReceivedThisTurn;
+    const prophetThreshold = battleState.prophetOfGorkAndMork?.attackThreshold ?? Infinity;
+    const prophetReductionPct = battleState.prophetOfGorkAndMork?.damageReductionPct ?? 0;
+    const prophetMultiplier = prophetReductionPct > 0 ? (100 - prophetReductionPct) / 100 : 1; // e.g., 90% reduction = 0.1 multiplier
+
+    // Check if Prophet reduction applies to main attack
+    let mainAttackProphetReduction = 1;
+    if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+      mainAttackProphetReduction = prophetMultiplier;
+      console.log(`[Prophet of Gork and Mork: -${prophetReductionPct}% damage (attack ${prophetAttackCounter + 1})]`);
+    }
+
     // Track total damage including follow-up attacks
-    let totalDamage = result.damage;
+    let totalDamage = Math.round(result.damage * mainAttackProphetReduction);
     // Track max perHitDamage for Laviscus outrage (uses highest perHitDamage from any attack)
     let maxPerHitDamage = result.perHitDamage;
+
+    // Increment counter for main attack
+    prophetAttackCounter++;
 
     // Handle follow-up attacks from passives (like LegacyOfCombat, TheBetrayer, WayOfTheShortBlade)
     // Filter based on triggersOnNormalOnly and triggersOnMeleeOnly flags
@@ -1142,20 +1271,27 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
                 // Check if boss has Mechanical trait or Markerlight debuff
                 const hasMechanical = battleState.boss?.traits?.includes('Mechanical') ?? false;
-                const hasMarkerlight = false; // TODO: implement Markerlight debuff tracking
+                const hasMarkerlight = battleState.bossHasMarkerlight;
                 const hasBonus = hasMechanical || hasMarkerlight;
-                const bonusDamage = hasBonus ? cibExtraDmg : 0;
+
+                // Build conditional damage bonus for proper Modifiers display
+                const cibConditionalBonus = hasBonus ? {
+                  amount: cibExtraDmg,
+                  sourceName: hasMechanical && hasMarkerlight ? 'Mechanical/Markerlight' : (hasMechanical ? 'Mechanical' : 'Markerlight'),
+                } : undefined;
 
                 allFollowUps.push({
                   abilityId: 'CyclicIonBlaster',
                   abilityName: 'Cyclic Ion Blaster',
                   damageProfile: 'Particle',
-                  minDamage: cibMinDmg + bonusDamage,
-                  maxDamage: cibMaxDmg + bonusDamage,
+                  minDamage: cibMinDmg,  // Base damage without bonus
+                  maxDamage: cibMaxDmg,  // Base damage without bonus
                   hits: cibHits,
                   attackCategory: 'normal',
                   triggersOnNormalOnly: true,
                   followUpAttackType: 'ranged',  // CyclicIonBlaster is a ranged attack
+                  conditionalDamageBonus: cibConditionalBonus,
+                  sharesCritChain: true,  // Additional Attack - shares crit chain and doesn't count for Prophet of Gork and Mork
                 });
               }
             }
@@ -1360,13 +1496,45 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         // Markerlight debuff: T'au Empire ranged attacks deal +15% damage (follow-up attacks)
         const followUpIsTauEmpire = attacker.faction === "T'au Empire" || attacker.faction === 'Tau';
         const followUpMarkerlightMultiplier = (followUpIsTauEmpire && effectiveAttackType === 'ranged' && currentBattleState.bossHasMarkerlight) ? 1.15 : 1;
-        const finalFollowUpMultiplier = followUpDamageMultiplier * followUpMarkerlightMultiplier;
+
+        // High Ground: +50% damage multiplier when toggle is enabled
+        const followUpHighGroundMultiplier = attacker.abilityToggles['HighGround'] ? 1.5 : 1;
+
+        // War Machine: +16% damage multiplier when toggle is enabled
+        const followUpWarMachineMultiplier = attacker.abilityToggles['WarMachine'] ? 1.16 : 1;
+
+        const finalFollowUpMultiplier = followUpDamageMultiplier * followUpMarkerlightMultiplier * followUpHighGroundMultiplier * followUpWarMachineMultiplier;
 
         // Add Markerlight buff source for display
         if (followUpMarkerlightMultiplier > 1) {
           followUpBuffSources.push({
             name: 'Markerlight',
             damageMultiplier: followUpMarkerlightMultiplier,
+          });
+        }
+
+        // Add High Ground buff source for display
+        if (followUpHighGroundMultiplier > 1) {
+          followUpBuffSources.push({
+            name: 'High Ground',
+            damageMultiplier: followUpHighGroundMultiplier,
+          });
+        }
+
+        // Add War Machine buff source for display
+        if (followUpWarMachineMultiplier > 1) {
+          followUpBuffSources.push({
+            name: 'War Machine',
+            damageMultiplier: followUpWarMachineMultiplier,
+          });
+        }
+
+        // Add conditional damage bonus (e.g., CyclicIonBlaster extraDmg from Markerlight/Mechanical)
+        const conditionalDmgBonus = followUp.conditionalDamageBonus?.amount || 0;
+        if (conditionalDmgBonus > 0 && followUp.conditionalDamageBonus) {
+          followUpBuffSources.push({
+            name: followUp.conditionalDamageBonus.sourceName,
+            damageBonus: conditionalDmgBonus,
           });
         }
 
@@ -1394,8 +1562,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           // Pass Fighting Retreat flag for RangedSpecialist override
           fightingRetreatActive: attacker.fightingRetreatActive,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
-          abilityModifiers: (lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1) ? {
-            baseDamageBonus: lcExtraDmg + auraDmgBonus > 0 ? lcExtraDmg + auraDmgBonus : undefined,
+          abilityModifiers: (lcExtraDmg + auraDmgBonus + conditionalDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1) ? {
+            baseDamageBonus: lcExtraDmg + auraDmgBonus + conditionalDmgBonus > 0 ? lcExtraDmg + auraDmgBonus + conditionalDmgBonus : undefined,
             extraHits: lcExtraHits + auraHitsBonus > 0 ? lcExtraHits + auraHitsBonus : undefined,
             armorIgnored: followUpArmorIgnored > 0 ? followUpArmorIgnored : undefined,
             baseDamageMultiplier: finalFollowUpMultiplier !== 1 ? finalFollowUpMultiplier : undefined,
@@ -1430,8 +1598,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         followUpCalculator.printLogs();
         console.log(`Follow-up Damage: ${followUpResult.damage.toLocaleString()}`);
 
+        // Prophet of Gork and Mork: Apply damage reduction to follow-up attacks
+        let followUpProphetReduction = 1;
+        if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+          followUpProphetReduction = prophetMultiplier;
+          console.log(`[Prophet of Gork and Mork: -${prophetReductionPct}% damage on ${followUp.abilityName} (attack ${prophetAttackCounter + 1})]`);
+        }
+        const adjustedFollowUpDamage = Math.round(followUpResult.damage * followUpProphetReduction);
+
+        // Increment attack counter for non-Additional Attacks (sharesCritChain attacks are part of the source attack)
+        if (!followUp.sharesCritChain) {
+          prophetAttackCounter++;
+        }
+
         // Add to totals
-        totalDamage += followUpResult.damage;
+        totalDamage += adjustedFollowUpDamage;
         // Track max perHitDamage for Laviscus outrage
         maxPerHitDamage = Math.max(maxPerHitDamage, followUpResult.perHitDamage);
 
@@ -1471,11 +1652,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           traitMultiplier: followUpResult.traitMultiplier,
         };
 
+        // Add Prophet of Gork and Mork to global multiplier if active
+        if (followUpProphetReduction < 1) {
+          followUpBreakdown.globalMultiplier = (followUpBreakdown.globalMultiplier || 1) * followUpProphetReduction;
+          followUpBreakdown.globalMultiplierSources = [
+            ...(followUpBreakdown.globalMultiplierSources || []),
+            { name: 'Prophet of Gork and Mork', damageMultiplier: followUpProphetReduction }
+          ];
+          followUpBreakdown.damage = adjustedFollowUpDamage;
+          followUpBreakdown.perHitDamage = Math.round(followUpBreakdown.perHitDamage * followUpProphetReduction);
+        }
+
         // Collect follow-up attack log for display
-        // Note: No appliedBuffs - modifiers now shown inline in breakdown
         followUpAttackLogs.push({
           abilityName: followUp.abilityName,
-          damage: followUpResult.damage,
+          damage: adjustedFollowUpDamage,
           hits: followUpResult.totalHits,
           damageType: followUp.damageProfile,
           attackType: effectiveAttackType,  // Include attack type for display
@@ -1523,7 +1714,15 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const drachnyenExtraDmg = drachnyenPoolEffects.baseDamageBonus || 0;
       const drachnyenExtraHits = drachnyenPoolEffects.extraHits || 0;
       const drachnyenArmorIgnored = drachnyenPoolEffects.armorIgnored || 0;
-      const drachnyenDamageMultiplier = drachnyenPoolEffects.baseDamageMultiplier || 1;
+      const poolDrachnyenMultiplier = drachnyenPoolEffects.baseDamageMultiplier || 1;
+
+      // High Ground: +50% damage multiplier when toggle is enabled
+      const drachnyenHighGroundMultiplier = attacker.abilityToggles['HighGround'] ? 1.5 : 1;
+
+      // War Machine: +16% damage multiplier when toggle is enabled
+      const drachnyenWarMachineMultiplier = attacker.abilityToggles['WarMachine'] ? 1.16 : 1;
+
+      const drachnyenDamageMultiplier = poolDrachnyenMultiplier * drachnyenHighGroundMultiplier * drachnyenWarMachineMultiplier;
 
       // Only show pool buff log if Trajann (Legendary Commander) is in the team
       if ((drachnyenExtraDmg > 0 || drachnyenExtraHits > 0) && currentBattleStateForDrachnyen.team.some(c => c.passiveAbilities.includes('LegendaryCommander'))) {
@@ -1546,6 +1745,22 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         if (source.damageBonus || source.extraHits || source.armorIgnored || source.damageMultiplier) {
           drachnyenBuffSources.push(source);
         }
+      }
+
+      // Add High Ground buff source for display
+      if (drachnyenHighGroundMultiplier > 1) {
+        drachnyenBuffSources.push({
+          name: 'High Ground',
+          damageMultiplier: drachnyenHighGroundMultiplier,
+        });
+      }
+
+      // Add War Machine buff source for display
+      if (drachnyenWarMachineMultiplier > 1) {
+        drachnyenBuffSources.push({
+          name: 'War Machine',
+          damageMultiplier: drachnyenWarMachineMultiplier,
+        });
       }
 
       const hasDrachnyenModifiers = drachnyenExtraDmg > 0 || drachnyenExtraHits > 0 || drachnyenArmorIgnored > 0 || drachnyenDamageMultiplier !== 1;
@@ -1585,7 +1800,18 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
       console.log(`Drach'nyen: ${drachnyenResult.totalHits}x ${drachnyenResult.perHitDamage} = ${drachnyenResult.damage}`);
 
-      totalDamage += drachnyenResult.damage;
+      // Prophet of Gork and Mork: Apply damage reduction to Drachnyen follow-up
+      let drachnyenProphetReduction = 1;
+      if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+        drachnyenProphetReduction = prophetMultiplier;
+        console.log(`[Prophet of Gork and Mork: -${prophetReductionPct}% damage on Drach'nyen (attack ${prophetAttackCounter + 1})]`);
+      }
+      const adjustedDrachnyenDamage = Math.round(drachnyenResult.damage * drachnyenProphetReduction);
+
+      // Increment attack counter for Drachnyen (it's a follow-up attack, counts as a separate attack)
+      prophetAttackCounter++;
+
+      totalDamage += adjustedDrachnyenDamage;
       // Track max perHitDamage for Laviscus outrage
       maxPerHitDamage = Math.max(maxPerHitDamage, drachnyenResult.perHitDamage);
 
@@ -1623,9 +1849,20 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         traitMultiplier: drachnyenResult.traitMultiplier,
       };
 
+      // Add Prophet of Gork and Mork to global multiplier if active
+      if (drachnyenProphetReduction < 1) {
+        drachnyenBreakdown.globalMultiplier = (drachnyenBreakdown.globalMultiplier || 1) * drachnyenProphetReduction;
+        drachnyenBreakdown.globalMultiplierSources = [
+          ...(drachnyenBreakdown.globalMultiplierSources || []),
+          { name: 'Prophet of Gork and Mork', damageMultiplier: drachnyenProphetReduction }
+        ];
+        drachnyenBreakdown.damage = adjustedDrachnyenDamage;
+        drachnyenBreakdown.perHitDamage = Math.round(drachnyenBreakdown.perHitDamage * drachnyenProphetReduction);
+      }
+
       followUpAttackLogs.push({
         abilityName: "Drach'nyen",
-        damage: drachnyenResult.damage,
+        damage: adjustedDrachnyenDamage,
         hits: drachnyenResult.totalHits,
         damageType: 'Piercing',
         breakdown: drachnyenBreakdown,
@@ -1675,6 +1912,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       traitMultiplier: result.traitMultiplier,
     };
 
+    // Add Prophet of Gork and Mork to global multiplier if active
+    if (mainAttackProphetReduction < 1) {
+      damageBreakdown.globalMultiplier = (damageBreakdown.globalMultiplier || 1) * mainAttackProphetReduction;
+      damageBreakdown.globalMultiplierSources = [
+        ...(damageBreakdown.globalMultiplierSources || []),
+        { name: 'Prophet of Gork and Mork', damageMultiplier: mainAttackProphetReduction }
+      ];
+      damageBreakdown.damage = Math.round(damageBreakdown.damage * mainAttackProphetReduction);
+      damageBreakdown.perHitDamage = Math.round(damageBreakdown.perHitDamage * mainAttackProphetReduction);
+    }
+
     // Get IDs of buffs to consume (those with consumeOnUse that were applied)
     const buffsToConsume = applicablePoolBuffs
       .filter(buff => buff.consumeOnUse)
@@ -1699,6 +1947,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             totalDamageDealt: state.battleState.totalDamageDealt + totalDamage,
             // Apply boss armor reduction from follow-up attacks (e.g., ChampionOfTheFeast)
             bossArmorReduction: (state.battleState.bossArmorReduction || 0) + followUpArmorReductionTotal,
+            // Update Prophet of Gork and Mork attack counter
+            bossAttacksReceivedThisTurn: prophetAttackCounter,
             // Remove consumed buffs from the pool
             buffPool: buffsToConsume.length > 0
               ? state.battleState.buffPool.filter(b => !buffsToConsume.includes(b.id))
@@ -2037,9 +2287,18 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
         const lcExtraDmg = componentPoolEffects.baseDamageBonus || 0;
         const lcExtraHits = componentPoolEffects.extraHits || 0;
+        const poolComponentMultiplier = componentPoolEffects.baseDamageMultiplier || 1;
 
-        if (lcExtraDmg > 0 || lcExtraHits > 0) {
-          console.log(`[Component ${componentIndex} buffs: +${lcExtraDmg} dmg, +${lcExtraHits} hits]`);
+        // High Ground: +50% damage multiplier when toggle is enabled
+        const componentHighGroundMultiplier = character.abilityToggles['HighGround'] ? 1.5 : 1;
+
+        // War Machine: +16% damage multiplier when toggle is enabled
+        const componentWarMachineMultiplier = character.abilityToggles['WarMachine'] ? 1.16 : 1;
+
+        const componentDamageMultiplier = poolComponentMultiplier * componentHighGroundMultiplier * componentWarMachineMultiplier;
+
+        if (lcExtraDmg > 0 || lcExtraHits > 0 || componentDamageMultiplier !== 1) {
+          console.log(`[Component ${componentIndex} buffs: +${lcExtraDmg} dmg, +${lcExtraHits} hits, ×${componentDamageMultiplier.toFixed(2)} mult]`);
         }
 
         // Get Lord of the Host aura bonuses for component attacks (melee only)
@@ -2067,14 +2326,24 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         }
 
         // Build buff sources for breakdown display
-        const componentBuffSources: Array<{ name: string; sourceName?: string; damageBonus?: number; extraHits?: number }> = [];
-        if (lcExtraDmg > 0 || lcExtraHits > 0) {
-          componentBuffSources.push({
-            name: 'Legendary Commander',
-            damageBonus: lcExtraDmg > 0 ? lcExtraDmg : undefined,
-            extraHits: lcExtraHits > 0 ? lcExtraHits : undefined,
-          });
+        const componentBuffSources: Array<{ name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number }> = [];
+
+        // Add pool buff sources (including Daughter of the Abyss multiplier)
+        for (const poolBuff of componentApplicableBuffs) {
+          const source: { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number } = {
+            name: poolBuff.name,
+          };
+          if (poolBuff.effects.baseDamageBonus) source.damageBonus = poolBuff.effects.baseDamageBonus;
+          if (poolBuff.effects.extraHits) source.extraHits = poolBuff.effects.extraHits;
+          if (poolBuff.effects.baseDamageMultiplier && poolBuff.effects.baseDamageMultiplier !== 1) {
+            source.damageMultiplier = poolBuff.effects.baseDamageMultiplier;
+          }
+          // Only add if there's at least one bonus
+          if (source.damageBonus || source.extraHits || source.damageMultiplier) {
+            componentBuffSources.push(source);
+          }
         }
+
         // Add aura bonus sources
         for (const aura of activeComponentAuras) {
           if (aura.modifiers && (aura.modifiers.baseDamageBonus || aura.modifiers.extraHits)) {
@@ -2084,6 +2353,22 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
               extraHits: aura.modifiers.extraHits,
             });
           }
+        }
+
+        // Add High Ground buff source for display
+        if (componentHighGroundMultiplier > 1) {
+          componentBuffSources.push({
+            name: 'High Ground',
+            damageMultiplier: componentHighGroundMultiplier,
+          });
+        }
+
+        // Add War Machine buff source for display
+        if (componentWarMachineMultiplier > 1) {
+          componentBuffSources.push({
+            name: 'War Machine',
+            damageMultiplier: componentWarMachineMultiplier,
+          });
         }
 
         // Calculate total damage and hit bonuses (LC + aura)
@@ -2114,8 +2399,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           abilityToggles: character.abilityToggles,
           fightingRetreatActive: character.fightingRetreatActive,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
-          abilityModifiers: (componentTotalDmgBonus > 0 || componentTotalHitsBonus > 0) ? {
+          abilityModifiers: (componentTotalDmgBonus > 0 || componentTotalHitsBonus > 0 || componentDamageMultiplier !== 1) ? {
             baseDamageBonus: componentTotalDmgBonus > 0 ? componentTotalDmgBonus : undefined,
+            baseDamageMultiplier: componentDamageMultiplier !== 1 ? componentDamageMultiplier : undefined,
             extraHits: componentTotalHitsBonus > 0 ? componentTotalHitsBonus : undefined,
             buffSources: componentBuffSources,
           } : undefined,
@@ -2227,11 +2513,18 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
       const lcExtraDmg = singleAbilityPoolEffects.baseDamageBonus || 0;
       const lcExtraHits = singleAbilityPoolEffects.extraHits || 0;
+      const poolDamageMultiplier = singleAbilityPoolEffects.baseDamageMultiplier || 1;
       if (lcExtraHits > 0) lcHitsAppliedToAbility = true;
 
+      // High Ground: +50% damage multiplier when toggle is enabled
+      const abilityHighGroundMultiplier = character.abilityToggles['HighGround'] ? 1.5 : 1;
+
+      // War Machine: +16% damage multiplier when toggle is enabled
+      const abilityWarMachineMultiplier = character.abilityToggles['WarMachine'] ? 1.16 : 1;
+
       // Only show pool buff log if Trajann (Legendary Commander) is in the team
-      if ((lcExtraDmg > 0 || lcExtraHits > 0) && battleState.team.some(c => c.passiveAbilities.includes('LegendaryCommander'))) {
-        console.log(`[Pool Buff applied to ability: +${lcExtraDmg} dmg, +${lcExtraHits} hits]`);
+      if ((lcExtraDmg > 0 || lcExtraHits > 0 || poolDamageMultiplier !== 1) && battleState.team.some(c => c.passiveAbilities.includes('LegendaryCommander'))) {
+        console.log(`[Pool Buff applied to ability: +${lcExtraDmg} dmg, +${lcExtraHits} hits, ×${poolDamageMultiplier.toFixed(2)} mult]`);
       }
 
       // Get Lord of the Host aura bonuses for ability attacks (melee only)
@@ -2260,13 +2553,23 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
       // Build buff sources for breakdown display
       const abilityBuffSources: Array<{ name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number }> = [];
-      if (lcExtraDmg > 0 || lcExtraHits > 0) {
-        abilityBuffSources.push({
-          name: 'Legendary Commander',
-          damageBonus: lcExtraDmg > 0 ? lcExtraDmg : undefined,
-          extraHits: lcExtraHits > 0 ? lcExtraHits : undefined,
-        });
+
+      // Add pool buff sources (including Daughter of the Abyss multiplier, Legendary Commander, etc.)
+      for (const poolBuff of singleAbilityApplicableBuffs) {
+        const source: { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number } = {
+          name: poolBuff.name,
+        };
+        if (poolBuff.effects.baseDamageBonus) source.damageBonus = poolBuff.effects.baseDamageBonus;
+        if (poolBuff.effects.extraHits) source.extraHits = poolBuff.effects.extraHits;
+        if (poolBuff.effects.baseDamageMultiplier && poolBuff.effects.baseDamageMultiplier !== 1) {
+          source.damageMultiplier = poolBuff.effects.baseDamageMultiplier;
+        }
+        // Only add if there's at least one bonus
+        if (source.damageBonus || source.extraHits || source.damageMultiplier) {
+          abilityBuffSources.push(source);
+        }
       }
+
       // Add aura bonus sources
       for (const aura of activeAbilityAuras) {
         if (aura.modifiers && (aura.modifiers.baseDamageBonus || aura.modifiers.extraHits)) {
@@ -2307,8 +2610,49 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const totalDmgBonus = lcExtraDmg + auraDmgBonus;
       const totalHitsBonus = lcExtraHits + auraHitsBonus;
 
+      // Add ability-specific modifiers to buff sources (e.g., Talons of the Emperor scaling)
+      if (result.abilityModifiers) {
+        const abilityBaseDmgBonus = result.abilityModifiers.baseDamageBonus || 0;
+        const abilityBaseDmgMult = result.abilityModifiers.baseDamageMultiplier;
+        const abilityExtraHits = result.abilityModifiers.extraHits || 0;
+
+        if (abilityBaseDmgBonus > 0 || abilityBaseDmgMult || abilityExtraHits > 0) {
+          abilityBuffSources.push({
+            name: result.abilityModifiers.abilityName || abilityName,
+            damageBonus: abilityBaseDmgBonus > 0 ? abilityBaseDmgBonus : undefined,
+            damageMultiplier: abilityBaseDmgMult,
+            extraHits: abilityExtraHits > 0 ? abilityExtraHits : undefined,
+          });
+        }
+      }
+
+      // Add High Ground buff source for display
+      if (abilityHighGroundMultiplier > 1) {
+        abilityBuffSources.push({
+          name: 'High Ground',
+          damageMultiplier: abilityHighGroundMultiplier,
+        });
+      }
+
+      // Add War Machine buff source for display
+      if (abilityWarMachineMultiplier > 1) {
+        abilityBuffSources.push({
+          name: 'War Machine',
+          damageMultiplier: abilityWarMachineMultiplier,
+        });
+      }
+
       // Check if we have any ability modifiers to pass
-      const hasModifiers = totalDmgBonus > 0 || totalHitsBonus > 0 || abilityGlobalMultiplier;
+      const hasModifiers = totalDmgBonus > 0 || totalHitsBonus > 0 || abilityGlobalMultiplier || result.abilityModifiers || poolDamageMultiplier !== 1 || abilityHighGroundMultiplier !== 1 || abilityWarMachineMultiplier !== 1;
+
+      // Merge ability-specific modifiers with LC + aura bonuses + pool multipliers + high ground + war machine
+      const mergedBaseDmgBonus = totalDmgBonus + (result.abilityModifiers?.baseDamageBonus || 0);
+      // Combine all multipliers: pool buff (Daughter of the Abyss) * ability-specific * global multiplier * high ground * war machine
+      const abilitySpecificMult = result.abilityModifiers?.baseDamageMultiplier || 1;
+      const globalMult = abilityGlobalMultiplier || 1;
+      const combinedMultiplier = poolDamageMultiplier * abilitySpecificMult * globalMult * abilityHighGroundMultiplier * abilityWarMachineMultiplier;
+      const mergedBaseDmgMult = combinedMultiplier !== 1 ? combinedMultiplier : undefined;
+      const mergedExtraHits = totalHitsBonus + (result.abilityModifiers?.extraHits || 0);
 
       // Calculate damage using averageDamage (with crit if not ignored)
       // Pass LC + aura bonuses and global multiplier via abilityModifiers for proper source tracking
@@ -2332,9 +2676,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         fightingRetreatActive: character.fightingRetreatActive,
         // Pass bonuses via abilityModifiers for proper source tracking in breakdown
         abilityModifiers: hasModifiers ? {
-          baseDamageBonus: totalDmgBonus > 0 ? totalDmgBonus : undefined,
-          baseDamageMultiplier: abilityGlobalMultiplier,
-          extraHits: totalHitsBonus > 0 ? totalHitsBonus : undefined,
+          baseDamageBonus: mergedBaseDmgBonus > 0 ? mergedBaseDmgBonus : undefined,
+          baseDamageMultiplier: mergedBaseDmgMult,
+          extraHits: mergedExtraHits > 0 ? mergedExtraHits : undefined,
           buffSources: abilityBuffSources,
         } : undefined,
       };
@@ -2715,6 +3059,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       trajannIsAdjacentToBoss: trajann?.abilityToggles['adjacentToBoss'] ?? false,  // LC Trajann check
       abilityToggles: updatedCharacter.abilityToggles,
       bossTraits: battleState.boss?.traits,
+      bossDebuffs: battleState.bossHasMarkerlight ? ['Markerlight'] : [],
     };
 
     // Evaluate passive abilities for follow-up attacks
@@ -2878,11 +3223,33 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           });
         }
 
-        // Check if we have any modifiers to pass
-        const hasFollowUpModifiers = lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpGlobalMultiplier || followUpArmorIgnored > 0 || followUpDamageMultiplier !== 1;
+        // High Ground: +50% damage multiplier when toggle is enabled
+        const abilityFollowUpHighGroundMultiplier = character.abilityToggles['HighGround'] ? 1.5 : 1;
 
-        // Combine ability multiplier with pool multiplier (multiplicative)
-        const combinedDamageMultiplier = (followUpGlobalMultiplier || 1) * followUpDamageMultiplier;
+        // War Machine: +16% damage multiplier when toggle is enabled
+        const abilityFollowUpWarMachineMultiplier = character.abilityToggles['WarMachine'] ? 1.16 : 1;
+
+        // Add High Ground buff source for display
+        if (abilityFollowUpHighGroundMultiplier > 1) {
+          followUpBuffSources.push({
+            name: 'High Ground',
+            damageMultiplier: abilityFollowUpHighGroundMultiplier,
+          });
+        }
+
+        // Add War Machine buff source for display
+        if (abilityFollowUpWarMachineMultiplier > 1) {
+          followUpBuffSources.push({
+            name: 'War Machine',
+            damageMultiplier: abilityFollowUpWarMachineMultiplier,
+          });
+        }
+
+        // Check if we have any modifiers to pass
+        const hasFollowUpModifiers = lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpGlobalMultiplier || followUpArmorIgnored > 0 || followUpDamageMultiplier !== 1 || abilityFollowUpHighGroundMultiplier !== 1 || abilityFollowUpWarMachineMultiplier !== 1;
+
+        // Combine ability multiplier with pool multiplier and high ground and war machine (multiplicative)
+        const combinedDamageMultiplier = (followUpGlobalMultiplier || 1) * followUpDamageMultiplier * abilityFollowUpHighGroundMultiplier * abilityFollowUpWarMachineMultiplier;
         const effectiveDamageMultiplier = combinedDamageMultiplier !== 1 ? combinedDamageMultiplier : undefined;
 
         // Calculate damage using averageDamage (with crit)
