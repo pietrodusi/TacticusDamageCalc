@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tacticus Damage Calculator</title>
+    <script>
+      // GitHub Pages SPA redirect
+      // Stores the path in sessionStorage and redirects to index.html
+      // The main app will restore the path using history.replaceState
+      const path = window.location.pathname;
+      const query = window.location.search;
+      const hash = window.location.hash;
+
+      // Store the redirect path
+      sessionStorage.setItem('spa-redirect', path + query + hash);
+
+      // Redirect to the base URL
+      window.location.replace('/TacticusDamageCalc/');
+    </script>
+  </head>
+  <body>
+    <noscript>
+      <p>Redirecting to <a href="/TacticusDamageCalc/">Tacticus Damage Calculator</a>...</p>
+    </noscript>
+  </body>
+</html>
