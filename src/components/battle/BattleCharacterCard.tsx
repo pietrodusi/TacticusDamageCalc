@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { User, CheckCircle, RotateCcw, Zap, Settings, Sparkles } from 'lucide-react';
-import type { BattleCharacter, ActionType } from '../../types';
+import type { BattleCharacter, ActionType, SelectedMachineOfWar } from '../../types';
 import { ActionPanel } from './ActionPanel';
 import { getCharacterTraitBonuses, hasTraitBonuses } from '../../services/traitBonuses';
 import { getCharacterBuffConditions, hasBuffConditions } from '../../services/buffConditions';
@@ -11,6 +11,7 @@ interface BattleCharacterCardProps {
   team: BattleCharacter[];
   isSelected: boolean;
   currentTurn?: number;
+  selectedMachineOfWar?: SelectedMachineOfWar | null;
   onSelect: () => void;
   onAction: (type: ActionType) => void;
   onUndo: () => void;
@@ -22,6 +23,7 @@ export function BattleCharacterCard({
   team,
   isSelected,
   currentTurn,
+  selectedMachineOfWar,
   onSelect,
   onAction,
   onUndo,
@@ -43,8 +45,8 @@ export function BattleCharacterCard({
   const traitBonuses = showTraitBonuses ? getCharacterTraitBonuses(character, currentTurn) : [];
 
   // Get buff conditions for display
-  const showBuffConditions = hasBuffConditions(character, team);
-  const buffConditions = showBuffConditions ? getCharacterBuffConditions(character, team) : [];
+  const showBuffConditions = hasBuffConditions(character, team, selectedMachineOfWar);
+  const buffConditions = showBuffConditions ? getCharacterBuffConditions(character, team, selectedMachineOfWar) : [];
 
   return (
     <div

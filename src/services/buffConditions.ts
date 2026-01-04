@@ -4,9 +4,10 @@
  * Each condition represents a state the user can toggle (e.g., "Charging", "In Range", "Low HP")
  */
 
-import type { BattleCharacter } from '../types';
+import type { BattleCharacter, SelectedMachineOfWar } from '../types';
 import { getAbilityValues, getAbilityNameSync } from './abilities';
 import { getTeamRequiredToggles } from './buffs/buffRegistry';
+import { getMachineOfWarDamageBonus, getMachineOfWarDisplayName } from './dataService';
 
 /**
  * A toggleable buff condition
@@ -25,10 +26,12 @@ export interface BuffCondition {
 /**
  * Get all buff conditions applicable to a character
  * This combines own passive conditions and aura conditions from teammates
+ * @param selectedMachineOfWar - Optional selected Machine of War for dynamic damage bonus
  */
 export function getCharacterBuffConditions(
   character: BattleCharacter,
-  team: BattleCharacter[]
+  team: BattleCharacter[],
+  selectedMachineOfWar?: SelectedMachineOfWar | null
 ): BuffCondition[] {
   const conditions: BuffCondition[] = [];
 
@@ -42,15 +45,23 @@ export function getCharacterBuffConditions(
     category: 'self',
   });
 
-  // Add universal "War Machine" condition for all characters
-  conditions.push({
-    id: 'WarMachine',
-    label: 'War Machine',
-    source: 'Guild Raid',
-    effect: '+16% damage',
-    isActive: character.abilityToggles['WarMachine'] ?? false,
-    category: 'self',
-  });
+  // Add "Machine of War" condition only if a machine is selected
+  if (selectedMachineOfWar) {
+    const extraDmgPct = getMachineOfWarDamageBonus(
+      selectedMachineOfWar.machineId,
+      selectedMachineOfWar.stars
+    );
+    const machineName = getMachineOfWarDisplayName(selectedMachineOfWar.machineId);
+
+    conditions.push({
+      id: 'WarMachine',
+      label: 'Machine of War',
+      source: machineName,
+      effect: `+${extraDmgPct}% damage`,
+      isActive: character.abilityToggles['WarMachine'] ?? false,
+      category: 'self',
+    });
+  }
 
   // Add "Adjacent to Boss" condition (only if team has buffs that require it)
   conditions.push(...getAdjacentToBossCondition(character, team));
@@ -497,7 +508,8 @@ function getBossRange2FromEldryonCondition(
  */
 export function hasBuffConditions(
   character: BattleCharacter,
-  team: BattleCharacter[]
+  team: BattleCharacter[],
+  selectedMachineOfWar?: SelectedMachineOfWar | null
 ): boolean {
-  return getCharacterBuffConditions(character, team).length > 0;
+  return getCharacterBuffConditions(character, team, selectedMachineOfWar).length > 0;
 }

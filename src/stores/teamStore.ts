@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Character, TeamMember, EquippedItem, SelectedBoss, BossRank } from '../types';
+import type { Character, TeamMember, EquippedItem, SelectedBoss, BossRank, SelectedMachineOfWar, MachineOfWarStars } from '../types';
 import { getDefaultEquipment } from '../services/dataService';
 
 const MAX_TEAM_SIZE = 5;
@@ -12,9 +12,13 @@ const DEFAULT_RANK = 18;
 // Default boss rank (Legendary 1)
 const DEFAULT_BOSS_RANK: BossRank = 13;
 
+// Default Machine of War stars (Mythic 14★ = max bonus)
+const DEFAULT_MACHINE_STARS: MachineOfWarStars = 14;
+
 interface TeamState {
   team: TeamMember[];
   selectedBoss: SelectedBoss | null;
+  selectedMachineOfWar: SelectedMachineOfWar | null;
   addCharacter: (character: Character, progressionStepIndex?: number, rank?: number, abilityLevels?: Record<string, number>, equipment?: Record<number, EquippedItem>) => void;
   removeCharacter: (characterId: string) => void;
   updateCharacterProgression: (characterId: string, progressionStepIndex: number, rank: number) => void;
@@ -29,6 +33,10 @@ interface TeamState {
   updateBossRank: (rank: BossRank) => void;
   toggleBossModifiers: (apply: boolean) => void;
   clearBoss: () => void;
+  // Machine of War selection
+  setSelectedMachineOfWar: (machineId: string, stars?: MachineOfWarStars) => void;
+  updateMachineOfWarStars: (stars: MachineOfWarStars) => void;
+  clearMachineOfWar: () => void;
 }
 
 export const useTeamStore = create<TeamState>()(
@@ -36,6 +44,7 @@ export const useTeamStore = create<TeamState>()(
     (set, get) => ({
       team: [],
       selectedBoss: null,
+      selectedMachineOfWar: null,
 
       addCharacter: (character, progressionStepIndex = DEFAULT_PROGRESSION_STEP, rank = DEFAULT_RANK, abilityLevels, equipment) => {
         const { team } = get();
@@ -136,6 +145,22 @@ export const useTeamStore = create<TeamState>()(
 
       clearBoss: () => {
         set({ selectedBoss: null });
+      },
+
+      // Machine of War selection functions
+      setSelectedMachineOfWar: (machineId, stars = DEFAULT_MACHINE_STARS) => {
+        set({ selectedMachineOfWar: { machineId, stars } });
+      },
+
+      updateMachineOfWarStars: (stars) => {
+        set((state) => {
+          if (!state.selectedMachineOfWar) return state;
+          return { selectedMachineOfWar: { ...state.selectedMachineOfWar, stars } };
+        });
+      },
+
+      clearMachineOfWar: () => {
+        set({ selectedMachineOfWar: null });
       },
     }),
     {

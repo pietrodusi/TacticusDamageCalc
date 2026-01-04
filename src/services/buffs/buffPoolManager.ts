@@ -39,6 +39,7 @@ export function addBuffToPool(
     addedAtTurn: turn,
     duration: template.duration,
     turnsRemaining: template.duration,
+    consumeOnUse: template.consumeOnUse,
   };
 
   return [...buffPool, newBuff];

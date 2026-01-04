@@ -218,6 +218,11 @@ export interface BattleState {
     attackThreshold: number;      // nrOfAttacks (with modifiers applied)
     damageReductionPct: number;   // dmgPctReduction (90)
   };
+  // Machine of War - provides damage bonus to team
+  machineOfWar?: {
+    machineId: string;
+    extraDmgPct: number;
+  };
 }
 
 export interface BattleSimulationConfig {

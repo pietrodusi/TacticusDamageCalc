@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Play, RotateCcw, Trash2, PackageX } from 'lucide-react';
 import { useTeamStore } from '../stores/teamStore';
 import { useBattleStore } from '../stores/battleStore';
-import { TeamSlot, BossSelector } from '../components/battle';
+import { TeamSlot, BossSelector, MachineOfWarSelector } from '../components/battle';
 import type { ActionType, BattleCharacter, BossRank } from '../types';
 import {
   BattleCharacterCard,
@@ -16,7 +16,7 @@ import {
 } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
 import { abilityEndsTurn, getAbilityValues } from '../services/abilities';
-import { getBossAtRank } from '../services/dataService';
+import { getBossAtRank, getMachineOfWarDamageBonus } from '../services/dataService';
 
 // Helper to calculate total damage from log entries
 function calculateDamageFromEntries(entries: TurnLogEntry[]): number {
@@ -41,6 +41,10 @@ export function CalculatorPage() {
     updateBossRank,
     toggleBossModifiers,
     clearBoss,
+    selectedMachineOfWar,
+    setSelectedMachineOfWar,
+    updateMachineOfWarStars,
+    clearMachineOfWar,
   } = useTeamStore();
   const {
     battleState,
@@ -130,7 +134,15 @@ export function CalculatorPage() {
     const boss = selectedBoss
       ? getBossAtRank(selectedBoss.bossId, selectedBoss.rank, selectedBoss.applyModifiers) ?? undefined
       : undefined;
-    startBattle(team, boss);
+    // Get Machine of War data with extraDmgPct
+    const machineOfWarData = selectedMachineOfWar
+      ? {
+          machineId: selectedMachineOfWar.machineId,
+          stars: selectedMachineOfWar.stars,
+          extraDmgPct: getMachineOfWarDamageBonus(selectedMachineOfWar.machineId, selectedMachineOfWar.stars),
+        }
+      : undefined;
+    startBattle(team, boss, machineOfWarData);
     setBattleLog([]);
     setSelectedCharacterId(null);
   };
@@ -512,8 +524,19 @@ export function CalculatorPage() {
             ))}
           </div>
 
-          {/* Boss Selector */}
+          {/* Machine of War Selector */}
           <div className="mt-6">
+            <MachineOfWarSelector
+              selectedMachineId={selectedMachineOfWar?.machineId ?? null}
+              selectedStars={selectedMachineOfWar?.stars ?? 14}
+              onSelectMachine={setSelectedMachineOfWar}
+              onUpdateStars={updateMachineOfWarStars}
+              onClearMachine={clearMachineOfWar}
+            />
+          </div>
+
+          {/* Boss Selector */}
+          <div className="mt-4">
             <BossSelector
               selectedBossId={selectedBoss?.bossId ?? null}
               selectedRank={selectedBoss?.rank ?? (13 as BossRank)}
@@ -623,6 +646,7 @@ export function CalculatorPage() {
                   team={battleState.team}
                   isSelected={selectedCharacterId === character.id}
                   currentTurn={battleState.turn}
+                  selectedMachineOfWar={selectedMachineOfWar}
                   onSelect={() =>
                     setSelectedCharacterId(
                       selectedCharacterId === character.id ? null : character.id

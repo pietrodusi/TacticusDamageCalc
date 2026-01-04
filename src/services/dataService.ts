@@ -25,6 +25,9 @@ import type {
   RawBossModDetailsData,
   BossStatModifiers,
   BossTraitsData,
+  MachineOfWarInfo,
+  MachineOfWarStars,
+  MachineOfWarWithBonus,
 } from '../types';
 import { BOSS_RANKS } from '../types';
 
@@ -1067,4 +1070,98 @@ export function getAvailableBossRanks(bossId: string): BossRank[] {
   const hasMythic = allRanks.includes(18);
 
   return hasMythic ? [...legendaryRanks, 18] : legendaryRanks;
+}
+
+// ============================================================================
+// Machine of War Functions
+// ============================================================================
+
+// Mapping of Machine of War ID to their mythic ability
+const MACHINE_OF_WAR_MYTHIC_ABILITIES: Record<string, string> = {
+  tyranBiovore: 'HyperCorrosiveAcid',
+  deathCrawler: 'BlightedLand',
+};
+
+// Supported Machines of War (only these are implemented)
+const SUPPORTED_MACHINES_OF_WAR = ['tyranBiovore', 'deathCrawler'];
+
+// Get list of available Machines of War
+export function getMachineOfWarList(): MachineOfWarInfo[] {
+  const machines: MachineOfWarInfo[] = [];
+
+  for (const machineId of SUPPORTED_MACHINES_OF_WAR) {
+    const rawChar = characters[machineId];
+    if (!rawChar) continue;
+
+    const info = charactersInfo[machineId];
+    const mythicAbilityId = MACHINE_OF_WAR_MYTHIC_ABILITIES[machineId];
+
+    // Get ability display name from abilitiesDisplay
+    let mythicAbilityName = mythicAbilityId;
+    if (abilitiesDisplay && abilitiesDisplay[mythicAbilityId]) {
+      mythicAbilityName = abilitiesDisplay[mythicAbilityId].name || mythicAbilityId;
+    }
+
+    const iconUrl = resolvePortraitUrl(info?.img);
+
+    machines.push({
+      id: machineId,
+      name: rawChar.name || machineId,
+      faction: rawChar.FactionId || 'Unknown',
+      ...(iconUrl && { iconUrl }),
+      mythicAbilityId,
+      mythicAbilityName,
+    });
+  }
+
+  return machines;
+}
+
+// Get display name for a Machine of War
+export function getMachineOfWarDisplayName(machineId: string): string {
+  const rawChar = characters[machineId];
+  return rawChar?.name || machineId;
+}
+
+// Get extraDmgPct for a Machine of War at specific stars
+// Stars 11-14 map to indices 0-3 in the extraDmgPct array
+export function getMachineOfWarDamageBonus(
+  machineId: string,
+  stars: MachineOfWarStars
+): number {
+  const mythicAbilityId = MACHINE_OF_WAR_MYTHIC_ABILITIES[machineId];
+  if (!mythicAbilityId || !abilitiesStats) return 0;
+
+  const abilityData = abilitiesStats[mythicAbilityId];
+  if (!abilityData?.variables?.extraDmgPct) return 0;
+
+  const extraDmgPctArray = abilityData.variables.extraDmgPct as number[];
+  const index = stars - 11; // Stars 11 -> index 0, 12 -> 1, etc.
+
+  if (index < 0 || index >= extraDmgPctArray.length) return 0;
+
+  return extraDmgPctArray[index];
+}
+
+// Get Machine of War with calculated bonus
+export function getMachineOfWarAtStars(
+  machineId: string,
+  stars: MachineOfWarStars
+): MachineOfWarWithBonus | null {
+  const list = getMachineOfWarList();
+  const machine = list.find((m) => m.id === machineId);
+  if (!machine) return null;
+
+  const extraDmgPct = getMachineOfWarDamageBonus(machineId, stars);
+
+  return {
+    ...machine,
+    extraDmgPct,
+    stars,
+  };
+}
+
+// Get available star levels for Machine of War (always 11-14)
+export function getAvailableMachineOfWarStars(): MachineOfWarStars[] {
+  return [11, 12, 13, 14];
 }

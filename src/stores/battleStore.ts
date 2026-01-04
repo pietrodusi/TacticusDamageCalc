@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, FollowUpAttackLog, Boss, AppliedBuffInfo, BuffEvaluationContext, DamageType } from '../types';
-import { calculateStats, calculateEquipmentStats, getBossAbilityConstantModifiers } from '../services/dataService';
+import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, FollowUpAttackLog, Boss, AppliedBuffInfo, BuffEvaluationContext, DamageType, SelectedMachineOfWar } from '../types';
+import { calculateStats, calculateEquipmentStats, getBossAbilityConstantModifiers, getMachineOfWarDamageBonus } from '../services/dataService';
 import { DamageCalculator, type AttackerStats, type DefenderStats, type DamageCaps } from '../services/damage';
 import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, resetCooldowns, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
 import { getApplicableBuffs, combineBuffEffects, addBuffToPool, getBuffTemplate, expireBuffs } from '../services/buffs';
@@ -76,7 +76,7 @@ interface BattleStore {
   editingTurn: number | null; // null = current turn, number = editing a past turn
 
   // Battle lifecycle
-  startBattle: (characters: TeamMember[], boss?: Boss) => void;
+  startBattle: (characters: TeamMember[], boss?: Boss, machineOfWar?: SelectedMachineOfWar) => void;
   endBattle: () => void;
   resetBattle: () => void;
 
@@ -131,7 +131,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
   currentTurnActions: [],
   editingTurn: null,
 
-  startBattle: (characters, boss) => {
+  startBattle: (characters, boss, machineOfWar) => {
     const battleCharacters = characters.map((char, index) =>
       createBattleCharacter(char, index)
     );
@@ -251,6 +251,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       activeAbilitiesUsedCount: 0, // Count of active abilities used in battle
       bossAttacksReceivedThisTurn: 0, // Prophet of Gork and Mork counter
       prophetOfGorkAndMork, // Prophet ability data (if boss has it)
+      // Machine of War damage bonus
+      machineOfWar: machineOfWar ? {
+        machineId: machineOfWar.machineId,
+        extraDmgPct: getMachineOfWarDamageBonus(machineOfWar.machineId, machineOfWar.stars),
+      } : undefined,
     };
 
     set({
@@ -861,8 +866,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // High Ground: +50% damage multiplier when toggle is enabled
     const highGroundMultiplier = attacker.abilityToggles['HighGround'] ? 1.5 : 1;
 
-    // War Machine: +16% damage multiplier when toggle is enabled
-    const warMachineMultiplier = attacker.abilityToggles['WarMachine'] ? 1.16 : 1;
+    // War Machine: dynamic damage multiplier based on selected Machine of War
+    const warMachineMultiplier = attacker.abilityToggles['WarMachine'] && battleState.machineOfWar
+      ? 1 + battleState.machineOfWar.extraDmgPct / 100
+      : 1;
 
     // Log buff effects if any are active
     const hasActiveBuffs = attacker.activeBuffs.length > 0 || applicablePoolBuffs.length > 0;
@@ -1115,10 +1122,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       });
     }
 
-    // Add War Machine buff source for display
-    if (warMachineMultiplier > 1) {
+    // Add Machine of War buff source for display
+    if (warMachineMultiplier > 1 && battleState.machineOfWar) {
       buffSources.push({
-        name: 'War Machine',
+        name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
         damageMultiplier: warMachineMultiplier,
       });
     }
@@ -1393,13 +1400,15 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const followUpApplicableBuffs = getApplicableBuffs(currentBattleState.buffPool, followUpBuffContext);
         const followUpPoolEffects = combineBuffEffects(followUpApplicableBuffs);
 
-        // Extract bonuses from pool effects (LC, Way of the Short Blade, Exemplar, etc.)
+        // Extract bonuses from pool effects (LC, Way of the Short Blade, Exemplar, Euphoric Strikes, etc.)
         const lcExtraDmg = followUpPoolEffects.baseDamageBonus || 0;
         // Additional Attacks (sharesCritChain) can't receive bonus hits - they're part of the source attack
         // which already received the bonus hits
         const lcExtraHits = followUp.sharesCritChain ? 0 : (followUpPoolEffects.extraHits || 0);
         const followUpArmorIgnored = followUpPoolEffects.armorIgnored || 0;
         const followUpDamageMultiplier = followUpPoolEffects.baseDamageMultiplier || 1;
+        const followUpCritChanceBonus = followUpPoolEffects.critChanceBonus || 0;
+        const followUpCritDamageBonus = followUpPoolEffects.critDamageBonus || 0;
 
         // If LC +2 hits was applied, update effective attacker for subsequent follow-ups
         if (lcExtraHits > 0) {
@@ -1445,7 +1454,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         // RapidAssault applies to follow-ups if this is the first attack turn
 
         // Build buff sources for breakdown display (iterate through applicable pool buffs)
-        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number };
+        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number };
         const followUpBuffSources: FollowUpBuffSource[] = [];
 
         // Add each applicable pool buff as a source
@@ -1461,9 +1470,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           if (effects.baseDamageMultiplier && effects.baseDamageMultiplier !== 1) {
             source.damageMultiplier = effects.baseDamageMultiplier;
           }
+          if (effects.critChanceBonus) source.critChanceBonus = effects.critChanceBonus;
+          if (effects.critDamageBonus) source.critDamageBonus = effects.critDamageBonus;
 
           // Only add if there's at least one bonus
-          if (source.damageBonus || source.extraHits || source.armorIgnored || source.damageMultiplier) {
+          if (source.damageBonus || source.extraHits || source.armorIgnored || source.damageMultiplier || source.critChanceBonus || source.critDamageBonus) {
             followUpBuffSources.push(source);
           }
         }
@@ -1500,8 +1511,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         // High Ground: +50% damage multiplier when toggle is enabled
         const followUpHighGroundMultiplier = attacker.abilityToggles['HighGround'] ? 1.5 : 1;
 
-        // War Machine: +16% damage multiplier when toggle is enabled
-        const followUpWarMachineMultiplier = attacker.abilityToggles['WarMachine'] ? 1.16 : 1;
+        // War Machine: dynamic damage multiplier based on selected Machine of War
+        const followUpWarMachineMultiplier = attacker.abilityToggles['WarMachine'] && currentBattleState.machineOfWar
+          ? 1 + currentBattleState.machineOfWar.extraDmgPct / 100
+          : 1;
 
         const finalFollowUpMultiplier = followUpDamageMultiplier * followUpMarkerlightMultiplier * followUpHighGroundMultiplier * followUpWarMachineMultiplier;
 
@@ -1521,10 +1534,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           });
         }
 
-        // Add War Machine buff source for display
-        if (followUpWarMachineMultiplier > 1) {
+        // Add Machine of War buff source for display
+        if (followUpWarMachineMultiplier > 1 && currentBattleState.machineOfWar) {
           followUpBuffSources.push({
-            name: 'War Machine',
+            name: `Machine of War (+${currentBattleState.machineOfWar.extraDmgPct}%)`,
             damageMultiplier: followUpWarMachineMultiplier,
           });
         }
@@ -1544,8 +1557,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           hits: effectiveHits,  // Use effective hits (may be from character's ranged)
           critChance: equipmentStats.critChance || 0,
           critDamage: equipmentStats.critDmg || 0,
-          critChanceBonus: equipmentStats.critChanceBonus || 0,
-          critDmgBonus: equipmentStats.critDmgBonus || 0,
+          critChanceBonus: (equipmentStats.critChanceBonus || 0) + followUpCritChanceBonus,
+          critDmgBonus: (equipmentStats.critDmgBonus || 0) + followUpCritDamageBonus,
           ignoreCrit,
           traits: attacker.traits, // Apply trait bonuses to follow-up attacks
           hasMoved: true,
@@ -1562,11 +1575,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           // Pass Fighting Retreat flag for RangedSpecialist override
           fightingRetreatActive: attacker.fightingRetreatActive,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
-          abilityModifiers: (lcExtraDmg + auraDmgBonus + conditionalDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1) ? {
+          abilityModifiers: (lcExtraDmg + auraDmgBonus + conditionalDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1 || followUpCritChanceBonus > 0 || followUpCritDamageBonus > 0) ? {
             baseDamageBonus: lcExtraDmg + auraDmgBonus + conditionalDmgBonus > 0 ? lcExtraDmg + auraDmgBonus + conditionalDmgBonus : undefined,
             extraHits: lcExtraHits + auraHitsBonus > 0 ? lcExtraHits + auraHitsBonus : undefined,
             armorIgnored: followUpArmorIgnored > 0 ? followUpArmorIgnored : undefined,
             baseDamageMultiplier: finalFollowUpMultiplier !== 1 ? finalFollowUpMultiplier : undefined,
+            critChanceBonus: followUpCritChanceBonus > 0 ? followUpCritChanceBonus : undefined,
+            critDamageBonus: followUpCritDamageBonus > 0 ? followUpCritDamageBonus : undefined,
             buffSources: followUpBuffSources,
           } : undefined,
         };
@@ -1719,8 +1734,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // High Ground: +50% damage multiplier when toggle is enabled
       const drachnyenHighGroundMultiplier = attacker.abilityToggles['HighGround'] ? 1.5 : 1;
 
-      // War Machine: +16% damage multiplier when toggle is enabled
-      const drachnyenWarMachineMultiplier = attacker.abilityToggles['WarMachine'] ? 1.16 : 1;
+      // War Machine: dynamic damage multiplier based on selected Machine of War
+      const drachnyenWarMachineMultiplier = attacker.abilityToggles['WarMachine'] && currentBattleStateForDrachnyen.machineOfWar
+        ? 1 + currentBattleStateForDrachnyen.machineOfWar.extraDmgPct / 100
+        : 1;
 
       const drachnyenDamageMultiplier = poolDrachnyenMultiplier * drachnyenHighGroundMultiplier * drachnyenWarMachineMultiplier;
 
@@ -1755,10 +1772,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         });
       }
 
-      // Add War Machine buff source for display
-      if (drachnyenWarMachineMultiplier > 1) {
+      // Add Machine of War buff source for display
+      if (drachnyenWarMachineMultiplier > 1 && currentBattleStateForDrachnyen.machineOfWar) {
         drachnyenBuffSources.push({
-          name: 'War Machine',
+          name: `Machine of War (+${currentBattleStateForDrachnyen.machineOfWar.extraDmgPct}%)`,
           damageMultiplier: drachnyenWarMachineMultiplier,
         });
       }
@@ -2288,12 +2305,16 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const lcExtraDmg = componentPoolEffects.baseDamageBonus || 0;
         const lcExtraHits = componentPoolEffects.extraHits || 0;
         const poolComponentMultiplier = componentPoolEffects.baseDamageMultiplier || 1;
+        const componentCritChanceBonus = componentPoolEffects.critChanceBonus || 0;
+        const componentCritDamageBonus = componentPoolEffects.critDamageBonus || 0;
 
         // High Ground: +50% damage multiplier when toggle is enabled
         const componentHighGroundMultiplier = character.abilityToggles['HighGround'] ? 1.5 : 1;
 
-        // War Machine: +16% damage multiplier when toggle is enabled
-        const componentWarMachineMultiplier = character.abilityToggles['WarMachine'] ? 1.16 : 1;
+        // War Machine: dynamic damage multiplier based on selected Machine of War
+        const componentWarMachineMultiplier = character.abilityToggles['WarMachine'] && battleState.machineOfWar
+          ? 1 + battleState.machineOfWar.extraDmgPct / 100
+          : 1;
 
         const componentDamageMultiplier = poolComponentMultiplier * componentHighGroundMultiplier * componentWarMachineMultiplier;
 
@@ -2326,11 +2347,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         }
 
         // Build buff sources for breakdown display
-        const componentBuffSources: Array<{ name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number }> = [];
+        const componentBuffSources: Array<{ name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number }> = [];
 
-        // Add pool buff sources (including Daughter of the Abyss multiplier)
+        // Add pool buff sources (including Daughter of the Abyss multiplier, Euphoric Strikes crit)
         for (const poolBuff of componentApplicableBuffs) {
-          const source: { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number } = {
+          const source: { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number } = {
             name: poolBuff.name,
           };
           if (poolBuff.effects.baseDamageBonus) source.damageBonus = poolBuff.effects.baseDamageBonus;
@@ -2338,8 +2359,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           if (poolBuff.effects.baseDamageMultiplier && poolBuff.effects.baseDamageMultiplier !== 1) {
             source.damageMultiplier = poolBuff.effects.baseDamageMultiplier;
           }
+          if (poolBuff.effects.critChanceBonus) source.critChanceBonus = poolBuff.effects.critChanceBonus;
+          if (poolBuff.effects.critDamageBonus) source.critDamageBonus = poolBuff.effects.critDamageBonus;
           // Only add if there's at least one bonus
-          if (source.damageBonus || source.extraHits || source.damageMultiplier) {
+          if (source.damageBonus || source.extraHits || source.damageMultiplier || source.critChanceBonus || source.critDamageBonus) {
             componentBuffSources.push(source);
           }
         }
@@ -2363,10 +2386,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           });
         }
 
-        // Add War Machine buff source for display
-        if (componentWarMachineMultiplier > 1) {
+        // Add Machine of War buff source for display
+        if (componentWarMachineMultiplier > 1 && battleState.machineOfWar) {
           componentBuffSources.push({
-            name: 'War Machine',
+            name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
             damageMultiplier: componentWarMachineMultiplier,
           });
         }
@@ -2386,8 +2409,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           hits: baseHits,  // Base hits only, extra hits via abilityModifiers
           critChance: equipmentStats.critChance || 0,
           critDamage: equipmentStats.critDmg || 0,
-          critChanceBonus: equipmentStats.critChanceBonus || 0,
-          critDmgBonus: equipmentStats.critDmgBonus || 0,
+          critChanceBonus: (equipmentStats.critChanceBonus || 0) + componentCritChanceBonus,
+          critDmgBonus: (equipmentStats.critDmgBonus || 0) + componentCritDamageBonus,
           ignoreCrit,
           traits: character.traits,
           hasMoved: true,
@@ -2399,10 +2422,12 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           abilityToggles: character.abilityToggles,
           fightingRetreatActive: character.fightingRetreatActive,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
-          abilityModifiers: (componentTotalDmgBonus > 0 || componentTotalHitsBonus > 0 || componentDamageMultiplier !== 1) ? {
+          abilityModifiers: (componentTotalDmgBonus > 0 || componentTotalHitsBonus > 0 || componentDamageMultiplier !== 1 || componentCritChanceBonus > 0 || componentCritDamageBonus > 0) ? {
             baseDamageBonus: componentTotalDmgBonus > 0 ? componentTotalDmgBonus : undefined,
             baseDamageMultiplier: componentDamageMultiplier !== 1 ? componentDamageMultiplier : undefined,
             extraHits: componentTotalHitsBonus > 0 ? componentTotalHitsBonus : undefined,
+            critChanceBonus: componentCritChanceBonus > 0 ? componentCritChanceBonus : undefined,
+            critDamageBonus: componentCritDamageBonus > 0 ? componentCritDamageBonus : undefined,
             buffSources: componentBuffSources,
           } : undefined,
         };
@@ -2519,8 +2544,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // High Ground: +50% damage multiplier when toggle is enabled
       const abilityHighGroundMultiplier = character.abilityToggles['HighGround'] ? 1.5 : 1;
 
-      // War Machine: +16% damage multiplier when toggle is enabled
-      const abilityWarMachineMultiplier = character.abilityToggles['WarMachine'] ? 1.16 : 1;
+      // War Machine: dynamic damage multiplier based on selected Machine of War
+      const abilityWarMachineMultiplier = character.abilityToggles['WarMachine'] && battleState.machineOfWar
+        ? 1 + battleState.machineOfWar.extraDmgPct / 100
+        : 1;
 
       // Only show pool buff log if Trajann (Legendary Commander) is in the team
       if ((lcExtraDmg > 0 || lcExtraHits > 0 || poolDamageMultiplier !== 1) && battleState.team.some(c => c.passiveAbilities.includes('LegendaryCommander'))) {
@@ -2634,10 +2661,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         });
       }
 
-      // Add War Machine buff source for display
-      if (abilityWarMachineMultiplier > 1) {
+      // Add Machine of War buff source for display
+      if (abilityWarMachineMultiplier > 1 && battleState.machineOfWar) {
         abilityBuffSources.push({
-          name: 'War Machine',
+          name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
           damageMultiplier: abilityWarMachineMultiplier,
         });
       }
@@ -3123,13 +3150,15 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const followUpApplicableBuffs = getApplicableBuffs(currentBattleStateForFollowUp.buffPool, followUpBuffContext);
         const followUpPoolEffects = combineBuffEffects(followUpApplicableBuffs);
 
-        // Extract bonuses from pool effects (LC, Way of the Short Blade, Exemplar, etc.)
+        // Extract bonuses from pool effects (LC, Way of the Short Blade, Exemplar, Euphoric Strikes, etc.)
         const lcExtraDmg = followUpPoolEffects.baseDamageBonus || 0;
         // Additional Attacks (sharesCritChain) can't receive bonus hits - they're part of the source attack
         // which already received the bonus hits
         const lcExtraHits = followUp.sharesCritChain ? 0 : (followUpPoolEffects.extraHits || 0);
         const followUpArmorIgnored = followUpPoolEffects.armorIgnored || 0;
         const followUpDamageMultiplier = followUpPoolEffects.baseDamageMultiplier || 1;
+        const abilityFollowUpCritChanceBonus = followUpPoolEffects.critChanceBonus || 0;
+        const abilityFollowUpCritDamageBonus = followUpPoolEffects.critDamageBonus || 0;
 
         // If LC +2 hits was applied, update effective character for subsequent follow-ups
         if (lcExtraHits > 0) {
@@ -3172,7 +3201,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const avgDamagePerHit = Math.round((followUp.minDamage + followUp.maxDamage) / 2);
 
         // Build buff sources for breakdown display (iterate through applicable pool buffs)
-        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number };
+        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number };
         const followUpBuffSources: FollowUpBuffSource[] = [];
 
         // Add each applicable pool buff as a source
@@ -3188,9 +3217,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           if (effects.baseDamageMultiplier && effects.baseDamageMultiplier !== 1) {
             source.damageMultiplier = effects.baseDamageMultiplier;
           }
+          if (effects.critChanceBonus) source.critChanceBonus = effects.critChanceBonus;
+          if (effects.critDamageBonus) source.critDamageBonus = effects.critDamageBonus;
 
           // Only add if there's at least one bonus
-          if (source.damageBonus || source.extraHits || source.armorIgnored || source.damageMultiplier) {
+          if (source.damageBonus || source.extraHits || source.armorIgnored || source.damageMultiplier || source.critChanceBonus || source.critDamageBonus) {
             followUpBuffSources.push(source);
           }
         }
@@ -3226,8 +3257,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         // High Ground: +50% damage multiplier when toggle is enabled
         const abilityFollowUpHighGroundMultiplier = character.abilityToggles['HighGround'] ? 1.5 : 1;
 
-        // War Machine: +16% damage multiplier when toggle is enabled
-        const abilityFollowUpWarMachineMultiplier = character.abilityToggles['WarMachine'] ? 1.16 : 1;
+        // War Machine: dynamic damage multiplier based on selected Machine of War
+        const abilityFollowUpWarMachineMultiplier = character.abilityToggles['WarMachine'] && battleState.machineOfWar
+          ? 1 + battleState.machineOfWar.extraDmgPct / 100
+          : 1;
 
         // Add High Ground buff source for display
         if (abilityFollowUpHighGroundMultiplier > 1) {
@@ -3237,16 +3270,16 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           });
         }
 
-        // Add War Machine buff source for display
-        if (abilityFollowUpWarMachineMultiplier > 1) {
+        // Add Machine of War buff source for display
+        if (abilityFollowUpWarMachineMultiplier > 1 && battleState.machineOfWar) {
           followUpBuffSources.push({
-            name: 'War Machine',
+            name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
             damageMultiplier: abilityFollowUpWarMachineMultiplier,
           });
         }
 
         // Check if we have any modifiers to pass
-        const hasFollowUpModifiers = lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpGlobalMultiplier || followUpArmorIgnored > 0 || followUpDamageMultiplier !== 1 || abilityFollowUpHighGroundMultiplier !== 1 || abilityFollowUpWarMachineMultiplier !== 1;
+        const hasFollowUpModifiers = lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpGlobalMultiplier || followUpArmorIgnored > 0 || followUpDamageMultiplier !== 1 || abilityFollowUpHighGroundMultiplier !== 1 || abilityFollowUpWarMachineMultiplier !== 1 || abilityFollowUpCritChanceBonus > 0 || abilityFollowUpCritDamageBonus > 0;
 
         // Combine ability multiplier with pool multiplier and high ground and war machine (multiplicative)
         const combinedDamageMultiplier = (followUpGlobalMultiplier || 1) * followUpDamageMultiplier * abilityFollowUpHighGroundMultiplier * abilityFollowUpWarMachineMultiplier;
@@ -3261,8 +3294,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           hits: followUp.hits,  // Base hits only, extra hits via abilityModifiers
           critChance: equipmentStats.critChance || 0,
           critDamage: equipmentStats.critDmg || 0,
-          critChanceBonus: equipmentStats.critChanceBonus || 0,
-          critDmgBonus: equipmentStats.critDmgBonus || 0,
+          critChanceBonus: (equipmentStats.critChanceBonus || 0) + abilityFollowUpCritChanceBonus,
+          critDmgBonus: (equipmentStats.critDmgBonus || 0) + abilityFollowUpCritDamageBonus,
           ignoreCrit,
           traits: character.traits,
           hasMoved: true,
@@ -3283,6 +3316,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             baseDamageMultiplier: effectiveDamageMultiplier,
             extraHits: lcExtraHits + auraHitsBonus > 0 ? lcExtraHits + auraHitsBonus : undefined,
             armorIgnored: followUpArmorIgnored > 0 ? followUpArmorIgnored : undefined,
+            critChanceBonus: abilityFollowUpCritChanceBonus > 0 ? abilityFollowUpCritChanceBonus : undefined,
+            critDamageBonus: abilityFollowUpCritDamageBonus > 0 ? abilityFollowUpCritDamageBonus : undefined,
             buffSources: followUpBuffSources,
           } : undefined,
         };

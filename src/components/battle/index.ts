@@ -8,6 +8,7 @@ export { BattleSummary } from './BattleSummary';
 export { DamagePerTurnChart } from './DamagePerTurnChart';
 export { DamageBar, CompactDamageBar } from './DamageBar';
 export { BossSelector } from './BossSelector';
+export { MachineOfWarSelector } from './MachineOfWarSelector';
 export { BattleBossCard } from './BattleBossCard';
 export { RepairTargetModal } from './RepairTargetModal';
 export { AttackTypeModal } from './AttackTypeModal';
