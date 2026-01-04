@@ -9,6 +9,20 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // GitHub Pages SPA redirect restore
+      // Check if we were redirected from 404.html and restore the original path
+      (function() {
+        const redirect = sessionStorage.getItem('spa-redirect');
+        if (redirect) {
+          sessionStorage.removeItem('spa-redirect');
+          // Only restore if we're at the base path
+          if (window.location.pathname === '/TacticusDamageCalc/' || window.location.pathname === '/TacticusDamageCalc') {
+            window.history.replaceState(null, '', redirect);
+          }
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
