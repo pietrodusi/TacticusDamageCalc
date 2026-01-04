@@ -422,6 +422,33 @@ function getAuraConditions(
         });
       }
     }
+
+    // Waaagh! (Gulgortz active) - damage and hit bonus for normal attacks
+    // Only show for non-Orks (Orks get the buff automatically)
+    if (teammate.activeAbilities.includes('Waaagh')) {
+      // Only show for non-Orks
+      if (character.faction !== 'Orks') {
+        const levelIndex = teammate.abilityLevels?.['Waaagh'] ?? 54;
+        const values = getAbilityValues('Waaagh', levelIndex);
+        const abilityName = getAbilityNameSync('Waaagh');
+
+        if (values) {
+          const extraDmg = values.extraDmg as number || 0;
+          const extraHit = values.extraHit as number || 1;
+          const toggleId = `Waaagh_${teammate.id}_adjacent`;
+
+          conditions.push({
+            id: toggleId,
+            label: `Adjacent to ${teammate.name}`,
+            source: abilityName,
+            sourceCharacter: teammate.name,
+            effect: `+${extraDmg} dmg, +${extraHit} hit (normal attacks)`,
+            isActive: character.abilityToggles[toggleId] ?? false,
+            category: 'aura',
+          });
+        }
+      }
+    }
   }
 
   return conditions;

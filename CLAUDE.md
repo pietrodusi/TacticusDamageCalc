@@ -51,6 +51,20 @@ Each ability has a handler implementing `AbilityHandler` interface:
 ### Dante, Kariyan, Kharn
 - Active abilities implemented
 
+### Gulgortz
+- **Light 'im up!** (Passive): Follow-up ranged attack (3x Projectile) after normal attacks
+- **Waaagh!** (Active): Summons 3 Ork Boyz + grants team buff (+dmg, +1 hit to normal attacks). Buff applies automatically to Orks, requires "Adjacent to Gulgortz" toggle for non-Orks. Consumed after first attack.
+
+## Summon System
+
+- Summon types defined in `src/types/summon.ts`
+- Summon data loaded from `summons.json` via `dataService.ts`
+- `SummonCard` component for UI (`src/components/battle/SummonCard.tsx`)
+- BattleStore methods: `addSummon`, `removeSummon`, `updateSummonCount`, `executeSummonAttack`
+- Summons persist across turns until manually removed
+- Summon attacks: simple damage calculation (no crit, no equipment bonuses)
+- Count field is for display only - user performs multiple attacks manually
+
 ## Battle Simulation
 
 - Maximum 6 turns per battle

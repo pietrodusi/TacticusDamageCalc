@@ -1,0 +1,19 @@
+{
+	"orksOrkBoys": {
+        "name": "Ork Boyz",
+        "FactionId": "Orks",
+        "GrandAllianceId": "Xenos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Projectile",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "BattleFatigue"],
+        "activeAbilities": ["Stikkbomb"]
+    }
+}

@@ -13,6 +13,7 @@ import {
   DamageSummary,
   RepairTargetModal,
   AttackTypeModal,
+  SummonCard,
 } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
 import { abilityEndsTurn, getAbilityValues } from '../services/abilities';
@@ -68,6 +69,9 @@ export function CalculatorPage() {
     executeRepairWithGalvanicField,
     markAbilityUsed,
     setBossMarkerlight,
+    removeSummon,
+    updateSummonCount,
+    executeSummonAttack,
   } = useBattleStore();
 
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
@@ -659,6 +663,29 @@ export function CalculatorPage() {
               );
             })}
           </div>
+
+          {/* Summons Section - shown if there are active summons */}
+          {battleState.summons.length > 0 && (
+            <>
+              <h2 className="text-lg font-semibold text-gray-100 mt-4">Summons</h2>
+              <div className="space-y-2">
+                {battleState.summons.map((summon) => (
+                  <SummonCard
+                    key={summon.id}
+                    summon={summon}
+                    onRemove={removeSummon}
+                    onUpdateCount={updateSummonCount}
+                    onAttack={(summonId, attackType) => {
+                      const logEntry = executeSummonAttack(summonId, attackType);
+                      const targetTurn = editingTurn ?? battleState.turn;
+                      setBattleLog((prev) => [...prev, { ...logEntry, turn: targetTurn }]);
+                      return logEntry;
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right Column: Boss Card + Battle Log */}

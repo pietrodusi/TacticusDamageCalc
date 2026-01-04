@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, FollowUpAttackLog, Boss, AppliedBuffInfo, BuffEvaluationContext, DamageType, SelectedMachineOfWar } from '../types';
-import { calculateStats, calculateEquipmentStats, getBossAbilityConstantModifiers, getMachineOfWarDamageBonus } from '../services/dataService';
+import { calculateStats, calculateEquipmentStats, getBossAbilityConstantModifiers, getMachineOfWarDamageBonus, getSummonUnitData, getSummonIconUrl } from '../services/dataService';
 import { DamageCalculator, type AttackerStats, type DefenderStats, type DamageCaps } from '../services/damage';
 import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, resetCooldowns, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
 import { getApplicableBuffs, combineBuffEffects, addBuffToPool, getBuffTemplate, expireBuffs } from '../services/buffs';
@@ -123,6 +123,12 @@ interface BattleStore {
     healAmount: number,
     attackTypeChoices: Record<string, 'melee' | 'ranged'>
   ) => BattleLogEntry[];
+
+  // Summon management
+  addSummon: (summon: import('../types').BattleSummon) => void;
+  removeSummon: (summonId: string) => void;
+  updateSummonCount: (summonId: string, count: number) => void;
+  executeSummonAttack: (summonId: string, attackType: 'melee' | 'ranged') => BattleLogEntry;
 }
 
 export const useBattleStore = create<BattleStore>((set, get) => ({
@@ -256,6 +262,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         machineId: machineOfWar.machineId,
         extraDmgPct: getMachineOfWarDamageBonus(machineOfWar.machineId, machineOfWar.stars),
       } : undefined,
+      // Summoned units (e.g., Ork Boyz from Waaagh!)
+      summons: [],
     };
 
     set({
@@ -2976,6 +2984,49 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         }));
         console.log(`[Buff added to pool: ${abilityName}]`, buffTemplate.getEffects(abilityValues as Record<string, number>));
 
+        // Handle summonResult if present (for abilities like Waaagh! that have both buff and summon)
+        if (result.summonResult) {
+          const summonData = getSummonUnitData(result.summonResult.unitId);
+          if (summonData) {
+            const summonCount = result.summonResult.count || 1;
+            const meleeWeapon = summonData.weapons.find(w => !w.Range);
+            const rangedWeapon = summonData.weapons.find(w => w.Range);
+
+            // Create single summon with count property
+            const newSummon: import('../types').BattleSummon = {
+              id: `summon_${result.summonResult.unitId}_${Date.now()}`,
+              unitId: result.summonResult.unitId,
+              name: summonData.name,
+              sourceCharacterId: characterId,
+              sourceAbilityId: abilityId,
+              hp: result.summonResult.hp,
+              damage: result.summonResult.damage,
+              armor: result.summonResult.armor,
+              meleeHits: meleeWeapon?.hits || 2,
+              meleeDamageType: (meleeWeapon?.DamageProfile as import('../types').DamageType) || 'Physical',
+              rangedHits: rangedWeapon?.hits,
+              rangedDamageType: rangedWeapon?.DamageProfile as import('../types').DamageType | undefined,
+              rangedRange: rangedWeapon?.Range,
+              count: summonCount,
+              createdAtTurn: battleState.turn,
+              iconUrl: getSummonIconUrl(result.summonResult.unitId),
+              activeAbilities: summonData.activeAbilities,
+              totalDamageDealt: 0,
+            };
+
+            set((state) => ({
+              battleState: state.battleState
+                ? {
+                    ...state.battleState,
+                    summons: [...state.battleState.summons, newSummon],
+                  }
+                : null,
+            }));
+
+            console.log(`[Summon created: ${summonCount}x ${summonData.name}]`);
+          }
+        }
+
         // Add to appliedBuffs for BattleLog display
         const buffEffects = buffTemplate.getEffects(abilityValues as Record<string, number>);
         const effectsText: string[] = [];
@@ -3604,5 +3655,158 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     return logEntries;
+  },
+
+  // Summon management implementations
+  addSummon: (summon) => {
+    set((state) => ({
+      battleState: state.battleState
+        ? { ...state.battleState, summons: [...state.battleState.summons, summon] }
+        : null,
+    }));
+  },
+
+  removeSummon: (summonId) => {
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            summons: state.battleState.summons.filter((s) => s.id !== summonId),
+          }
+        : null,
+    }));
+  },
+
+  updateSummonCount: (summonId, count) => {
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            summons: state.battleState.summons.map((s) =>
+              s.id === summonId ? { ...s, count: Math.max(1, count) } : s
+            ),
+          }
+        : null,
+    }));
+  },
+
+  executeSummonAttack: (summonId, attackType) => {
+    const { battleState } = get();
+    if (!battleState || !battleState.boss) {
+      return {
+        timestamp: Date.now(),
+        characterId: summonId,
+        characterName: 'Unknown',
+        action: 'attack' as const,
+        message: 'No battle in progress',
+      };
+    }
+
+    const summon = battleState.summons.find((s) => s.id === summonId);
+    if (!summon) {
+      return {
+        timestamp: Date.now(),
+        characterId: summonId,
+        characterName: 'Unknown',
+        action: 'attack' as const,
+        message: 'Summon not found',
+      };
+    }
+
+    // Get attack parameters based on attack type
+    const hits = attackType === 'melee' ? summon.meleeHits : (summon.rangedHits || 0);
+    const damageType = attackType === 'melee' ? summon.meleeDamageType : (summon.rangedDamageType || summon.meleeDamageType);
+
+    if (hits <= 0) {
+      return {
+        timestamp: Date.now(),
+        characterId: summonId,
+        characterName: summon.name,
+        action: 'attack' as const,
+        message: `${summon.name} cannot perform ${attackType} attacks`,
+      };
+    }
+
+    // Calculate boss armor with reduction
+    const bossBaseArmor = battleState.boss.armor || 0;
+    const bossArmorReduction = battleState.bossArmorReduction || 0;
+    const bossArmor = Math.max(0, bossBaseArmor - bossArmorReduction);
+
+    // Simple damage calculation for summons:
+    // - No crit
+    // - No equipment bonuses
+    // - No trait bonuses
+    // - Just base damage, armor, and pierce ratio
+    const baseDamage = summon.damage;
+    const pierceRatio = 0.3; // Standard pierce ratio
+
+    // Calculate damage per hit: max(baseDamage - armor, baseDamage * pierceRatio)
+    const afterArmor = Math.max(0, baseDamage - bossArmor);
+    const pierceFloor = Math.round(baseDamage * pierceRatio);
+    const perHitDamage = Math.max(afterArmor, pierceFloor);
+    const totalDamage = perHitDamage * hits;
+
+    console.group(`=== ${summon.name} (${attackType}) ===`);
+    console.log(`Base Damage: ${baseDamage}`);
+    console.log(`Boss Armor: ${bossArmor} (base ${bossBaseArmor} - ${bossArmorReduction} reduction)`);
+    console.log(`After Armor: ${afterArmor}`);
+    console.log(`Pierce Floor (${(pierceRatio * 100).toFixed(0)}%): ${pierceFloor}`);
+    console.log(`Per Hit: ${perHitDamage} × ${hits} hits = ${totalDamage}`);
+    console.groupEnd();
+
+    // Update battle state with damage dealt
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            totalDamageDealt: state.battleState.totalDamageDealt + totalDamage,
+            summons: state.battleState.summons.map((s) =>
+              s.id === summonId
+                ? { ...s, totalDamageDealt: s.totalDamageDealt + totalDamage }
+                : s
+            ),
+          }
+        : null,
+    }));
+
+    // Build damage breakdown for display
+    const damageBreakdown: DamageBreakdown = {
+      damage: totalDamage,
+      perHitDamage,
+      hits,
+      baseDamage,
+      flatModifiers: 0,
+      flatModifierSources: [],
+      critBonus: 0,
+      critChanceSources: [],
+      critDamageSources: [],
+      extraHits: 0,
+      extraHitsSources: [],
+      damVarMod: baseDamage,
+      targetArmor: bossArmor,
+      afterArmor,
+      pierceRatio,
+      pierceFloor,
+      afterArmorPierce: perHitDamage,
+      globalMultiplier: 1,
+      globalMultiplierSources: [],
+      baseCritChance: 0,
+      baseCritDamage: 0,
+      critChanceBonus: 0,
+      critDmgBonus: 0,
+      critChance: 0,
+      critDamage: 0,
+    };
+
+    return {
+      timestamp: Date.now(),
+      characterId: summonId,
+      characterName: summon.name,
+      action: attackType === 'melee' ? 'meleeAttack' as const : 'rangedAttack' as const,
+      damage: totalDamage,
+      damageBreakdown,
+      message: `${summon.name} deals ${totalDamage.toLocaleString()} ${damageType} damage`,
+      attackType,
+    };
   },
 }));

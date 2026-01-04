@@ -695,6 +695,48 @@ export const TalonsOfTheEmperorHandler: AbilityHandler = {
   },
 };
 
+/**
+ * Waaagh! (Gulgortz)
+ * Summons 3 Ork Boyz and grants a buff to all Orks (automatic) and non-Orks with "Adjacent to Gulgortz" toggle
+ * Buff grants +extraDmg and +extraHit (1 hit) to the FIRST normal attack
+ * Variables: extraDmg, extraHit, nrOfSummons, summonHp, summonDmg, summonArmor
+ * Constants: unitToSpawn: orksOrkBoys
+ */
+export const WaaaghHandler: AbilityHandler = {
+  abilityId: 'Waaagh',
+  abilityName: 'Waaagh!',
+  category: 'buff',  // Primary category is buff since summons are handled separately
+  cooldown: -1,  // One-time use per battle
+  endsTurn: true,  // Using Waaagh! ends Gulgortz's turn
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('Waaagh');
+
+    return {
+      abilityId: 'Waaagh',
+      abilityName,
+      category: 'buff',
+      // Summon 3 Ork Boyz
+      summonResult: {
+        unitId: (values.unitToSpawn as string) || 'orksOrkBoys',
+        hp: values.summonHp as number || 0,
+        damage: values.summonDmg as number || 0,
+        armor: values.summonArmor as number || 0,
+        count: values.nrOfSummons as number || 3,
+      },
+      // Buff for team (handled via buff pool)
+      buffResult: {
+        effect: {
+          baseDamageBonus: values.extraDmg as number || 0,
+          extraHits: values.extraHit as number || 1,
+        },
+        duration: 1,  // Lasts until used
+      },
+      message: abilityName,
+    };
+  },
+};
+
 // Export all active handlers
 export const activeHandlers: AbilityHandler[] = [
   WarHowlHandler,
@@ -715,4 +757,5 @@ export const activeHandlers: AbilityHandler[] = [
   FightingRetreatHandler,
   CrusadeOfWrathHandler,
   TalonsOfTheEmperorHandler,
+  WaaaghHandler,
 ];

@@ -1,0 +1,140 @@
+import { X, Minus, Plus, Sword, Target, Shield, Heart, Zap } from 'lucide-react';
+import type { BattleSummon, BattleLogEntry } from '../../types';
+
+interface SummonCardProps {
+  summon: BattleSummon;
+  onRemove: (summonId: string) => void;
+  onUpdateCount: (summonId: string, count: number) => void;
+  onAttack: (summonId: string, attackType: 'melee' | 'ranged') => BattleLogEntry;
+}
+
+export function SummonCard({
+  summon,
+  onRemove,
+  onUpdateCount,
+  onAttack,
+}: SummonCardProps) {
+  const hasRanged = summon.rangedHits && summon.rangedHits > 0;
+
+  const handleMeleeAttack = () => {
+    onAttack(summon.id, 'melee');
+  };
+
+  const handleRangedAttack = () => {
+    if (hasRanged) {
+      onAttack(summon.id, 'ranged');
+    }
+  };
+
+  return (
+    <div className="card p-3 bg-green-900/20 border border-green-700/30">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        {/* Icon */}
+        <div className="w-10 h-10 rounded-full bg-green-900/50 flex items-center justify-center overflow-hidden flex-shrink-0 border border-green-600/30">
+          {summon.iconUrl ? (
+            <img
+              src={summon.iconUrl}
+              alt={summon.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <Sword size={18} className="text-green-400" />
+          )}
+        </div>
+
+        {/* Name and Source */}
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-semibold text-green-200 truncate">
+            {summon.name}
+          </h4>
+          <span className="text-xs text-green-400/70">Summon</span>
+        </div>
+
+        {/* Remove Button */}
+        <button
+          onClick={() => onRemove(summon.id)}
+          className="p-1 rounded hover:bg-red-900/30 transition-colors"
+          title="Remove summon"
+        >
+          <X size={16} className="text-gray-400 hover:text-red-400" />
+        </button>
+      </div>
+
+      {/* Count Control */}
+      <div className="mt-2 flex items-center gap-2">
+        <span className="text-xs text-green-400">Count:</span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onUpdateCount(summon.id, summon.count - 1)}
+            disabled={summon.count <= 1}
+            className="p-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Minus size={12} className="text-gray-300" />
+          </button>
+          <span className="px-2 py-0.5 min-w-[24px] text-center text-sm font-medium text-green-300 bg-green-900/30 rounded">
+            {summon.count}
+          </span>
+          <button
+            onClick={() => onUpdateCount(summon.id, summon.count + 1)}
+            className="p-1 rounded bg-gray-700 hover:bg-gray-600 transition-colors"
+          >
+            <Plus size={12} className="text-gray-300" />
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="mt-2 flex gap-3 text-xs">
+        <div className="flex items-center gap-1">
+          <Zap size={12} className="text-yellow-500" />
+          <span className="text-gray-300">{summon.damage}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Heart size={12} className="text-red-400" />
+          <span className="text-gray-300">{summon.hp}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <Shield size={12} className="text-blue-400" />
+          <span className="text-gray-300">{summon.armor}</span>
+        </div>
+      </div>
+
+      {/* Attack Buttons */}
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={handleMeleeAttack}
+          className="flex-1 px-3 py-1.5 text-xs font-medium rounded bg-orange-900/40 text-orange-300 hover:bg-orange-900/60 transition-colors flex items-center justify-center gap-1"
+        >
+          <Sword size={12} />
+          Melee ({summon.meleeHits}x)
+        </button>
+        {hasRanged && (
+          <button
+            onClick={handleRangedAttack}
+            className="flex-1 px-3 py-1.5 text-xs font-medium rounded bg-blue-900/40 text-blue-300 hover:bg-blue-900/60 transition-colors flex items-center justify-center gap-1"
+          >
+            <Target size={12} />
+            Ranged ({summon.rangedHits}x)
+          </button>
+        )}
+      </div>
+
+      {/* Damage Dealt */}
+      {summon.totalDamageDealt > 0 && (
+        <div className="mt-2 text-xs text-green-400/70 text-right">
+          Total: {summon.totalDamageDealt.toLocaleString()} damage
+        </div>
+      )}
+
+      {/* Active Abilities (placeholder for future implementation) */}
+      {summon.activeAbilities && summon.activeAbilities.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-green-700/30">
+          <span className="text-xs text-green-400/70">
+            Abilities: {summon.activeAbilities.join(', ')}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}

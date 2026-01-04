@@ -28,6 +28,7 @@ import type {
   MachineOfWarInfo,
   MachineOfWarStars,
   MachineOfWarWithBonus,
+  SummonUnitData,
 } from '../types';
 import { BOSS_RANKS } from '../types';
 
@@ -41,6 +42,7 @@ import bossImgData from '../assets/data/guildBossImg.json';
 import bossModsData from '../assets/data/guildBossMods.json';
 import bossModDetailsData from '../assets/data/guildBossModDetails.json';
 import bossTraitsData from '../assets/data/guildBossTraits.json';
+import summonsData from '../assets/data/summons.json';
 
 // Import all portrait images using Vite's glob import
 const portraitImages = import.meta.glob<{ default: string }>(
@@ -75,6 +77,12 @@ const factionImages = import.meta.glob<{ default: string }>(
 // Import boss images
 const bossImages = import.meta.glob<{ default: string }>(
   '../assets/images/bosses/*.png',
+  { eager: true }
+);
+
+// Import summon images
+const summonImages = import.meta.glob<{ default: string }>(
+  '../assets/images/summons/*.webp',
   { eager: true }
 );
 
@@ -120,9 +128,17 @@ for (const path in bossImages) {
   bossImageMap[filename] = bossImages[path].default;
 }
 
+// Create summon image map (e.g., 'orksOrkBoys' -> url)
+const summonImageMap: Record<string, string> = {};
+for (const path in summonImages) {
+  const filename = path.split('/').pop()?.replace('.webp', '') || '';
+  summonImageMap[filename] = summonImages[path].default;
+}
+
 // Type assertions for imported JSON
 const characters = rawCharactersData as RawCharactersData;
 const charactersInfo = charactersImgData as CharactersInfoData;
+const summons = summonsData as Record<string, SummonUnitData>;
 const progression = progressionData as ProgressionData;
 const items = itemsData as ItemsData;
 const bosses = rawBossesData as RawBossesData;
@@ -1164,4 +1180,34 @@ export function getMachineOfWarAtStars(
 // Get available star levels for Machine of War (always 11-14)
 export function getAvailableMachineOfWarStars(): MachineOfWarStars[] {
   return [11, 12, 13, 14];
+}
+
+// ============================================================================
+// Summon Functions
+// ============================================================================
+
+/**
+ * Get summon unit data by ID
+ * @param unitId The summon unit ID (e.g., 'orksOrkBoys')
+ * @returns SummonUnitData or null if not found
+ */
+export function getSummonUnitData(unitId: string): SummonUnitData | null {
+  return summons[unitId] || null;
+}
+
+/**
+ * Get summon icon URL by unit ID
+ * @param unitId The summon unit ID (e.g., 'orksOrkBoys')
+ * @returns Resolved image URL or undefined if not found
+ */
+export function getSummonIconUrl(unitId: string): string | undefined {
+  return summonImageMap[unitId];
+}
+
+/**
+ * Get all available summons
+ * @returns Record of all summon unit data
+ */
+export function getAllSummons(): Record<string, SummonUnitData> {
+  return summons;
 }

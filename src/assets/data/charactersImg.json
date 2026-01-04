@@ -337,5 +337,8 @@
 	},
 	"spaceWolfPriest": {
 		"img": "/portraits/Baldr.webp"
+	},
+	"orksOrkBoys": {
+		"img": "/summons/orksOrkBoys.webp"
 	}
 }

@@ -427,6 +427,43 @@ export const daughterOfTheAbyssBuffTemplate: BuffTemplate = {
   requiredToggles: ['DaughterOfTheAbyss_range2FromBoss'],  // Generic toggle ID (will be character-specific in UI)
 };
 
+/**
+ * Waaagh! buff template (Gulgortz active)
+ * Grants +extraDmg and +extraHit to the first normal attack
+ * Target: All Orks (automatic) + non-Orks with "Adjacent to Gulgortz" toggle + Gulgortz himself
+ * Consumed after first normal attack uses it
+ * Variables: extraDmg, extraHit
+ */
+export const waaaghBuffTemplate: BuffTemplate = {
+  buffId: 'waaagh',
+  name: 'Waaagh!',
+  sourceAbilityId: 'Waaagh',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      // Only applies to normal attacks (not abilities)
+      if (context.attackCategory !== 'normal') return false;
+
+      // Gulgortz himself gets the buff (source character)
+      if (context.attacker.id === buff.sourceCharacterId) return true;
+
+      // All Orks get the buff automatically
+      if (context.attacker.faction === 'Orks') return true;
+
+      // Non-Orks need the "Adjacent to Gulgortz" toggle
+      const toggleId = `Waaagh_${buff.sourceCharacterId}_adjacent`;
+      return context.attacker.abilityToggles?.[toggleId] ?? false;
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg as number) || 0,
+    extraHits: (values.extraHit as number) || 1,
+  }),
+  duration: 1,  // Lasts until used
+  consumeOnUse: true,  // Remove after first attack uses it
+  requiredToggles: ['Waaagh_adjacent'],  // Generic toggle ID for non-Orks
+};
+
 // Registry of all buff templates by ability ID
 export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   WarHowl: warHowlBuffTemplate,
@@ -448,6 +485,8 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   destroy_the_witch: destroyTheWitchBuffTemplate,
   // Atlacoya abilities
   daughter_of_the_abyss: daughterOfTheAbyssBuffTemplate,
+  // Gulgortz abilities
+  Waaagh: waaaghBuffTemplate,
 };
 
 /**

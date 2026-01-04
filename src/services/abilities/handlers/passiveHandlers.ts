@@ -600,6 +600,59 @@ export const GalvanicFieldHandler: AbilityHandler = {
   },
 };
 
+/**
+ * LightImUp (Gulgortz)
+ * After performing a normal attack, Gulgortz performs a second attack against the boss.
+ * The follow-up attack is a ranged attack with 3 hits of Projectile damage.
+ * Variables: minDmg, maxDmg
+ * Constants: nrOfHits: 3, damageProfile: Projectile
+ */
+export const LightImUpHandler: AbilityHandler = {
+  abilityId: 'LightImUp',
+  abilityName: "Light 'im up!",
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    // Only triggers after normal attacks (melee or ranged)
+    const isNormalAttack = context.attackType === 'melee' || context.attackType === 'ranged';
+    const applicable = isNormalAttack;
+
+    // Get damage values from abilities.json
+    const minDamage = values.minDmg as number || 0;
+    const maxDamage = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 3;
+
+    // Calculate average damage for display
+    const avgDamage = Math.round((minDamage + maxDamage) / 2);
+
+    // Build follow-up attack - always ranged Projectile
+    const followUpAttack: FollowUpAttack | undefined = applicable ? {
+      abilityId: 'LightImUp',
+      abilityName: "Light 'im up!",
+      damageProfile: 'Projectile',
+      minDamage,
+      maxDamage,
+      hits,
+      attackCategory: 'normal',  // Follow-up is treated as a normal attack
+      triggersOnNormalOnly: true,  // Only triggers on normal attacks
+      followUpAttackType: 'ranged',  // Always a ranged attack
+    } : undefined;
+
+    return {
+      abilityId: 'LightImUp',
+      abilityName: getAbilityNameSync('LightImUp'),
+      modifiers: {},  // No modifiers to main attack
+      applicable,
+      reason: applicable
+        ? `Follow-up: ${hits}x ${avgDamage} Projectile`
+        : 'Only triggers on normal attacks',
+      requiresToggle: false,
+      followUpAttack,
+    };
+  },
+};
+
 // Export all passive handlers
 // Note: LegendaryCommander is now handled via the buff pool system (buffRegistry.ts)
 export const passiveHandlers: AbilityHandler[] = [
@@ -615,5 +668,6 @@ export const passiveHandlers: AbilityHandler[] = [
   WayOfTheShortBladeHandler,
   ChampionOfTheFeastHandler,
   GalvanicFieldHandler,
+  LightImUpHandler,
   // LegendaryCommanderHandler, // Removed: now using buff pool for team-wide LC application
 ];

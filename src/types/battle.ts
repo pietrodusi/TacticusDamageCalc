@@ -3,6 +3,7 @@ import type { Boss } from './boss';
 import type { AbilityCooldownState, AbilityStatModifier } from '../services/abilities/types';
 import type { PooledBuff } from './buff';
 import type { BuffSource } from '../services/damage/types';
+import type { BattleSummon } from './summon';
 
 export type ActionType = 'move' | 'attack' | 'meleeAttack' | 'rangedAttack' | 'ability' | 'wait' | 'repair';
 
@@ -223,6 +224,8 @@ export interface BattleState {
     machineId: string;
     extraDmgPct: number;
   };
+  // Summoned units in battle (e.g., Ork Boyz from Waaagh!)
+  summons: BattleSummon[];
 }
 
 export interface BattleSimulationConfig {

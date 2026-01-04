@@ -263,6 +263,7 @@ export interface ActiveAbilityResult {
     hp: number;
     damage: number;
     armor: number;
+    count?: number;  // Number of summons to create (default: 1)
   };
 
   // For healing abilities
