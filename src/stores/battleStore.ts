@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, FollowUpAttackLog, Boss, AppliedBuffInfo, BuffEvaluationContext, DamageType, SelectedMachineOfWar } from '../types';
 import { calculateStats, calculateEquipmentStats, getBossAbilityConstantModifiers, getMachineOfWarDamageBonus, getSummonUnitData, getSummonIconUrl } from '../services/dataService';
 import { DamageCalculator, type AttackerStats, type DefenderStats, type DamageCaps } from '../services/damage';
-import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, resetCooldowns, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
+import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, unuseAbility, resetCooldowns, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
 import { getApplicableBuffs, combineBuffEffects, addBuffToPool, getBuffTemplate, expireBuffs } from '../services/buffs';
 
 const MAX_TURNS = 6;
@@ -110,6 +110,7 @@ interface BattleStore {
   isAbilityReady: (characterId: string, abilityId: string) => boolean;
   executeAbility: (characterId: string, abilityId: string) => BattleLogEntry;
   markAbilityUsed: (characterId: string, abilityId: string) => void;
+  refreshAbilityCooldown: (characterId: string, abilityId: string) => void;
 
   // Battle settings
   setIgnoreCrit: (ignore: boolean) => void;
@@ -228,6 +229,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
       if (svValues && svTemplate) {
         buffPool = addBuffToPool(buffPool, svTemplate, aesoth, svValues as Record<string, number>, 1);
+      }
+    }
+
+    // Initialize Serene Unifier (Storm of Fire) aura buff if Aun'Shi is in team
+    const aunShi = battleCharacters.find(c => c.passiveAbilities.includes('SereneUnifier'));
+    if (aunShi) {
+      const suTemplate = getBuffTemplate('serene_unifier_storm_of_fire');
+      const suValues = getAbilityValues('SereneUnifier', aunShi.abilityLevels?.SereneUnifier ?? 54);
+
+      if (suValues && suTemplate) {
+        buffPool = addBuffToPool(buffPool, suTemplate, aunShi, suValues as Record<string, number>, 1);
       }
     }
 
@@ -2177,6 +2189,26 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 ? {
                     ...char,
                     abilityCooldowns: useAbility(char.abilityCooldowns, abilityId),
+                  }
+                : char
+            ),
+          }
+        : null,
+    }));
+  },
+
+  // Refresh an ability's cooldown (reset it to ready state)
+  // Used by Inspired to Greatness to allow ability re-use
+  refreshAbilityCooldown: (characterId, abilityId) => {
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            team: state.battleState.team.map((char) =>
+              char.id === characterId
+                ? {
+                    ...char,
+                    abilityCooldowns: unuseAbility(char.abilityCooldowns, abilityId),
                   }
                 : char
             ),

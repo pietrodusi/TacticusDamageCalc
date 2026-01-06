@@ -496,6 +496,44 @@ export const standVigilBuffTemplate: BuffTemplate = {
   // No duration - permanent aura-style buff (evaluated each attack)
 };
 
+/**
+ * SereneUnifier Storm of Fire buff template (Aun'Shi passive aura)
+ * Grants +extraDmg to normal attacks during Storm of Fire phase (turns 3, 6)
+ * - T'au Empire: Range 2 from Aun'Shi (toggle with "_range2" suffix)
+ * - Non-Tau: Adjacent to Aun'Shi (toggle with "_adjacent" suffix)
+ * Variables: extraDmg
+ */
+export const sereneUnifierStormOfFireBuffTemplate: BuffTemplate = {
+  buffId: 'serene_unifier_storm_of_fire',
+  name: 'Storm of Fire',
+  sourceAbilityId: 'SereneUnifier',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      // Only applies to normal attacks (not abilities)
+      if (context.attackCategory !== 'normal') return false;
+
+      // Does NOT apply to Aun'Shi himself
+      if (context.attacker.id === buff.sourceCharacterId) return false;
+
+      // Check current turn - Storm of Fire is active on turns 3, 6 (phase 3)
+      const turn = context.battleState?.turn || 1;
+      const phase = ((turn - 1) % 3) + 1;  // 1, 2, 3, 1, 2, 3
+      if (phase !== 3) return false;
+
+      // Check if character has the appropriate toggle active based on faction
+      const isTau = context.attacker.faction === "T'au Empire" || context.attacker.faction === 'Tau';
+      const rangeType = isTau ? 'range2' : 'adjacent';
+      const toggleId = `SereneUnifier_${buff.sourceCharacterId}_${rangeType}`;
+      return context.attacker.abilityToggles?.[toggleId] ?? false;
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg as number) || 0,
+  }),
+  // No duration - permanent aura-style buff (evaluated each attack based on turn phase)
+};
+
 // Registry of all buff templates by ability ID
 export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   WarHowl: warHowlBuffTemplate,
@@ -521,6 +559,8 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   Waaagh: waaaghBuffTemplate,
   // Aesoth abilities
   stand_vigil: standVigilBuffTemplate,
+  // Aun'Shi abilities
+  serene_unifier_storm_of_fire: sereneUnifierStormOfFireBuffTemplate,
 };
 
 /**

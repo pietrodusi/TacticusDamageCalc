@@ -774,6 +774,41 @@ export const WaaaghHandler: AbilityHandler = {
   },
 };
 
+/**
+ * InspiredToGreatness (Aun'Shi)
+ * Enables a friendly unit to use their active ability again, at the lowest level between
+ * their ability and Inspired to Greatness. Also heals the target.
+ * - If target has already used ability: hpToHeal + ability re-use
+ * - If target hasn't used ability yet: hpToHeal_2 (larger heal, no re-use)
+ * Variables: hpToHeal, hpToHeal_2
+ * Note: Actual target selection and ability re-execution handled in CalculatorPage
+ */
+export const InspiredToGreatnessHandler: AbilityHandler = {
+  abilityId: 'InspiredToGreatness',
+  abilityName: 'Inspired to Greatness',
+  category: 'buff',  // Primary is enabling ability re-use
+  cooldown: -1,  // One-time use per battle
+  endsTurn: true,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('InspiredToGreatness');
+    const hpToHeal = values.hpToHeal as number || 0;
+    const hpToHeal_2 = values.hpToHeal_2 as number || 0;
+
+    // Note: The actual logic is handled in CalculatorPage via modal
+    // This handler provides the values and metadata
+    return {
+      abilityId: 'InspiredToGreatness',
+      abilityName,
+      category: 'buff',
+      healingResult: {
+        amount: hpToHeal,  // Will be overridden based on target selection
+      },
+      message: `${abilityName}: +${hpToHeal} HP (ability used) / +${hpToHeal_2} HP (ability not used)`,
+    };
+  },
+};
+
 // Export all active handlers
 export const activeHandlers: AbilityHandler[] = [
   WarHowlHandler,
@@ -796,4 +831,5 @@ export const activeHandlers: AbilityHandler[] = [
   TalonsOfTheEmperorHandler,
   VexillaMagnificaHandler,
   WaaaghHandler,
+  InspiredToGreatnessHandler,
 ];

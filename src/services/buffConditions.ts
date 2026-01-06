@@ -29,6 +29,7 @@ export interface BuffCondition {
 export interface BuffConditionOptions {
   selectedMachineOfWar?: SelectedMachineOfWar | null;
   custodedUsedAbilityThisTurn?: boolean;  // For Stand Vigil range extension
+  currentTurn?: number;  // For turn-cycling abilities like Serene Unifier
 }
 
 /**
@@ -484,6 +485,46 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmgPct}% dmg (Special Attacks)`,
+            isActive: character.abilityToggles[toggleId] ?? false,
+            category: 'aura',
+          });
+        }
+      }
+    }
+
+    // Serene Unifier (Aun'Shi passive) - turn-cycling aura buff
+    // Don't show for Aun'Shi himself (he doesn't get the bonus from his own aura)
+    if (teammate.passiveAbilities.includes('SereneUnifier')) {
+      if (character.id !== teammate.id) {
+        const levelIndex = teammate.abilityLevels?.['SereneUnifier'] ?? 54;
+        const values = getAbilityValues('SereneUnifier', levelIndex);
+        const abilityName = getAbilityNameSync('SereneUnifier');
+
+        if (values) {
+          const extraDmg = values.extraDmg as number || 0;
+
+          // Check character faction for range type
+          const isTau = character.faction === "T'au Empire" || character.faction === 'Tau';
+          const rangeType = isTau ? 'range2' : 'adjacent';
+          const rangeLabel = isTau ? `Range 2 from ${teammate.name}` : `Adjacent to ${teammate.name}`;
+
+          // Get current phase based on turn (1-indexed, cycles 1-2-3)
+          const turn = options?.currentTurn || 1;
+          const phase = ((turn - 1) % 3) + 1;  // 1, 2, 3, 1, 2, 3
+          const phaseNames = ['Sense of Stone', "Zephyr's Grace", 'Storm of Fire'];
+          const phaseName = phaseNames[phase - 1];
+
+          const toggleId = `SereneUnifier_${teammate.id}_${rangeType}`;
+
+          // Only show effect for Storm of Fire (phase 3)
+          const effect = phase === 3 ? `+${extraDmg} dmg (normal)` : 'No combat effect';
+
+          conditions.push({
+            id: toggleId,
+            label: rangeLabel,
+            source: `${abilityName} (${phaseName})`,
+            sourceCharacter: teammate.name,
+            effect,
             isActive: character.abilityToggles[toggleId] ?? false,
             category: 'aura',
           });

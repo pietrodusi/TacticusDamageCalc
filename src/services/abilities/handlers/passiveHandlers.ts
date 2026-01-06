@@ -683,6 +683,50 @@ export const StandVigilHandler: AbilityHandler = {
   },
 };
 
+/**
+ * SereneUnifier (Aun'Shi)
+ * Turn-cycling aura that provides different effects based on the current turn:
+ * - Turn 1, 4: Sense of Stone (no combat effect)
+ * - Turn 2, 5: Zephyr's Grace (no combat effect - movement buff ignored)
+ * - Turn 3, 6: Storm of Fire (+extraDmg to normal attacks)
+ *
+ * Range: Adjacent to Aun'Shi (non-Tau), Range 2 from Aun'Shi (Tau)
+ * Variables: extraDmg (damage bonus for Storm of Fire), dmgReductionPct (defensive, ignored)
+ * Note: Buff logic handled via sereneUnifierStormOfFireBuffTemplate in buffRegistry.ts
+ */
+export const SereneUnifierHandler: AbilityHandler = {
+  abilityId: 'SereneUnifier',
+  abilityName: 'Serene Unifier',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+
+    // Calculate current phase based on turn (1-indexed, cycles 1-2-3)
+    const turn = context.currentTurn || 1;
+    const phase = ((turn - 1) % 3) + 1;  // 1, 2, 3, 1, 2, 3
+    const phaseNames = ['Sense of Stone', "Zephyr's Grace", 'Storm of Fire'];
+    const phaseName = phaseNames[phase - 1];
+
+    // Storm of Fire (phase 3) is the only phase with combat effect
+    const isStormOfFire = phase === 3;
+
+    // This is an aura - the actual buff is applied via buff pool to team members
+    // The handler just provides metadata
+    return {
+      abilityId: 'SereneUnifier',
+      abilityName: getAbilityNameSync('SereneUnifier'),
+      modifiers: {},  // Aun'Shi doesn't benefit from own aura (no self-buff)
+      applicable: true,  // Always active
+      reason: isStormOfFire
+        ? `${phaseName}: +${extraDmg} dmg (allies' normal attacks)`
+        : `${phaseName}: No combat effect`,
+      requiresToggle: false,  // No toggle for Aun'Shi himself
+    };
+  },
+};
+
 // Export all passive handlers
 // Note: LegendaryCommander is now handled via the buff pool system (buffRegistry.ts)
 export const passiveHandlers: AbilityHandler[] = [
@@ -700,5 +744,6 @@ export const passiveHandlers: AbilityHandler[] = [
   GalvanicFieldHandler,
   LightImUpHandler,
   StandVigilHandler,
+  SereneUnifierHandler,
   // LegendaryCommanderHandler, // Removed: now using buff pool for team-wide LC application
 ];

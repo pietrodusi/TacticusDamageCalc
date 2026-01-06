@@ -37,10 +37,21 @@ export function BattleCharacterCard({
   const hasActedThisTurn = character.hasMoved && character.hasActed;
   const hasAnyAction = character.hasMoved || character.hasActed || character.hasUsedTheBetrayerThisTurn;
 
+  // Helper to get passive ability display name (with phase for Serene Unifier)
+  const getPassiveDisplayName = (passiveId: string): string => {
+    if (passiveId === 'SereneUnifier' && currentTurn) {
+      const phase = ((currentTurn - 1) % 3) + 1;  // 1, 2, 3, 1, 2, 3
+      const phaseNames = ['Sense of Stone', "Zephyr's Grace", 'Storm of Fire'];
+      const phaseName = phaseNames[phase - 1];
+      return `Serene Unifier (${phaseName})`;
+    }
+    return getAbilityNameSync(passiveId);
+  };
+
   // Get passive abilities for display
   const passiveAbilities = character.passiveAbilities.map(id => ({
     id,
-    name: getAbilityNameSync(id),
+    name: getPassiveDisplayName(id),
     description: getFormattedAbilityDescription(id, character.abilityLevels?.[id] ?? 54),
   }));
 
@@ -52,6 +63,7 @@ export function BattleCharacterCard({
   const buffConditionOptions: BuffConditionOptions = {
     selectedMachineOfWar,
     custodedUsedAbilityThisTurn,
+    currentTurn,
   };
   const showBuffConditions = hasBuffConditions(character, team, selectedMachineOfWar, buffConditionOptions);
   const buffConditions = showBuffConditions ? getCharacterBuffConditions(character, team, selectedMachineOfWar, buffConditionOptions) : [];

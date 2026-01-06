@@ -14,6 +14,7 @@ import {
   RepairTargetModal,
   AttackTypeModal,
   SummonCard,
+  InspiredToGreatnessModal,
 } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
 import { abilityEndsTurn, getAbilityValues } from '../services/abilities';
@@ -68,6 +69,7 @@ export function CalculatorPage() {
     setCharacterTurnEnded,
     executeRepairWithGalvanicField,
     markAbilityUsed,
+    refreshAbilityCooldown,
     setBossMarkerlight,
     removeSummon,
     updateSummonCount,
@@ -96,6 +98,14 @@ export function CalculatorPage() {
     selectedTargets: string[];
     attackTypeChoices: Record<string, 'melee' | 'ranged'>;
     pendingAttackChoiceTargets: string[];
+  } | null>(null);
+
+  // Inspired to Greatness modal state (for Aun'Shi's active ability)
+  const [inspiredToGreatnessModalOpen, setInspiredToGreatnessModalOpen] = useState(false);
+  const [inspiredToGreatnessContext, setInspiredToGreatnessContext] = useState<{
+    casterId: string;
+    hpToHeal: number;
+    hpToHeal_2: number;
   } | null>(null);
 
   // Get the active turn (editing turn or current turn)
@@ -284,6 +294,22 @@ export function CalculatorPage() {
             pendingAttackChoiceTargets: [],
           });
           setRepairModalOpen(true);
+          break;
+        }
+
+        // Special handling for InspiredToGreatness - opens target selection modal
+        if (abilityId === 'InspiredToGreatness') {
+          const itgLevelIndex = character.abilityLevels?.['InspiredToGreatness'] ?? 54;
+          const itgValues = getAbilityValues('InspiredToGreatness', itgLevelIndex);
+          const hpToHeal = (itgValues?.hpToHeal as number) || 0;
+          const hpToHeal_2 = (itgValues?.hpToHeal_2 as number) || 0;
+
+          setInspiredToGreatnessContext({
+            casterId: characterId,
+            hpToHeal,
+            hpToHeal_2,
+          });
+          setInspiredToGreatnessModalOpen(true);
           break;
         }
 
@@ -493,6 +519,59 @@ export function CalculatorPage() {
     setRepairModalOpen(false);
     setAttackTypeModalOpen(false);
     setRepairContext(null);
+  };
+
+  // Handle Inspired to Greatness target selection confirm
+  const handleInspiredToGreatnessConfirm = (targetId: string, hasUsedAbility: boolean) => {
+    if (!inspiredToGreatnessContext || !battleState) return;
+
+    const caster = battleState.team.find(c => c.id === inspiredToGreatnessContext.casterId);
+    const target = battleState.team.find(c => c.id === targetId);
+    if (!caster || !target) return;
+
+    const targetTurn = activeTurn;
+    const healAmount = hasUsedAbility
+      ? inspiredToGreatnessContext.hpToHeal
+      : inspiredToGreatnessContext.hpToHeal_2;
+
+    // Only modify current turn flags if not editing past turn
+    if (!isEditingPastTurn) {
+      setCharacterActed(inspiredToGreatnessContext.casterId, true);
+      setCharacterTurnEnded(inspiredToGreatnessContext.casterId, true);
+      markAbilityUsed(inspiredToGreatnessContext.casterId, 'InspiredToGreatness');
+    }
+
+    // Log the Inspired to Greatness action
+    setBattleLog((prev) => [
+      ...prev,
+      {
+        timestamp: Date.now(),
+        characterId: inspiredToGreatnessContext.casterId,
+        characterName: caster.name,
+        action: 'ability' as const,
+        message: hasUsedAbility
+          ? `Inspired to Greatness inspires ${target.name}: +${healAmount} HP & ability re-use`
+          : `Inspired to Greatness heals ${target.name}: +${healAmount} HP`,
+        healing: healAmount,
+        turn: targetTurn,
+      },
+    ]);
+
+    // If target has used their ability, refresh their cooldown so they can use it again
+    if (hasUsedAbility && !isEditingPastTurn && target.activeAbilities.length > 0) {
+      const targetAbilityId = target.activeAbilities[0];
+      refreshAbilityCooldown(targetId, targetAbilityId);
+    }
+
+    // Close modal and clear context
+    setInspiredToGreatnessModalOpen(false);
+    setInspiredToGreatnessContext(null);
+  };
+
+  // Cancel Inspired to Greatness action
+  const handleInspiredToGreatnessCancel = () => {
+    setInspiredToGreatnessModalOpen(false);
+    setInspiredToGreatnessContext(null);
   };
 
   // Team setup mode
@@ -778,6 +857,19 @@ export function CalculatorPage() {
           onClose={handleRepairCancel}
           attacker={battleState.team.find(c => c.id === repairContext.pendingAttackChoiceTargets[0])!}
           onSelect={handleAttackTypeSelect}
+        />
+      )}
+
+      {/* Inspired to Greatness Modal (Aun'Shi's ability) */}
+      {inspiredToGreatnessContext && (
+        <InspiredToGreatnessModal
+          isOpen={inspiredToGreatnessModalOpen}
+          onClose={handleInspiredToGreatnessCancel}
+          caster={battleState.team.find(c => c.id === inspiredToGreatnessContext.casterId)!}
+          team={battleState.team}
+          hpToHeal={inspiredToGreatnessContext.hpToHeal}
+          hpToHeal_2={inspiredToGreatnessContext.hpToHeal_2}
+          onConfirm={handleInspiredToGreatnessConfirm}
         />
       )}
     </div>
