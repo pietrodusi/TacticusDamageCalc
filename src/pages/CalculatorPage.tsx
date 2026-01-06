@@ -72,6 +72,7 @@ export function CalculatorPage() {
     removeSummon,
     updateSummonCount,
     executeSummonAttack,
+    executeTheBetrayerBonus,
   } = useBattleStore();
 
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
@@ -363,6 +364,20 @@ export function CalculatorPage() {
     }
   };
 
+  // Handle The Betrayer execute action for Kharn
+  const handleExecuteBetrayer = (characterId: string) => {
+    if (!battleState) return;
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) return;
+
+    const targetTurn = activeTurn;
+
+    // Execute The Betrayer bonus attack (does NOT end turn)
+    const executeLog = executeTheBetrayerBonus(characterId);
+    setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
+  };
+
   // Helper to check if character has both melee and ranged attacks
   const hasBothAttacks = (char: BattleCharacter) => {
     const hasMelee = char.meleeHits > 0;
@@ -651,6 +666,7 @@ export function CalculatorPage() {
                   isSelected={selectedCharacterId === character.id}
                   currentTurn={battleState.turn}
                   selectedMachineOfWar={selectedMachineOfWar}
+                  custodedUsedAbilityThisTurn={battleState.custodedUsedAbilityThisTurn}
                   onSelect={() =>
                     setSelectedCharacterId(
                       selectedCharacterId === character.id ? null : character.id
@@ -659,6 +675,7 @@ export function CalculatorPage() {
                   onAction={(type) => handleAction(character.id, type)}
                   onUndo={() => handleUndoActions(character.id)}
                   onToggleAbility={(abilityId) => toggleAbility(character.id, abilityId)}
+                  onExecuteBetrayer={() => handleExecuteBetrayer(character.id)}
                 />
               );
             })}

@@ -6,12 +6,14 @@ import { getAbilityNameSync, getAbilityValues, executeActiveAbility, classifyAbi
 interface ActionPanelProps {
   character: BattleCharacter;
   onAction: (type: ActionType) => void;
+  onExecuteBetrayer?: () => void;
 }
 
-export function ActionPanel({ character, onAction }: ActionPanelProps) {
+export function ActionPanel({ character, onAction, onExecuteBetrayer }: ActionPanelProps) {
   const hasRanged = character.rangedHits !== undefined && character.rangedHits > 0;
   const hasActiveAbility = character.activeAbilities.length > 0;
   const hasMechanicTrait = character.traits.includes('Mechanic');
+  const hasTheBetrayerAbility = character.passiveAbilities?.includes('TheBetrayer') ?? false;
 
   // Get active ability info
   const activeAbilityId = character.activeAbilities[0];
@@ -88,6 +90,23 @@ export function ActionPanel({ character, onAction }: ActionPanelProps) {
 
   const abilityPreview = hasActiveAbility ? getAbilityDamagePreview() : null;
 
+  // Get Execute (The Betrayer) damage preview for Kharn
+  const getExecuteDamagePreview = () => {
+    if (!hasTheBetrayerAbility) return null;
+
+    const levelIndex = character.abilityLevels?.TheBetrayer ?? 54;
+    const values = getAbilityValues('TheBetrayer', levelIndex);
+    if (!values) return null;
+
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = 4;
+    return { avg: avgDmg, hits, total: avgDmg * hits };
+  };
+
+  const executePreview = hasTheBetrayerAbility ? getExecuteDamagePreview() : null;
+
   // Check if turn is ended (all actions disabled)
   const isTurnEnded = character.turnEnded;
 
@@ -121,6 +140,7 @@ export function ActionPanel({ character, onAction }: ActionPanelProps) {
   const rangedDamageTypeIcon = character.rangedDamageType
     ? getDamageTypeImageUrl(character.rangedDamageType)
     : undefined;
+  const eviscerateDamageTypeIcon = getDamageTypeImageUrl('Eviscerate');
 
   return (
     <div className="space-y-2">
@@ -168,7 +188,7 @@ export function ActionPanel({ character, onAction }: ActionPanelProps) {
       </div>
 
       {/* Other Actions */}
-      <div className={`grid gap-2 ${hasMechanicTrait ? 'grid-cols-4' : 'grid-cols-3'}`}>
+      <div className={`grid gap-2 ${hasMechanicTrait || hasTheBetrayerAbility ? 'grid-cols-4' : 'grid-cols-3'}`}>
         {/* Move */}
         <button
           onClick={() => !isTurnEnded && !character.hasMoved && onAction('move')}
@@ -237,6 +257,30 @@ export function ActionPanel({ character, onAction }: ActionPanelProps) {
           <Clock size={18} />
           <span className="text-xs font-medium">Wait</span>
         </button>
+
+        {/* The Betrayer (bonus attack for Kharn) */}
+        {hasTheBetrayerAbility && onExecuteBetrayer && (
+          <button
+            onClick={() => !isTurnEnded && !character.hasUsedTheBetrayerThisTurn && onExecuteBetrayer()}
+            disabled={isTurnEnded || character.hasUsedTheBetrayerThisTurn}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              isTurnEnded || character.hasUsedTheBetrayerThisTurn ? disabledClasses : 'hover:bg-orange-900/50 hover:border-orange-600 text-orange-500'
+            }`}
+            title="The Betrayer: Bonus attack when enemy defeated (4x Eviscerate)"
+          >
+            <div className="flex items-center gap-1">
+              {eviscerateDamageTypeIcon && (
+                <img src={eviscerateDamageTypeIcon} alt="Eviscerate" className="w-5 h-5" />
+              )}
+              <span className="text-xs font-medium">The Betrayer</span>
+            </div>
+            {executePreview && (
+              <span className="text-[10px] text-gray-400">
+                ~{executePreview.total.toLocaleString()} dmg
+              </span>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

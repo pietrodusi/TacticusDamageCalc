@@ -24,6 +24,14 @@ export interface BuffCondition {
 }
 
 /**
+ * Options for buff condition generation
+ */
+export interface BuffConditionOptions {
+  selectedMachineOfWar?: SelectedMachineOfWar | null;
+  custodedUsedAbilityThisTurn?: boolean;  // For Stand Vigil range extension
+}
+
+/**
  * Get all buff conditions applicable to a character
  * This combines own passive conditions and aura conditions from teammates
  * @param selectedMachineOfWar - Optional selected Machine of War for dynamic damage bonus
@@ -31,7 +39,8 @@ export interface BuffCondition {
 export function getCharacterBuffConditions(
   character: BattleCharacter,
   team: BattleCharacter[],
-  selectedMachineOfWar?: SelectedMachineOfWar | null
+  selectedMachineOfWar?: SelectedMachineOfWar | null,
+  options?: BuffConditionOptions
 ): BuffCondition[] {
   const conditions: BuffCondition[] = [];
 
@@ -76,7 +85,7 @@ export function getCharacterBuffConditions(
   conditions.push(...getAtlacoyaConditions(character, team));
 
   // Add aura conditions from teammates
-  conditions.push(...getAuraConditions(character, team));
+  conditions.push(...getAuraConditions(character, team, options));
 
   return conditions;
 }
@@ -200,7 +209,8 @@ function getAtlacoyaConditions(character: BattleCharacter, team: BattleCharacter
  */
 function getAuraConditions(
   character: BattleCharacter,
-  team: BattleCharacter[]
+  team: BattleCharacter[],
+  options?: BuffConditionOptions
 ): BuffCondition[] {
   const conditions: BuffCondition[] = [];
 
@@ -449,6 +459,37 @@ function getAuraConditions(
         }
       }
     }
+
+    // Stand Vigil (Aesoth passive) - damage bonus for Special Attacks
+    // Don't show for Aesoth himself (he doesn't get the bonus from his own aura)
+    if (teammate.passiveAbilities.includes('StandVigil')) {
+      if (character.id !== teammate.id) {
+        const levelIndex = teammate.abilityLevels?.['StandVigil'] ?? 54;
+        const values = getAbilityValues('StandVigil', levelIndex);
+        const abilityName = getAbilityNameSync('StandVigil');
+
+        if (values) {
+          const extraDmgPct = values.extraDmgPct as number || 0;
+          const toggleId = `StandVigil_${teammate.id}`;
+
+          // Dynamic label based on whether a Custodes used an ability this turn
+          const rangeExtended = options?.custodedUsedAbilityThisTurn ?? false;
+          const label = rangeExtended
+            ? `Range 2 from ${teammate.name}`
+            : `Adjacent to ${teammate.name}`;
+
+          conditions.push({
+            id: toggleId,
+            label,
+            source: abilityName,
+            sourceCharacter: teammate.name,
+            effect: `+${extraDmgPct}% dmg (Special Attacks)`,
+            isActive: character.abilityToggles[toggleId] ?? false,
+            category: 'aura',
+          });
+        }
+      }
+    }
   }
 
   return conditions;
@@ -536,7 +577,8 @@ function getBossRange2FromEldryonCondition(
 export function hasBuffConditions(
   character: BattleCharacter,
   team: BattleCharacter[],
-  selectedMachineOfWar?: SelectedMachineOfWar | null
+  selectedMachineOfWar?: SelectedMachineOfWar | null,
+  options?: BuffConditionOptions
 ): boolean {
-  return getCharacterBuffConditions(character, team, selectedMachineOfWar).length > 0;
+  return getCharacterBuffConditions(character, team, selectedMachineOfWar, options).length > 0;
 }

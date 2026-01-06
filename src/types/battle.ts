@@ -55,6 +55,8 @@ export interface BattleCharacter extends TeamMember {
   drachnyenHits?: number;
   // Darkstrider's Fighting Retreat ability tracking
   fightingRetreatActive?: boolean;  // When true, RangedSpecialist applies regardless of adjacency toggle
+  // Kharn's The Betrayer manual trigger tracking
+  hasUsedTheBetrayerThisTurn?: boolean;  // When true, The Betrayer bonus attack cannot be used again this turn
 }
 
 export interface Buff {
@@ -213,6 +215,8 @@ export interface BattleState {
   bossHasMarkerlight: boolean;
   // Count of active abilities used in battle (for Atlacoya's TalonsOfTheEmperor scaling)
   activeAbilitiesUsedCount: number;
+  // Track if a Custodes character used an Active Ability this turn (for Stand Vigil range extension)
+  custodedUsedAbilityThisTurn: boolean;
   // Prophet of Gork and Mork (Ghazghkull) - damage reduction after X attacks per turn
   bossAttacksReceivedThisTurn: number;
   prophetOfGorkAndMork?: {

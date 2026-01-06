@@ -270,8 +270,12 @@ export function BattleLog({ entries, currentTurn, editingTurn, isComplete, onUnd
         const isEditing = editingTurn === turn;
         const isPastTurn = turn < currentTurn;
 
-        // Calculate turn damage summary for collapsed view
-        const turnDamage = turnEntries.reduce((sum, e) => sum + (e.damageBreakdown?.damage || e.damage || 0), 0);
+        // Calculate turn damage summary for collapsed view (including follow-up attacks)
+        const turnDamage = turnEntries.reduce((sum, e) => {
+          const mainDamage = e.damageBreakdown?.damage || e.damage || 0;
+          const followUpDamage = e.followUpAttacks?.reduce((fSum, f) => fSum + (f.damage || 0), 0) || 0;
+          return sum + mainDamage + followUpDamage;
+        }, 0);
 
         return (
           <div key={turn}>
@@ -300,7 +304,7 @@ export function BattleLog({ entries, currentTurn, editingTurn, isComplete, onUnd
                 {/* Show damage summary when collapsed */}
                 {!isExpanded && turnDamage > 0 && (
                   <span className="text-gray-500 font-normal ml-2">
-                    — {turnDamage.toLocaleString()} avg dmg
+                    — {turnDamage.toLocaleString()} dmg
                   </span>
                 )}
               </div>

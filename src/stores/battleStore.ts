@@ -129,6 +129,9 @@ interface BattleStore {
   removeSummon: (summonId: string) => void;
   updateSummonCount: (summonId: string, count: number) => void;
   executeSummonAttack: (summonId: string, attackType: 'melee' | 'ranged') => BattleLogEntry;
+
+  // Special ability executions
+  executeTheBetrayerBonus: (characterId: string) => BattleLogEntry;
 }
 
 export const useBattleStore = create<BattleStore>((set, get) => ({
@@ -217,6 +220,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Initialize Stand Vigil aura buff if Aesoth is in team
+    const aesoth = battleCharacters.find(c => c.passiveAbilities.includes('StandVigil'));
+    if (aesoth) {
+      const svTemplate = getBuffTemplate('stand_vigil');
+      const svValues = getAbilityValues('StandVigil', aesoth.abilityLevels?.StandVigil ?? 54);
+
+      if (svValues && svTemplate) {
+        buffPool = addBuffToPool(buffPool, svTemplate, aesoth, svValues as Record<string, number>, 1);
+      }
+    }
+
     // Initialize Prophet of Gork and Mork if boss has the passive ability
     let prophetOfGorkAndMork: BattleState['prophetOfGorkAndMork'] = undefined;
     if (boss?.passiveAbilities?.includes('ProphetOfGorkAndMork')) {
@@ -255,6 +269,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       bossArmorReduction: 0, // Cumulative boss armor reduction from abilities
       bossHasMarkerlight: false, // Markerlight debuff on boss
       activeAbilitiesUsedCount: 0, // Count of active abilities used in battle
+      custodedUsedAbilityThisTurn: false, // Track if Custodes used ability (Stand Vigil range extension)
       bossAttacksReceivedThisTurn: 0, // Prophet of Gork and Mork counter
       prophetOfGorkAndMork, // Prophet ability data (if boss has it)
       // Machine of War damage bonus
@@ -309,6 +324,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       hasUsedFirstSpecialAttackThisTurn: false,  // Reset per-character LC +2 hits tracking
       // Reset Darkstrider's Fighting Retreat flag for new turn
       fightingRetreatActive: false,
+      // Reset The Betrayer usage for new turn
+      hasUsedTheBetrayerThisTurn: false,
       // Increment attackTurnsCount if character attacked this turn (for LegacyOfCombat bonus)
       attackTurnsCount: char.attacksThisTurn > 0 ? char.attackTurnsCount + 1 : char.attackTurnsCount,
       // Advance ability cooldowns
@@ -347,6 +364,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       isComplete,
       // Reset Prophet of Gork and Mork attack counter for new turn
       bossAttacksReceivedThisTurn: 0,
+      // Reset Custodes ability usage for new turn (Stand Vigil range extension)
+      custodedUsedAbilityThisTurn: false,
     };
 
     set({
@@ -3518,6 +3537,15 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }));
     }
 
+    // Track Custodes ability usage for Stand Vigil range extension
+    if (character.faction === 'Custodes') {
+      set((state) => ({
+        battleState: state.battleState
+          ? { ...state.battleState, custodedUsedAbilityThisTurn: true }
+          : null,
+      }));
+    }
+
     return {
       timestamp: Date.now(),
       characterId,
@@ -3807,6 +3835,317 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       damageBreakdown,
       message: `${summon.name} deals ${totalDamage.toLocaleString()} ${damageType} damage`,
       attackType,
+    };
+  },
+
+  /**
+   * Execute The Betrayer bonus attack (Kharn)
+   * Manual trigger for the "enemy defeated" bonus attack: 4x Eviscerate hits
+   * Does NOT end Kharn's turn, but can only be used once per turn
+   */
+  executeTheBetrayerBonus: (characterId) => {
+    const { battleState } = get();
+    if (!battleState || !battleState.boss) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'No battle in progress',
+      };
+    }
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'Character not found',
+      };
+    }
+
+    // Get TheBetrayer ability values
+    const levelIndex = character.abilityLevels?.TheBetrayer ?? 54;
+    const abilityValues = getAbilityValues('TheBetrayer', levelIndex);
+    if (!abilityValues) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: character.name,
+        action: 'ability' as const,
+        message: 'The Betrayer ability not found',
+      };
+    }
+
+    const minDamage = abilityValues.minDmg as number || 0;
+    const maxDamage = abilityValues.maxDmg as number || 0;
+    const avgDamage = Math.round((minDamage + maxDamage) / 2);
+    const hits = 4;  // Fixed 4 hits for The Betrayer
+    const damageType: DamageType = 'Eviscerate';
+    const attackType = 'melee';
+
+    // Calculate boss armor
+    const bossBaseArmor = battleState.boss.armor || 0;
+    const bossArmorReduction = battleState.bossArmorReduction || 0;
+    const bossArmor = Math.max(0, bossBaseArmor - bossArmorReduction);
+
+    // Get equipment stats for crit calculation
+    const equipmentStats = calculateEquipmentStats(character.equipment);
+    const ignoreCrit = battleState.ignoreCrit || false;
+
+    // === BUFF EVALUATION (same as executeAttack) ===
+
+    // Build buff pool evaluation context (special attack from passive ability)
+    const buffEvalContext: BuffEvaluationContext = {
+      attacker: character,
+      attackType,
+      attackCategory: 'special',
+      target: battleState.boss,
+      battleState,
+    };
+
+    // Get applicable buffs from the pool
+    const applicablePoolBuffs = getApplicableBuffs(battleState.buffPool, buffEvalContext);
+    const poolBuffEffects = combineBuffEffects(applicablePoolBuffs);
+
+    // Combine pool buffs with character's active buffs
+    const buffCritChanceBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critChanceBonus || 0), 0
+    ) + (poolBuffEffects.critChanceBonus || 0);
+    const buffDamageMultiplier = character.activeBuffs.reduce(
+      (mult, buff) => mult * (buff.baseDamageMultiplier || 1), 1
+    ) * (poolBuffEffects.baseDamageMultiplier || 1);
+    const buffDamageBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.baseDamageBonus || 0), 0
+    ) + (poolBuffEffects.baseDamageBonus || 0);
+    const poolExtraHits = poolBuffEffects.extraHits || 0;
+    const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
+    const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
+    const poolPierceRatioBonus = poolBuffEffects.pierceRatioBonus || 0;
+
+    // War Machine: dynamic damage multiplier based on selected Machine of War
+    const warMachineMultiplier = character.abilityToggles['WarMachine'] && battleState.machineOfWar
+      ? 1 + battleState.machineOfWar.extraDmgPct / 100
+      : 1;
+
+    // Build attacker stats for damage calculation
+    const attackerStats: AttackerStats = {
+      baseDamage: avgDamage,
+      damageType,
+      hits,
+      critChance: (equipmentStats.critChance || 0) + (equipmentStats.critChanceBonus || 0),
+      critDamage: (equipmentStats.critDmg || 0) + (equipmentStats.critDmgBonus || 0),
+      critChanceBonus: 0,  // Buff crit bonus is passed via abilityModifiers
+      critDmgBonus: 0,
+      ignoreCrit,
+      traits: character.traits,
+      hasMoved: character.hasMoved,
+      attackType,
+      hasAttackedThisBattle: character.hasAttackedThisBattle,
+      attacksThisTurn: character.attacksThisTurn,
+      firstAttackTurn: character.firstAttackTurn ?? battleState.turn,
+      currentTurn: battleState.turn,
+      abilityToggles: character.abilityToggles,
+    };
+
+    // Find Trajann for LC +2 hits check
+    const trajann = battleState.team.find(c => c.passiveAbilities.includes('LegendaryCommander'));
+    const trajannIsAdjacentToBoss = trajann?.abilityToggles['adjacentToBoss'] ?? false;
+
+    // Evaluate passive abilities
+    const passiveResult = evaluatePassiveAbilities(
+      character.passiveAbilities,
+      character.abilityLevels || {},
+      {
+        characterId: character.id,
+        hasMoved: character.hasMoved,
+        hasActedThisBattle: character.hasAttackedThisBattle,
+        attacksThisTurn: character.attacksThisTurn,
+        attackTurnsCount: character.attackTurnsCount,
+        hasUsedAbilityThisTurn: character.hasUsedAbilityThisTurn,
+        hasQualifiedForLCDamage: character.hasQualifiedForLCDamage,
+        currentHealth: character.currentHealth,
+        maxHealth: character.calculatedHealth,
+        currentTurn: battleState.turn,
+        attackType,
+        attackCategory: 'special',
+        isFirstSpecialAttackOfTurn: !character.hasUsedFirstSpecialAttackThisTurn,
+        trajannIsAdjacentToBoss,
+        abilityToggles: character.abilityToggles,
+        bossTraits: battleState.boss?.traits,
+        bossDebuffs: battleState.bossHasMarkerlight ? ['Markerlight'] : [],
+      }
+    );
+
+    // Combine passive ability modifiers
+    const passiveModifiers = passiveResult.evaluations
+      .filter(e => e.applicable)
+      .map(e => e.modifiers);
+
+    // Get aura bonuses from teammates
+    const auraBonuses = getCharacterAuraBonuses(character, battleState.team);
+    const activeAuras = auraBonuses.filter(a => {
+      if (!a.isActive) return false;
+      if (a.attackTypeRestriction && a.attackTypeRestriction !== attackType) return false;
+      return true;
+    });
+    const auraModifiers = activeAuras.map(a => a.modifiers || {});
+
+    // Build buff sources for display
+    type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number; pierceRatioBonus?: number };
+    const buffSources: BuffSourceType[] = [];
+
+    // Add aura sources
+    for (const a of activeAuras) {
+      const source: BuffSourceType = { name: a.abilityName, sourceName: a.sourceCharacterName || 'Unknown' };
+      if (a.modifiers?.baseDamageBonus) source.damageBonus = a.modifiers.baseDamageBonus;
+      if (a.modifiers?.extraHits) source.extraHits = a.modifiers.extraHits;
+      if (a.modifiers?.critChanceBonus) source.critChanceBonus = a.modifiers.critChanceBonus;
+      if (a.modifiers?.critDamageBonus) source.critDamageBonus = a.modifiers.critDamageBonus;
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus) {
+        buffSources.push(source);
+      }
+    }
+
+    // Add passive ability sources
+    for (const evaluation of passiveResult.evaluations) {
+      if (evaluation.applicable && evaluation.modifiers) {
+        const source: BuffSourceType = { name: evaluation.abilityName };
+        if (evaluation.modifiers.baseDamageBonus) source.damageBonus = evaluation.modifiers.baseDamageBonus;
+        if (evaluation.modifiers.extraHits) source.extraHits = evaluation.modifiers.extraHits;
+        if (evaluation.modifiers.critDamageBonus) source.critDamageBonus = evaluation.modifiers.critDamageBonus;
+        if (evaluation.modifiers.critChanceBonus) source.critChanceBonus = evaluation.modifiers.critChanceBonus;
+        if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus) {
+          buffSources.push(source);
+        }
+      }
+    }
+
+    // Add pool buff sources
+    for (const poolBuff of applicablePoolBuffs) {
+      const source: BuffSourceType = { name: poolBuff.name };
+      if (poolBuff.effects.baseDamageBonus) source.damageBonus = poolBuff.effects.baseDamageBonus;
+      if (poolBuff.effects.extraHits) source.extraHits = poolBuff.effects.extraHits;
+      if (poolBuff.effects.critChanceBonus) source.critChanceBonus = poolBuff.effects.critChanceBonus;
+      if (poolBuff.effects.critDamageBonus) source.critDamageBonus = poolBuff.effects.critDamageBonus;
+      if (poolBuff.effects.baseDamageMultiplier && poolBuff.effects.baseDamageMultiplier !== 1) {
+        source.damageMultiplier = poolBuff.effects.baseDamageMultiplier;
+      }
+      if (poolBuff.effects.armorIgnored) source.armorIgnored = poolBuff.effects.armorIgnored;
+      if (poolBuff.effects.pierceRatioBonus) source.pierceRatioBonus = poolBuff.effects.pierceRatioBonus;
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus || source.damageMultiplier || source.armorIgnored || source.pierceRatioBonus) {
+        buffSources.push(source);
+      }
+    }
+
+    // Add Machine of War buff source
+    if (warMachineMultiplier > 1 && battleState.machineOfWar) {
+      buffSources.push({
+        name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
+        damageMultiplier: warMachineMultiplier,
+      });
+    }
+
+    // Combine all modifiers
+    const combinedMods = combineModifiers([...passiveModifiers, ...auraModifiers]);
+    const totalCritChanceBonus = (combinedMods.critChanceBonus || 0) + buffCritChanceBonus;
+    const buffCritDmgBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critDamageBonus || 0), 0
+    ) + poolCritDmgBonus;
+    const buffExtraHits = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.extraHits || 0), 0
+    ) + poolExtraHits;
+    const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * warMachineMultiplier;
+    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus;
+    const totalArmorIgnored = (combinedMods.armorIgnored || 0) + poolArmorIgnored;
+
+    attackerStats.abilityModifiers = {
+      ...combinedMods,
+      baseDamageBonus: totalDamageBonus > 0 ? totalDamageBonus : undefined,
+      baseDamageMultiplier: totalDamageMultiplier !== 1 ? totalDamageMultiplier : undefined,
+      critChanceBonus: totalCritChanceBonus > 0 ? totalCritChanceBonus : undefined,
+      critDamageBonus: (combinedMods.critDamageBonus || 0) + buffCritDmgBonus > 0 ? (combinedMods.critDamageBonus || 0) + buffCritDmgBonus : undefined,
+      extraHits: (combinedMods.extraHits || 0) + buffExtraHits > 0 ? (combinedMods.extraHits || 0) + buffExtraHits : undefined,
+      armorIgnored: totalArmorIgnored > 0 ? totalArmorIgnored : undefined,
+      pierceRatioBonus: poolPierceRatioBonus > 0 ? poolPierceRatioBonus : undefined,
+      buffSources,
+    };
+
+    // Defender stats (boss)
+    const defenderStats: DefenderStats = {
+      armor: bossArmor,
+      maxHealth: battleState.boss?.health ?? 100000,
+      traits: battleState.boss.traits,
+    };
+
+    // Calculate damage
+    const calculator = new DamageCalculator(true);
+    const result = calculator.calculate(attackerStats, defenderStats);
+
+    console.group(`=== The Betrayer Execute (${character.name}) ===`);
+    console.log(`Base Damage: ${avgDamage} (${minDamage}-${maxDamage})`);
+    console.log(`Hits: ${hits}`);
+    console.log(`Damage Type: ${damageType}`);
+    if (buffSources.length > 0) {
+      console.log(`Active Buffs: ${buffSources.map(b => b.name).join(', ')}`);
+    }
+    calculator.printLogs();
+    console.groupEnd();
+
+    // Update battle state (set hasUsedTheBetrayerThisTurn = true)
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            totalDamageDealt: state.battleState.totalDamageDealt + result.damage,
+            team: state.battleState.team.map((c) =>
+              c.id === characterId
+                ? { ...c, totalDamageDealt: c.totalDamageDealt + result.damage, hasUsedTheBetrayerThisTurn: true }
+                : c
+            ),
+          }
+        : null,
+    }));
+
+    // Build damage breakdown for display
+    const damageBreakdown: DamageBreakdown = {
+      damage: result.damage,
+      perHitDamage: result.perHitDamage,
+      hits: result.totalHits,
+      baseDamage: avgDamage,
+      flatModifiers: result.flatModifiers,
+      flatModifierSources: result.flatModifierSources || [],
+      critBonus: result.critBonus,
+      critChanceSources: result.critChanceSources || [],
+      critDamageSources: result.critDamageSources || [],
+      extraHits: result.extraHits,
+      extraHitsSources: result.extraHitsSources || [],
+      damVarMod: result.damVarMod,
+      targetArmor: bossArmor,
+      afterArmor: result.afterArmor,
+      pierceRatio: result.pierceRatio,
+      pierceFloor: result.pierceFloor,
+      afterArmorPierce: result.afterArmorPierce,
+      globalMultiplier: result.globalMultiplier,
+      globalMultiplierSources: result.globalMultiplierSources || [],
+      baseCritChance: equipmentStats.critChance || 0,
+      baseCritDamage: equipmentStats.critDmg || 0,
+      critChanceBonus: equipmentStats.critChanceBonus || 0,
+      critDmgBonus: equipmentStats.critDmgBonus || 0,
+      critChance: result.effectiveCritChance,
+      critDamage: result.effectiveCritDamage,
+    };
+
+    return {
+      timestamp: Date.now(),
+      characterId,
+      characterName: character.name,
+      action: 'ability' as const,
+      damage: result.damage,
+      damageBreakdown,
+      message: `The Betrayer deals ${result.damage.toLocaleString()} damage (${hits}x ${damageType})`,
     };
   },
 }));

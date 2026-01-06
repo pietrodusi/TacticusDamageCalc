@@ -464,6 +464,38 @@ export const waaaghBuffTemplate: BuffTemplate = {
   requiredToggles: ['Waaagh_adjacent'],  // Generic toggle ID for non-Orks
 };
 
+/**
+ * StandVigil buff template (Aesoth passive aura)
+ * Grants +extraDmgPct% damage to Special Attacks for nearby allies
+ * - Default: Adjacent to Aesoth (toggle)
+ * - If Custodes used Active Ability this turn: Range 2 from Aesoth (same toggle, different label)
+ * Variables: extraDmgPct
+ */
+export const standVigilBuffTemplate: BuffTemplate = {
+  buffId: 'stand_vigil',
+  name: 'Stand Vigil',
+  sourceAbilityId: 'StandVigil',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      // Only applies to Special Attacks (NOT normal attacks)
+      // This includes 'ability' (active abilities) and 'special' (follow-up attacks, multi-component)
+      if (context.attackCategory === 'normal') return false;
+
+      // Does NOT apply to Aesoth himself
+      if (context.attacker.id === buff.sourceCharacterId) return false;
+
+      // Check toggle (same toggle ID whether adjacent or range 2)
+      const toggleId = `StandVigil_${buff.sourceCharacterId}`;
+      return context.attacker.abilityToggles?.[toggleId] ?? false;
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageMultiplier: 1 + ((values.extraDmgPct as number) || 0) / 100,
+  }),
+  // No duration - permanent aura-style buff (evaluated each attack)
+};
+
 // Registry of all buff templates by ability ID
 export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   WarHowl: warHowlBuffTemplate,
@@ -487,6 +519,8 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   daughter_of_the_abyss: daughterOfTheAbyssBuffTemplate,
   // Gulgortz abilities
   Waaagh: waaaghBuffTemplate,
+  // Aesoth abilities
+  stand_vigil: standVigilBuffTemplate,
 };
 
 /**

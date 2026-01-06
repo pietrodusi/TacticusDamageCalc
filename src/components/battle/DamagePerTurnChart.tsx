@@ -84,6 +84,21 @@ export function DamagePerTurnChart({ turnHistory, team }: DamagePerTurnChartProp
 
   const chartData = chartMode === 'cumulative' ? cumulativeData : perTurnData;
 
+  // Calculate max damage for Y-axis domain
+  const maxDamage = useMemo(() => {
+    let max = 0;
+    chartData.forEach((point) => {
+      team.forEach((char) => {
+        const value = point[char.name];
+        if (typeof value === 'number' && value > max) {
+          max = value;
+        }
+      });
+    });
+    // Add 10% padding to the top
+    return Math.ceil(max * 1.1);
+  }, [chartData, team]);
+
   // Don't render if no data
   if (chartData.length === 0) {
     return null;
@@ -135,7 +150,7 @@ export function DamagePerTurnChart({ turnHistory, team }: DamagePerTurnChartProp
           </button>
         </div>
       </div>
-      <div className="h-80">
+      <div className="h-96">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -152,7 +167,7 @@ export function DamagePerTurnChart({ turnHistory, team }: DamagePerTurnChartProp
               stroke="#9ca3af"
               tick={{ fill: '#9ca3af', fontSize: 12 }}
               tickFormatter={formatYAxis}
-              domain={[0, 500000]}
+              domain={[0, maxDamage || 'auto']}
             />
             <Tooltip
               contentStyle={{

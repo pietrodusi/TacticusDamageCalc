@@ -653,6 +653,36 @@ export const LightImUpHandler: AbilityHandler = {
   },
 };
 
+/**
+ * StandVigil (Aesoth)
+ * Passive aura that grants +extraDmgPct% damage to Special Attacks for nearby allies.
+ * - Default: Adjacent allies (toggle "Adjacent to Aesoth (Stand Vigil)")
+ * - If a Custodes uses an Active Ability this turn: Range 2 allies (toggle text changes)
+ * Variables: extraDmgPct
+ * Note: Buff logic handled via standVigilBuffTemplate in buffRegistry.ts
+ */
+export const StandVigilHandler: AbilityHandler = {
+  abilityId: 'StandVigil',
+  abilityName: 'Stand Vigil',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmgPct = values.extraDmgPct as number || 0;
+
+    // This is an aura - the actual buff is applied via buff pool to other team members
+    // The handler just provides metadata
+    return {
+      abilityId: 'StandVigil',
+      abilityName: getAbilityNameSync('StandVigil'),
+      modifiers: {},  // Aesoth doesn't benefit from his own aura
+      applicable: true,  // Always active
+      reason: `+${extraDmgPct}% dmg to allies' Special Attacks`,
+      requiresToggle: false,  // No toggle for Aesoth himself
+    };
+  },
+};
+
 // Export all passive handlers
 // Note: LegendaryCommander is now handled via the buff pool system (buffRegistry.ts)
 export const passiveHandlers: AbilityHandler[] = [
@@ -669,5 +699,6 @@ export const passiveHandlers: AbilityHandler[] = [
   ChampionOfTheFeastHandler,
   GalvanicFieldHandler,
   LightImUpHandler,
+  StandVigilHandler,
   // LegendaryCommanderHandler, // Removed: now using buff pool for team-wide LC application
 ];

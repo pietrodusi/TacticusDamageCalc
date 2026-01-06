@@ -696,6 +696,43 @@ export const TalonsOfTheEmperorHandler: AbilityHandler = {
 };
 
 /**
+ * VexillaMagnifica (Aesoth)
+ * Melee Physical damage attack (1 hit)
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Physical, nrOfHits: 1, cooldownTurns: 2
+ */
+export const VexillaMagnificaHandler: AbilityHandler = {
+  abilityId: 'VexillaMagnifica',
+  abilityName: 'Vexilla Magnifica',
+  category: 'damage',
+  cooldown: 2,
+  endsTurn: true,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('VexillaMagnifica');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 1;
+
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'VexillaMagnifica',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Physical' as DamageType,
+      },
+      message: abilityName,
+    };
+  },
+};
+
+/**
  * Waaagh! (Gulgortz)
  * Summons 3 Ork Boyz and grants a buff to all Orks (automatic) and non-Orks with "Adjacent to Gulgortz" toggle
  * Buff grants +extraDmg and +extraHit (1 hit) to the FIRST normal attack
@@ -757,5 +794,6 @@ export const activeHandlers: AbilityHandler[] = [
   FightingRetreatHandler,
   CrusadeOfWrathHandler,
   TalonsOfTheEmperorHandler,
+  VexillaMagnificaHandler,
   WaaaghHandler,
 ];

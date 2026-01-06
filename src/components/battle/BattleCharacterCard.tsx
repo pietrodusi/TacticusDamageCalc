@@ -3,7 +3,7 @@ import { User, CheckCircle, RotateCcw, Zap, Settings, Sparkles } from 'lucide-re
 import type { BattleCharacter, ActionType, SelectedMachineOfWar } from '../../types';
 import { ActionPanel } from './ActionPanel';
 import { getCharacterTraitBonuses, hasTraitBonuses } from '../../services/traitBonuses';
-import { getCharacterBuffConditions, hasBuffConditions } from '../../services/buffConditions';
+import { getCharacterBuffConditions, hasBuffConditions, type BuffConditionOptions } from '../../services/buffConditions';
 import { getAbilityNameSync, getFormattedAbilityDescription } from '../../services/abilities';
 
 interface BattleCharacterCardProps {
@@ -12,10 +12,12 @@ interface BattleCharacterCardProps {
   isSelected: boolean;
   currentTurn?: number;
   selectedMachineOfWar?: SelectedMachineOfWar | null;
+  custodedUsedAbilityThisTurn?: boolean;  // For Stand Vigil range extension
   onSelect: () => void;
   onAction: (type: ActionType) => void;
   onUndo: () => void;
   onToggleAbility?: (abilityId: string) => void;
+  onExecuteBetrayer?: () => void;  // For Kharn's The Betrayer bonus attack
 }
 
 export function BattleCharacterCard({
@@ -24,14 +26,16 @@ export function BattleCharacterCard({
   isSelected,
   currentTurn,
   selectedMachineOfWar,
+  custodedUsedAbilityThisTurn,
   onSelect,
   onAction,
   onUndo,
   onToggleAbility,
+  onExecuteBetrayer,
 }: BattleCharacterCardProps) {
   const [hoveredPassive, setHoveredPassive] = useState<string | null>(null);
   const hasActedThisTurn = character.hasMoved && character.hasActed;
-  const hasAnyAction = character.hasMoved || character.hasActed;
+  const hasAnyAction = character.hasMoved || character.hasActed || character.hasUsedTheBetrayerThisTurn;
 
   // Get passive abilities for display
   const passiveAbilities = character.passiveAbilities.map(id => ({
@@ -45,8 +49,12 @@ export function BattleCharacterCard({
   const traitBonuses = showTraitBonuses ? getCharacterTraitBonuses(character, currentTurn) : [];
 
   // Get buff conditions for display
-  const showBuffConditions = hasBuffConditions(character, team, selectedMachineOfWar);
-  const buffConditions = showBuffConditions ? getCharacterBuffConditions(character, team, selectedMachineOfWar) : [];
+  const buffConditionOptions: BuffConditionOptions = {
+    selectedMachineOfWar,
+    custodedUsedAbilityThisTurn,
+  };
+  const showBuffConditions = hasBuffConditions(character, team, selectedMachineOfWar, buffConditionOptions);
+  const buffConditions = showBuffConditions ? getCharacterBuffConditions(character, team, selectedMachineOfWar, buffConditionOptions) : [];
 
   return (
     <div
@@ -240,7 +248,7 @@ export function BattleCharacterCard({
       {/* Action Panel (only if selected) */}
       {isSelected && (
         <div className="mt-3 pt-3 border-t border-gray-700">
-          <ActionPanel character={character} onAction={onAction} />
+          <ActionPanel character={character} onAction={onAction} onExecuteBetrayer={onExecuteBetrayer} />
         </div>
       )}
     </div>

@@ -941,33 +941,27 @@ export function getBossStatModifiers(bossId: string): BossStatModifiers {
 
   if (!modEntry) return result;
 
-  // Collect all unique modifier IDs from all tracks
-  const allModifierIds = new Set<string>();
+  // Process all modifiers (including duplicates for stacking)
   for (const track of modEntry.modifiers) {
     for (const stage of track) {
       for (const modId of stage) {
-        allModifierIds.add(modId);
-      }
-    }
-  }
+        const modDetail = bossModDetails[modId];
+        if (!modDetail) continue;
 
-  // Process each modifier
-  for (const modId of allModifierIds) {
-    const modDetail = bossModDetails[modId];
-    if (!modDetail) continue;
-
-    // Only process stat modifiers that affect the boss directly
-    if (modDetail.type === 'bossStatPctDecrease') {
-      if (modDetail.target === 'fixedArmor') {
-        result.armorPctReduction += modDetail.amount;
-      } else if (modDetail.target === 'dmg') {
-        result.damagePctReduction += modDetail.amount;
-      } else if (modDetail.target === 'critDmg') {
-        // We could track this too if needed
-      }
-    } else if (modDetail.type === 'bossStatDecrease') {
-      if (modDetail.target === 'blockChance') {
-        result.blockChanceReduction += modDetail.amount;
+        // Only process stat modifiers that affect the boss directly
+        if (modDetail.type === 'bossStatPctDecrease') {
+          if (modDetail.target === 'fixedArmor') {
+            result.armorPctReduction += modDetail.amount;
+          } else if (modDetail.target === 'dmg') {
+            result.damagePctReduction += modDetail.amount;
+          } else if (modDetail.target === 'critDmg') {
+            // We could track this too if needed
+          }
+        } else if (modDetail.type === 'bossStatDecrease') {
+          if (modDetail.target === 'blockChance') {
+            result.blockChanceReduction += modDetail.amount;
+          }
+        }
       }
     }
   }
@@ -993,26 +987,20 @@ export function getBossAbilityConstantModifiers(
 
   if (!modEntry) return result;
 
-  // Collect all unique modifier IDs from all tracks
-  const allModifierIds = new Set<string>();
+  // Process all modifiers (including duplicates for stacking)
   for (const track of modEntry.modifiers) {
     for (const stage of track) {
       for (const modId of stage) {
-        allModifierIds.add(modId);
-      }
-    }
-  }
+        const modDetail = bossModDetails[modId];
+        if (!modDetail) continue;
 
-  // Process each modifier
-  for (const modId of allModifierIds) {
-    const modDetail = bossModDetails[modId];
-    if (!modDetail) continue;
-
-    // Only process ability constant increase modifiers for the target ability
-    if (modDetail.type === 'bossAbilityConstantIncrease' && modDetail.target === abilityId) {
-      const constantName = modDetail.subtarget;
-      if (constantName) {
-        result[constantName] = (result[constantName] || 0) + modDetail.amount;
+        // Only process ability constant increase modifiers for the target ability
+        if (modDetail.type === 'bossAbilityConstantIncrease' && modDetail.target === abilityId) {
+          const constantName = modDetail.subtarget;
+          if (constantName) {
+            result[constantName] = (result[constantName] || 0) + modDetail.amount;
+          }
+        }
       }
     }
   }

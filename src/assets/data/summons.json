@@ -13,7 +13,6 @@
                 "Range": 2
             }
         ],
-        "traits": ["Summon", "BattleFatigue"],
-        "activeAbilities": ["Stikkbomb"]
+        "traits": ["Summon", "BattleFatigue"]
     }
 }
