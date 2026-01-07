@@ -158,9 +158,15 @@ function DamageBreakdownDisplay({ breakdown, sourceName }: { breakdown: DamageBr
           </div>
         )}
         <div className="flex justify-between text-gray-400">
-          <span>Per Hit:</span>
+          <span>Per Hit{breakdown.totalBlockReduction && breakdown.totalBlockReduction > 0 ? ' - Block' : ''}:</span>
           <span>{breakdown.perHitDamage.toFixed(0)}</span>
         </div>
+        {breakdown.totalBlockReduction && breakdown.totalBlockReduction > 0 && (
+          <div className="flex justify-between text-purple-400/80">
+            <span>− Block (Daemon):</span>
+            <span>−{breakdown.blockReductionPerHit?.toFixed(0)}/hit × {breakdown.expectedBlocks?.toFixed(2)} = −{breakdown.totalBlockReduction?.toFixed(0)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-gray-400">
           <span>× Hits:</span>
           <span>{hitsText}</span>
@@ -261,7 +267,7 @@ export function BattleLog({ entries, currentTurn, editingTurn, isComplete, onUnd
 
   return (
     // Limit height on mobile, expand fully on desktop (lg breakpoint)
-    <div className="space-y-2 max-h-[500px] lg:max-h-none overflow-y-auto">
+    <div className="space-y-2 max-h-[300px] sm:max-h-[400px] lg:max-h-none overflow-y-auto">
       {Array.from({ length: currentTurn }, (_, i) => i + 1).map(turn => {
         const turnEntries = entriesByTurn[turn] || [];
         const isCurrent = turn === currentTurn;

@@ -70,14 +70,14 @@ export function BattleCharacterCard({
 
   return (
     <div
-      className={`card p-3 transition-all ${
+      className={`card p-3 transition-all cursor-pointer ${
         isSelected ? 'ring-2 ring-imperial-gold' : ''
       } ${character.hasActed ? 'ring-2 ring-green-500' : ''} ${hasActedThisTurn ? 'opacity-60' : ''}`}
+      onClick={onSelect}
     >
       {/* Header */}
       <div
-        className="flex items-center gap-3 cursor-pointer"
-        onClick={onSelect}
+        className="flex items-center gap-3 min-h-[44px]"
       >
         {/* Portrait */}
         <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -159,7 +159,7 @@ export function BattleCharacterCard({
                 </span>
                 {/* Tooltip */}
                 {hoveredPassive === passive.id && passive.description && (
-                  <div className="absolute z-50 bottom-full left-0 mb-1 w-64 p-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl text-xs text-gray-300 whitespace-pre-wrap">
+                  <div className="absolute z-50 bottom-full left-0 mb-1 w-56 sm:w-64 max-w-[calc(100vw-2rem)] p-2 bg-gray-900 border border-gray-700 rounded-lg shadow-xl text-xs text-gray-300 whitespace-pre-wrap">
                     <div className="font-medium text-purple-300 mb-1">{passive.name}</div>
                     <div>{passive.description}</div>
                   </div>

@@ -24,6 +24,7 @@ import {
   calculatePierceFloor,
   applyPierceMaximum,
   calculateExpectedCritsWithOffset,
+  calculateExpectedBlocks,
   calculateEffectiveCritChance,
   calculateEffectiveCritDamage,
   calculateTotalDamage,
@@ -490,8 +491,32 @@ export class DamageCalculator {
     }
     this.log('RESULT', 'Per Hit Damage', cappedPerHitDamage.toFixed(2));
 
-    // === STEP 7: Calculate Total Damage ===
-    const totalDamage = calculateTotalDamage(cappedPerHitDamage, effectiveHits);
+    // === STEP 7: Calculate Block Reduction (Daemon trait) ===
+    let expectedBlocks = 0;
+    let blockReductionPerHit = 0;
+    let totalBlockReduction = 0;
+
+    if (defender.daemonBlockChance && defender.daemonBlockChance > 0 && defender.daemonBlockMaxAmount) {
+      // Calculate expected blocks using same streak formula as crits
+      expectedBlocks = calculateExpectedBlocks(defender.daemonBlockChance, effectiveHits);
+
+      // Block reduces damage per hit by min(perHitDamage, maxBlockAmount)
+      blockReductionPerHit = Math.min(cappedPerHitDamage, defender.daemonBlockMaxAmount);
+
+      // Total block reduction = expected blocks × reduction per blocked hit
+      totalBlockReduction = expectedBlocks * blockReductionPerHit;
+
+      this.log('BLOCK', 'Block Chance (Daemon)', `${(defender.daemonBlockChance * 100).toFixed(0)}%`);
+      this.log('BLOCK', 'Max Block Amount (50% of Boss Dmg)', defender.daemonBlockMaxAmount.toFixed(0));
+      this.log('BLOCK', 'Expected Blocks (streak)', expectedBlocks.toFixed(3));
+      this.log('BLOCK', 'Streak Formula', `E[blocks] = ${(defender.daemonBlockChance * 100).toFixed(0)}% × (1 - ${(defender.daemonBlockChance * 100).toFixed(0)}%^${effectiveHits}) / (1 - ${(defender.daemonBlockChance * 100).toFixed(0)}%)`);
+      this.log('BLOCK', 'Block Reduction/Hit', `MIN(${cappedPerHitDamage.toFixed(0)}, ${defender.daemonBlockMaxAmount.toFixed(0)}) = ${blockReductionPerHit.toFixed(0)}`);
+      this.log('BLOCK', 'Total Block Reduction', `${expectedBlocks.toFixed(3)} × ${blockReductionPerHit.toFixed(0)} = ${totalBlockReduction.toFixed(0)}`);
+    }
+
+    // === STEP 8: Calculate Total Damage ===
+    const rawTotalDamage = calculateTotalDamage(cappedPerHitDamage, effectiveHits);
+    const totalDamage = rawTotalDamage - totalBlockReduction;
     const damage = Math.round(totalDamage);
 
     this.log('RESULT', `Total (${effectiveHits} hits)`, damage);
@@ -568,6 +593,11 @@ export class DamageCalculator {
             finalDamageCap: finalDamageCapApplied,
           }
         : undefined,
+
+      // Block reduction (Daemon trait)
+      expectedBlocks: expectedBlocks > 0 ? expectedBlocks : undefined,
+      blockReductionPerHit: blockReductionPerHit > 0 ? blockReductionPerHit : undefined,
+      totalBlockReduction: totalBlockReduction > 0 ? totalBlockReduction : undefined,
     };
   }
 }

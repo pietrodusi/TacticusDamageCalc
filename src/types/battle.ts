@@ -158,6 +158,11 @@ export interface DamageBreakdown {
   // Trait modifiers
   traitModifiers?: TraitModifierInfo[];
   traitMultiplier?: number;
+
+  // Block reduction (Daemon trait)
+  expectedBlocks?: number;
+  blockReductionPerHit?: number;
+  totalBlockReduction?: number;
 }
 
 // Follow-up attack log entry (from passives like LegacyOfCombat, TheBetrayer)

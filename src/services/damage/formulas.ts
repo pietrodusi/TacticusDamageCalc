@@ -91,6 +91,30 @@ export function calculateExpectedCrits(
 }
 
 /**
+ * Calculate expected number of blocks using streak-based formula
+ *
+ * Formula: E[blocks] = Σ(k=1 to n) p^k = p × (1 - p^n) / (1 - p)
+ *
+ * Blocks work the same as crits - if a block succeeds, the next hit
+ * also rolls for block, forming a chain.
+ *
+ * @param blockChance - Block chance as decimal (e.g., 0.25 for Daemon trait)
+ * @param hits - Number of hits
+ * @returns Expected number of blocked hits
+ */
+export function calculateExpectedBlocks(
+  blockChance: number,
+  hits: number
+): number {
+  if (blockChance <= 0 || hits <= 0) return 0;
+  if (blockChance >= 1) return hits;
+
+  const p = blockChance;
+  // E[blocks] = p + p^2 + ... + p^n = p × (1 - p^n) / (1 - p)
+  return p * (1 - Math.pow(p, hits)) / (1 - p);
+}
+
+/**
  * Calculate expected number of crits with hit offset (for chained crit streaks)
  *
  * Formula: E[crits] = p^startIndex + p^(startIndex+1) + ... + p^(startIndex+hits-1)

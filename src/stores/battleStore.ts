@@ -823,10 +823,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Use boss armor and traits if available, accounting for armor reduction
     const baseBossArmor = battleState.boss?.armor ?? 0;
     const bossArmor = Math.max(0, baseBossArmor - (battleState.bossArmorReduction || 0));
+
+    // Check if boss has Daemon trait for block mechanic
+    const hasDaemonTrait = battleState.boss?.traits?.includes('Daemon') ?? false;
+
     const defenderStats: DefenderStats = {
       armor: bossArmor,
       maxHealth: battleState.boss?.health ?? 100000,
       traits: battleState.boss?.traits,
+      // Daemon block stats
+      daemonBlockChance: hasDaemonTrait ? 0.25 : undefined,
+      daemonBlockMaxAmount: hasDaemonTrait ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
     };
 
     const calculator = new DamageCalculator(false);
@@ -1204,10 +1211,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Use boss armor and traits if available, accounting for armor reduction
     const baseBossArmor = battleState.boss?.armor ?? 0;
     const bossArmor = Math.max(0, baseBossArmor - (battleState.bossArmorReduction || 0));
+
+    // Check if boss has Daemon trait for block mechanic
+    const hasDaemonTraitExec = battleState.boss?.traits?.includes('Daemon') ?? false;
+
     const defenderStats: DefenderStats = {
       armor: bossArmor,
       maxHealth: battleState.boss?.health ?? 100000,
       traits: battleState.boss?.traits,
+      // Daemon block stats
+      daemonBlockChance: hasDaemonTraitExec ? 0.25 : undefined,
+      daemonBlockMaxAmount: hasDaemonTraitExec ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
     };
 
     // Calculate damage with logging enabled
@@ -1704,6 +1718,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           critDamage: followUpResult.effectiveCritDamage,
           traitModifiers: followUpResult.traitModifiers,
           traitMultiplier: followUpResult.traitMultiplier,
+          // Block reduction (Daemon trait)
+          expectedBlocks: followUpResult.expectedBlocks,
+          blockReductionPerHit: followUpResult.blockReductionPerHit,
+          totalBlockReduction: followUpResult.totalBlockReduction,
         };
 
         // Add Prophet of Gork and Mork to global multiplier if active
@@ -1966,6 +1984,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       critDamage: result.effectiveCritDamage,
       traitModifiers: result.traitModifiers,
       traitMultiplier: result.traitMultiplier,
+      // Block reduction (Daemon trait)
+      expectedBlocks: result.expectedBlocks,
+      blockReductionPerHit: result.blockReductionPerHit,
+      totalBlockReduction: result.totalBlockReduction,
     };
 
     // Add Prophet of Gork and Mork to global multiplier if active
@@ -2330,10 +2352,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // Use boss armor if available, accounting for armor reduction
       const baseBossArmor = battleState.boss?.armor ?? 0;
       const bossArmor = Math.max(0, baseBossArmor - (battleState.bossArmorReduction || 0));
+
+      // Check if boss has Daemon trait for block mechanic
+      const hasDaemonTraitAbility = battleState.boss?.traits?.includes('Daemon') ?? false;
+
       const defenderStats: DefenderStats = {
         armor: bossArmor,
         maxHealth: battleState.boss?.health ?? 100000,
         traits: battleState.boss?.traits,
+        // Daemon block stats
+        daemonBlockChance: hasDaemonTraitAbility ? 0.25 : undefined,
+        daemonBlockMaxAmount: hasDaemonTraitAbility ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
       };
 
       // Component attack logs (displayed like follow-up attacks with purple shading)
@@ -2530,6 +2559,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           critDamage: componentResult.effectiveCritDamage,
           traitModifiers: componentResult.traitModifiers,
           traitMultiplier: componentResult.traitMultiplier,
+          // Block reduction (Daemon trait)
+          expectedBlocks: componentResult.expectedBlocks,
+          blockReductionPerHit: componentResult.blockReductionPerHit,
+          totalBlockReduction: componentResult.totalBlockReduction,
         };
 
         // Add component as a follow-up attack log (displays with purple shading)
@@ -2686,10 +2719,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // Use boss armor if available, accounting for armor reduction
       const baseBossArmor = battleState.boss?.armor ?? 0;
       const bossArmor = Math.max(0, baseBossArmor - (battleState.bossArmorReduction || 0));
+
+      // Check if boss has Daemon trait for block mechanic
+      const hasDaemonTraitAbilityDmg = battleState.boss?.traits?.includes('Daemon') ?? false;
+
       const defenderStats: DefenderStats = {
         armor: bossArmor,
         maxHealth: battleState.boss?.health ?? 100000,
         traits: battleState.boss?.traits,
+        // Daemon block stats
+        daemonBlockChance: hasDaemonTraitAbilityDmg ? 0.25 : undefined,
+        daemonBlockMaxAmount: hasDaemonTraitAbilityDmg ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
       };
 
       // Calculate total damage and hit bonuses (LC + aura)
@@ -3213,10 +3253,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // Use boss armor and traits if available (accounting for armor reduction)
       const baseBossArmorFollowUp = battleState.boss?.armor ?? 0;
       const bossArmorFollowUp = Math.max(0, baseBossArmorFollowUp - (battleState.bossArmorReduction || 0));
+
+      // Check if boss has Daemon trait for block mechanic
+      const hasDaemonTraitFollowUp = battleState.boss?.traits?.includes('Daemon') ?? false;
+
       const defenderStats: DefenderStats = {
         armor: bossArmorFollowUp,
         maxHealth: battleState.boss?.health ?? 100000,
         traits: battleState.boss?.traits,
+        // Daemon block stats
+        daemonBlockChance: hasDaemonTraitFollowUp ? 0.25 : undefined,
+        daemonBlockMaxAmount: hasDaemonTraitFollowUp ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
       };
 
       // Track if LC +2 hits was applied to any follow-up attack (so subsequent follow-ups don't also get it)
@@ -3486,6 +3533,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           critDamage: followUpResult.effectiveCritDamage,
           traitModifiers: followUpResult.traitModifiers,
           traitMultiplier: followUpResult.traitMultiplier,
+          // Block reduction (Daemon trait)
+          expectedBlocks: followUpResult.expectedBlocks,
+          blockReductionPerHit: followUpResult.blockReductionPerHit,
+          totalBlockReduction: followUpResult.totalBlockReduction,
         };
 
         // Collect follow-up attack log for display
@@ -4105,11 +4156,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       buffSources,
     };
 
+    // Check if boss has Daemon trait for block mechanic
+    const hasDaemonTraitBetrayer = battleState.boss?.traits?.includes('Daemon') ?? false;
+
     // Defender stats (boss)
     const defenderStats: DefenderStats = {
       armor: bossArmor,
       maxHealth: battleState.boss?.health ?? 100000,
       traits: battleState.boss.traits,
+      // Daemon block stats
+      daemonBlockChance: hasDaemonTraitBetrayer ? 0.25 : undefined,
+      daemonBlockMaxAmount: hasDaemonTraitBetrayer ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
     };
 
     // Calculate damage
@@ -4168,6 +4225,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       critDmgBonus: equipmentStats.critDmgBonus || 0,
       critChance: result.effectiveCritChance,
       critDamage: result.effectiveCritDamage,
+      // Block reduction (Daemon trait)
+      expectedBlocks: result.expectedBlocks,
+      blockReductionPerHit: result.blockReductionPerHit,
+      totalBlockReduction: result.totalBlockReduction,
     };
 
     return {

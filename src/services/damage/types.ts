@@ -97,6 +97,9 @@ export interface DefenderStats {
   armor: number;
   maxHealth: number;
   traits?: string[];  // Target traits (e.g., BigTarget, Vehicle)
+  // Daemon trait block stats (passed from battleStore)
+  daemonBlockChance?: number;     // 0.25 for Daemon trait
+  daemonBlockMaxAmount?: number;  // bossDamage * 0.5
 }
 
 /**
@@ -188,6 +191,11 @@ export interface DamageResult {
     };
     finalDamageCap?: { original: number; capped: number };
   };
+
+  // Block reduction (Daemon trait)
+  expectedBlocks?: number;           // Expected number of blocked hits
+  blockReductionPerHit?: number;     // Damage blocked per hit (min of perHitDamage, maxBlockAmount)
+  totalBlockReduction?: number;      // Total damage blocked
 }
 
 /**

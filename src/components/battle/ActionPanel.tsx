@@ -188,7 +188,7 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer }: ActionPa
       </div>
 
       {/* Other Actions */}
-      <div className={`grid gap-2 ${hasMechanicTrait || hasTheBetrayerAbility ? 'grid-cols-4' : 'grid-cols-3'}`}>
+      <div className={`grid gap-2 ${hasMechanicTrait || hasTheBetrayerAbility ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
         {/* Move */}
         <button
           onClick={() => !isTurnEnded && !character.hasMoved && onAction('move')}
