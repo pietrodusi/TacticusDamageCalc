@@ -599,5 +599,10 @@ export function getTeamRequiredToggles(team: BattleCharacter[]): Set<string> {
     }
   }
 
+  // Special case: OptimizedGait (Exitor-Rho) requires adjacentToBoss for reaction trigger
+  if (team.some(c => c.passiveAbilities.includes('OptimizedGait'))) {
+    toggles.add('adjacentToBoss');
+  }
+
   return toggles;
 }

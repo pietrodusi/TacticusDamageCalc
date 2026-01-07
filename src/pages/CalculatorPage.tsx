@@ -824,6 +824,7 @@ export function CalculatorPage() {
               currentTurn={battleState.turn}
               editingTurn={editingTurn}
               isComplete={battleState.isComplete}
+              team={battleState.team}
               onUndoCharacterTurn={handleUndoCharacterTurn}
               onEditTurn={setEditingTurn}
             />

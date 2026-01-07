@@ -775,6 +775,57 @@ export const WaaaghHandler: AbilityHandler = {
 };
 
 /**
+ * Chordclaw (Exitor-Rho)
+ * Melee DirectDamage attack (4 hits) that grants a buff for 2 turns.
+ * The buff adds a follow-up attack (2x DirectDamage) to ALL of Exitor-Rho's attacks.
+ * Variables: minDmg, maxDmg, minDmg_2, maxDmg_2
+ * Constants: nrOfHits: 4, nrOfHits_2: 2, damageProfile: DirectDamage
+ */
+export const CordClawHandler: AbilityHandler = {
+  abilityId: 'CordClaw',
+  abilityName: 'Chordclaw',
+  category: 'damage',
+  cooldown: -1,  // One-time use per battle
+  endsTurn: true,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('CordClaw');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 4;
+
+    // Buff values for follow-up attack on future attacks
+    const nrOfHits_2 = values.nrOfHits_2 as number || 2;
+    const avgDmg_2 = Math.round(((values.minDmg_2 as number || 0) + (values.maxDmg_2 as number || 0)) / 2);
+
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'CordClaw',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'DirectDamage' as DamageType,
+      },
+      // Buff that grants follow-up attack to all future attacks for 2 turns
+      // Note: The actual follow-up damage values are stored directly on the character
+      // in battleStore.ts when this ability executes
+      buffResult: {
+        effect: {
+          // The buff itself has no stat effects - it just signals the follow-up attack buff is active
+        },
+        duration: 2,  // This turn + next turn
+      },
+      message: `${abilityName}: ${hits}x ${avgDmg} DirectDamage + buff (${nrOfHits_2}x ${avgDmg_2} DirectDamage for 2 turns)`,
+    };
+  },
+};
+
+/**
  * InspiredToGreatness (Aun'Shi)
  * Enables a friendly unit to use their active ability again, at the lowest level between
  * their ability and Inspired to Greatness. Also heals the target.
@@ -832,4 +883,5 @@ export const activeHandlers: AbilityHandler[] = [
   VexillaMagnificaHandler,
   WaaaghHandler,
   InspiredToGreatnessHandler,
+  CordClawHandler,
 ];

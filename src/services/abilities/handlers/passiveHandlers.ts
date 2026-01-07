@@ -727,6 +727,46 @@ export const SereneUnifierHandler: AbilityHandler = {
   },
 };
 
+/**
+ * OptimizedGait (Exitor-Rho)
+ * Reaction passive: When another friendly Mechanical unit attacks the boss while
+ * Exitor-Rho is adjacent to the boss, Exitor-Rho deals 2x Energy damage.
+ * This is a SPECIAL attack (gets LC bonuses).
+ * Variables: minDmg, maxDmg
+ * Constants: nrOfHits: 2, damageProfile: Energy
+ * Note: The actual reaction trigger is handled in battleStore.executeAttack()
+ */
+export const OptimizedGaitHandler: AbilityHandler = {
+  abilityId: 'OptimizedGait',
+  abilityName: 'Optimised Gait',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 2;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    // Check if Exitor-Rho is adjacent to boss
+    const isAdjacentToBoss = context.abilityToggles['adjacentToBoss'] ?? false;
+
+    // This passive provides metadata - the actual reaction trigger is in battleStore
+    // when another Mechanical unit attacks
+    return {
+      abilityId: 'OptimizedGait',
+      abilityName: getAbilityNameSync('OptimizedGait'),
+      modifiers: {},  // No modifiers to Exitor-Rho's own attacks
+      applicable: isAdjacentToBoss,
+      reason: isAdjacentToBoss
+        ? `Reaction: ${hits}x ${avgDmg} Energy when Mechanical ally attacks boss`
+        : 'Requires adjacent to boss',
+      requiresToggle: true,
+      toggleLabel: 'Adjacent to Boss',
+    };
+  },
+};
+
 // Export all passive handlers
 // Note: LegendaryCommander is now handled via the buff pool system (buffRegistry.ts)
 export const passiveHandlers: AbilityHandler[] = [
@@ -745,5 +785,6 @@ export const passiveHandlers: AbilityHandler[] = [
   LightImUpHandler,
   StandVigilHandler,
   SereneUnifierHandler,
+  OptimizedGaitHandler,
   // LegendaryCommanderHandler, // Removed: now using buff pool for team-wide LC application
 ];

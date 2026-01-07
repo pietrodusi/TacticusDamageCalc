@@ -57,6 +57,12 @@ export interface BattleCharacter extends TeamMember {
   fightingRetreatActive?: boolean;  // When true, RangedSpecialist applies regardless of adjacency toggle
   // Kharn's The Betrayer manual trigger tracking
   hasUsedTheBetrayerThisTurn?: boolean;  // When true, The Betrayer bonus attack cannot be used again this turn
+  // Exitor-Rho's Chordclaw ability tracking - adds follow-up attack to all attacks for 2 turns
+  cordClawActive?: boolean;  // When true, adds follow-up attack after any attack
+  cordClawMinDmg?: number;   // Cached damage values for Chordclaw follow-up
+  cordClawMaxDmg?: number;
+  cordClawHits?: number;
+  cordClawTurnsRemaining?: number;  // Turns remaining (starts at 2, decrements at turn end)
 }
 
 export interface Buff {
@@ -176,6 +182,9 @@ export interface FollowUpAttackLog {
   breakdown?: DamageBreakdown;
   // Applied buffs for display
   appliedBuffs?: AppliedBuffInfo[];
+  // Source character for reaction attacks (e.g., Optimised Gait - damage attributed to Exitor-Rho, not triggering attacker)
+  sourceCharacterId?: string;
+  sourceCharacterName?: string;
 }
 
 // Applied buff info for display in battle log

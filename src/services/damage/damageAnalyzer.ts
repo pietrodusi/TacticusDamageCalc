@@ -57,17 +57,38 @@ export function analyzeDamageByAttackType(turnHistory: Turn[]): Map<string, Char
       const totalEntryDamage = entry.damage;
 
       // Calculate follow-up damage total first (entry.damage already includes follow-ups)
+      // Track damage that should be attributed to other characters (e.g., Optimised Gait → Exitor-Rho)
       let followUpDamageTotal = 0;
+      let damageForOtherCharacters = 0;
       if (entry.followUpAttacks && entry.followUpAttacks.length > 0) {
         for (const followUp of entry.followUpAttacks) {
           const followUpDamage = followUp.damage || 0;
           if (followUpDamage > 0) {
             followUpDamageTotal += followUpDamage;
-            breakdown.byAttackType.passiveFollowUps += followUpDamage;
-            // Track by ability name
-            if (followUp.abilityName) {
-              breakdown.byAbility[followUp.abilityName] =
-                (breakdown.byAbility[followUp.abilityName] || 0) + followUpDamage;
+
+            // Check if this follow-up should be attributed to a different character
+            if (followUp.sourceCharacterId && followUp.sourceCharacterId !== entry.characterId) {
+              // Attribute to the source character (e.g., Exitor-Rho for Optimised Gait)
+              const sourceBreakdown = getOrCreateBreakdown(
+                followUp.sourceCharacterId,
+                followUp.sourceCharacterName || 'Unknown'
+              );
+              sourceBreakdown.byAttackType.passiveFollowUps += followUpDamage;
+              sourceBreakdown.totalDamage += followUpDamage;
+              if (followUp.abilityName) {
+                sourceBreakdown.byAbility[followUp.abilityName] =
+                  (sourceBreakdown.byAbility[followUp.abilityName] || 0) + followUpDamage;
+              }
+              // Track this damage so we don't add it to the entry's character
+              damageForOtherCharacters += followUpDamage;
+            } else {
+              // Normal follow-up - attribute to the entry's character
+              breakdown.byAttackType.passiveFollowUps += followUpDamage;
+              // Track by ability name
+              if (followUp.abilityName) {
+                breakdown.byAbility[followUp.abilityName] =
+                  (breakdown.byAbility[followUp.abilityName] || 0) + followUpDamage;
+              }
             }
           }
         }
@@ -108,8 +129,8 @@ export function analyzeDamageByAttackType(turnHistory: Turn[]): Map<string, Char
           break;
       }
 
-      // Total damage is always the full entry.damage (no double-counting)
-      breakdown.totalDamage += totalEntryDamage;
+      // Total damage for this character = entry.damage - damage attributed to other characters
+      breakdown.totalDamage += totalEntryDamage - damageForOtherCharacters;
     }
   }
 

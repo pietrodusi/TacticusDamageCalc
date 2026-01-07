@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { BattleLogEntry, DamageBreakdown, FollowUpAttackLog } from '../../types';
+import type { BattleLogEntry, DamageBreakdown, BattleCharacter } from '../../types';
 import type { BuffSource } from '../../services/damage/types';
-import { Sword, Move, Sparkles, Clock, RotateCcw, Crosshair, Pencil, X, Zap, ChevronDown, ChevronRight, Wrench } from 'lucide-react';
+import { Sword, Move, Sparkles, Clock, RotateCcw, Crosshair, Pencil, X, Zap, ChevronDown, ChevronRight, Wrench, User } from 'lucide-react';
 
 // Extended entry with turn number
 export interface TurnLogEntry extends BattleLogEntry {
@@ -176,47 +176,12 @@ function DamageBreakdownDisplay({ breakdown, sourceName }: { breakdown: DamageBr
   );
 }
 
-// Component to display follow-up attacks with full breakdown
-function FollowUpAttacksDisplay({ followUps }: { followUps: FollowUpAttackLog[] }) {
-  return (
-    <div className="mt-1 space-y-1">
-      {followUps.map((followUp, index) => {
-        // Build source name with attack type indicator
-        const attackTypeLabel = followUp.attackType ? ` [${followUp.attackType.toUpperCase()}]` : '';
-        const sourceName = `${followUp.abilityName}${attackTypeLabel}`;
-
-        return (
-          <div key={index} className="bg-purple-900/30 rounded p-1.5 border-l-2 border-purple-500">
-            {followUp.breakdown ? (
-              // Full breakdown display - modifiers shown inline via DamageBreakdownDisplay
-              <DamageBreakdownDisplay breakdown={followUp.breakdown} sourceName={sourceName} />
-            ) : (
-              // Fallback for old data without breakdown
-              <>
-                <div className="flex items-center gap-1 text-xs">
-                  <Zap size={10} className="text-purple-400" />
-                  <span className="text-purple-300 font-medium">{sourceName}</span>
-                </div>
-                <div className="text-xs space-y-0.5 mt-0.5">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">{followUp.hits}x {followUp.damageType}:</span>
-                    <span className="text-purple-300">{followUp.damage.toLocaleString()}</span>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 interface BattleLogProps {
   entries: TurnLogEntry[];
   currentTurn: number;
   editingTurn?: number | null;
   isComplete?: boolean;
+  team?: BattleCharacter[];  // Team for displaying reaction attacks with source character info
   onUndoCharacterTurn?: (characterId: string, turn: number) => void;
   onEditTurn?: (turn: number | null) => void;
 }
@@ -231,7 +196,7 @@ const actionIcons = {
   repair: Wrench,
 };
 
-export function BattleLog({ entries, currentTurn, editingTurn, isComplete, onUndoCharacterTurn, onEditTurn }: BattleLogProps) {
+export function BattleLog({ entries, currentTurn, editingTurn, isComplete, team, onUndoCharacterTurn, onEditTurn }: BattleLogProps) {
   // Track which turns are expanded (current turn always starts expanded)
   const [expandedTurns, setExpandedTurns] = useState<Set<number>>(() => new Set([currentTurn]));
 
@@ -391,9 +356,73 @@ export function BattleLog({ entries, currentTurn, editingTurn, isComplete, onUnd
                                           -{entry.damage.toLocaleString()} damage
                                         </p>
                                       ) : null}
-                                      {/* Follow-up attacks */}
+                                      {/* Follow-up attacks - rendered inline in order (reactions shown with source header) */}
                                       {entry.followUpAttacks && entry.followUpAttacks.length > 0 && (
-                                        <FollowUpAttacksDisplay followUps={entry.followUpAttacks} />
+                                        <div className="mt-1 space-y-1">
+                                          {entry.followUpAttacks.map((followUp, index) => {
+                                            const isReaction = followUp.sourceCharacterId && followUp.sourceCharacterId !== entry.characterId;
+                                            const sourceChar = isReaction && team ? team.find(c => c.id === followUp.sourceCharacterId) : null;
+                                            const attackTypeLabel = followUp.attackType ? ` [${followUp.attackType.toUpperCase()}]` : '';
+                                            // Remove the "(CharName)" suffix from ability name since we show source inline
+                                            const abilityName = followUp.abilityName.replace(/\s*\([^)]+\)\s*$/, '');
+                                            const sourceName = `${abilityName}${attackTypeLabel}`;
+
+                                            if (isReaction) {
+                                              // Reaction attack - cyan styling with source character header
+                                              return (
+                                                <div key={index} className="bg-cyan-900/30 rounded p-1.5 border-l-2 border-cyan-500">
+                                                  {/* Compact reaction header */}
+                                                  <div className="flex items-center gap-1.5 text-xs text-cyan-400 mb-1">
+                                                    <div className="w-4 h-4 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                      {sourceChar?.iconUrl ? (
+                                                        <img src={sourceChar.iconUrl} alt={sourceChar.name} className="w-full h-full object-cover" />
+                                                      ) : (
+                                                        <User size={10} className="text-gray-500" />
+                                                      )}
+                                                    </div>
+                                                    <span className="font-medium">{sourceChar?.name || 'Unknown'} reacts</span>
+                                                  </div>
+                                                  {followUp.breakdown ? (
+                                                    <DamageBreakdownDisplay breakdown={followUp.breakdown} sourceName={sourceName} />
+                                                  ) : (
+                                                    <div className="text-xs">
+                                                      <div className="flex items-center gap-1 text-cyan-300 font-medium">
+                                                        <Zap size={10} className="text-cyan-400" />
+                                                        <span>{sourceName}</span>
+                                                      </div>
+                                                      <div className="flex justify-between mt-0.5">
+                                                        <span className="text-gray-500">{followUp.hits}x {followUp.damageType}:</span>
+                                                        <span className="text-cyan-300">{followUp.damage.toLocaleString()}</span>
+                                                      </div>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              );
+                                            } else {
+                                              // Regular follow-up - purple styling
+                                              return (
+                                                <div key={index} className="bg-purple-900/30 rounded p-1.5 border-l-2 border-purple-500">
+                                                  {followUp.breakdown ? (
+                                                    <DamageBreakdownDisplay breakdown={followUp.breakdown} sourceName={sourceName} />
+                                                  ) : (
+                                                    <>
+                                                      <div className="flex items-center gap-1 text-xs">
+                                                        <Zap size={10} className="text-purple-400" />
+                                                        <span className="text-purple-300 font-medium">{sourceName}</span>
+                                                      </div>
+                                                      <div className="text-xs space-y-0.5 mt-0.5">
+                                                        <div className="flex justify-between">
+                                                          <span className="text-gray-500">{followUp.hits}x {followUp.damageType}:</span>
+                                                          <span className="text-purple-300">{followUp.damage.toLocaleString()}</span>
+                                                        </div>
+                                                      </div>
+                                                    </>
+                                                  )}
+                                                </div>
+                                              );
+                                            }
+                                          })}
+                                        </div>
                                       )}
                                     </div>
                                   </div>

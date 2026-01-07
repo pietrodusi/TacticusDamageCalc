@@ -28,6 +28,455 @@ interface ExecuteAttackOptions {
   abilityName?: string;         // For log display (e.g., "Galvanic Field")
 }
 
+// Result from triggerOptimisedGait helper
+interface OptimisedGaitResult {
+  totalDamage: number;           // OG damage + Chordclaw follow-up damage
+  prophetCounter: number;        // Updated prophet attack counter
+  maxPerHitDamage: number;       // Max per-hit damage for Laviscus outrage
+  followUpLogs: FollowUpAttackLog[];  // Log entries for OG and Chordclaw
+  exitorRhoId: string;           // ID of Exitor-Rho for damage tracking update
+  exitorRhoUsedFirstSpecial: boolean; // Flag to track if LC +2 hits were used
+}
+
+// Parameters for triggerOptimisedGait helper
+interface OptimisedGaitParams {
+  triggeringAttackerId: string;      // ID of the character that triggered OG
+  triggeringAttackerName: string;    // Name for logging
+  triggeringAttackerTraits?: string[]; // Traits to check for Mechanical
+  battleState: BattleState;
+  defenderStats: DefenderStats;
+  bossArmor: number;
+  ignoreCrit: boolean;
+  prophetAttackCounter: number;
+  prophetThreshold: number;
+  prophetReductionPct: number;
+  prophetMultiplier: number;
+  hasExitorRhoUsedFirstSpecial?: boolean; // Track if LC +2 hits already used this turn
+}
+
+/**
+ * Triggers Optimised Gait reaction when a Mechanical ally attacks the boss.
+ * Also triggers Chordclaw follow-up if Exitor-Rho has the buff active.
+ *
+ * @returns OptimisedGaitResult if OG triggers, null otherwise
+ */
+function triggerOptimisedGait(params: OptimisedGaitParams): OptimisedGaitResult | null {
+  const {
+    triggeringAttackerId,
+    triggeringAttackerName,
+    triggeringAttackerTraits,
+    battleState,
+    defenderStats,
+    bossArmor,
+    ignoreCrit,
+    prophetAttackCounter: initialProphetCounter,
+    prophetThreshold,
+    prophetReductionPct,
+    prophetMultiplier,
+    hasExitorRhoUsedFirstSpecial = false,
+  } = params;
+
+  let prophetCounter = initialProphetCounter;
+
+  // Only triggers for Mechanical attackers
+  const attackerHasMechanical = triggeringAttackerTraits?.includes('Mechanical') ?? false;
+  if (!attackerHasMechanical) return null;
+
+  // Find Exitor-Rho in team (different character from attacker) with OptimizedGait and adjacentToBoss enabled
+  const exitorRho = battleState.team.find(
+    c => c.id !== triggeringAttackerId &&
+         c.passiveAbilities.includes('OptimizedGait') &&
+         c.abilityToggles['adjacentToBoss']
+  );
+
+  if (!exitorRho) return null;
+
+  console.log('\n--- OPTIMISED GAIT REACTION ---');
+  console.log(`Triggered by ${triggeringAttackerName} (Mechanical)`);
+
+  const followUpLogs: FollowUpAttackLog[] = [];
+  let totalDamage = 0;
+  let maxPerHitDamage = 0;
+
+  // Get ability values for OptimizedGait
+  const ogAbilityLevel = exitorRho.abilityLevels?.OptimizedGait ?? 54;
+  const ogValues = getAbilityValues('OptimizedGait', ogAbilityLevel);
+  const ogMinDmg = (ogValues?.minDmg as number) || 0;
+  const ogMaxDmg = (ogValues?.maxDmg as number) || 0;
+  const ogHits = (ogValues?.nrOfHits as number) || 2;
+  const ogAvgDamage = Math.round((ogMinDmg + ogMaxDmg) / 2);
+
+  // Get Exitor-Rho's equipment stats for crit calculations
+  const ogEquipmentStats = calculateEquipmentStats(exitorRho.equipment);
+
+  // Check if this is Exitor-Rho's first special attack of the turn (for LC +2 hits)
+  // Combine character state with cumulative tracking from current executeAttack call
+  const hasAlreadyUsedFirstSpecial = exitorRho.hasUsedFirstSpecialAttackThisTurn || hasExitorRhoUsedFirstSpecial;
+
+  // Create effective Exitor-Rho with updated hasUsedFirstSpecialAttackThisTurn for buff evaluation
+  // This ensures LC +2 hits only applies to the first special attack (not subsequent OG triggers)
+  const effectiveExitorRho = hasAlreadyUsedFirstSpecial
+    ? { ...exitorRho, hasUsedFirstSpecialAttackThisTurn: true }
+    : exitorRho;
+
+  // Build buff pool evaluation context for Optimised Gait (SPECIAL melee attack)
+  const ogBuffContext: BuffEvaluationContext = {
+    attacker: effectiveExitorRho,  // Use effective state for buff evaluation
+    attackType: 'melee',
+    attackCategory: 'special',  // SPECIAL attack - gets LC +2 hits on first special per turn
+    target: battleState.boss,
+    battleState: battleState,
+  };
+
+  // Get applicable buffs from the pool
+  const ogApplicableBuffs = getApplicableBuffs(battleState.buffPool, ogBuffContext);
+  const ogPoolEffects = combineBuffEffects(ogApplicableBuffs);
+
+  // Extract bonuses from pool effects
+  const ogExtraDmg = ogPoolEffects.baseDamageBonus || 0;
+  const ogExtraHits = ogPoolEffects.extraHits || 0;
+  const ogArmorIgnored = ogPoolEffects.armorIgnored || 0;
+  const ogPoolMultiplier = ogPoolEffects.baseDamageMultiplier || 1;
+
+  // High Ground: +50% damage multiplier when toggle is enabled
+  const ogHighGroundMultiplier = exitorRho.abilityToggles['HighGround'] ? 1.5 : 1;
+
+  // War Machine: dynamic damage multiplier based on selected Machine of War
+  const ogWarMachineMultiplier = exitorRho.abilityToggles['WarMachine'] && battleState.machineOfWar
+    ? 1 + battleState.machineOfWar.extraDmgPct / 100
+    : 1;
+
+  const ogDamageMultiplier = ogPoolMultiplier * ogHighGroundMultiplier * ogWarMachineMultiplier;
+
+  // Build buff sources for breakdown display
+  type OGBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number };
+  const ogBuffSources: OGBuffSource[] = [];
+
+  for (const poolBuff of ogApplicableBuffs) {
+    const effects = poolBuff.effects;
+    const source: OGBuffSource = { name: poolBuff.name };
+    if (effects.baseDamageBonus) source.damageBonus = effects.baseDamageBonus;
+    if (effects.extraHits) source.extraHits = effects.extraHits;
+    if (effects.armorIgnored) source.armorIgnored = effects.armorIgnored;
+    if (effects.baseDamageMultiplier && effects.baseDamageMultiplier !== 1) source.damageMultiplier = effects.baseDamageMultiplier;
+    if (Object.keys(source).length > 1) ogBuffSources.push(source);
+  }
+
+  // Add High Ground buff source for display
+  if (ogHighGroundMultiplier > 1) {
+    ogBuffSources.push({
+      name: 'High Ground',
+      damageMultiplier: ogHighGroundMultiplier,
+    });
+  }
+
+  // Add Machine of War buff source for display
+  if (ogWarMachineMultiplier > 1 && battleState.machineOfWar) {
+    ogBuffSources.push({
+      name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
+      damageMultiplier: ogWarMachineMultiplier,
+    });
+  }
+
+  const hasOGModifiers = ogExtraDmg > 0 || ogExtraHits > 0 || ogArmorIgnored > 0 || ogDamageMultiplier !== 1;
+
+  // Build attacker stats for Optimised Gait reaction
+  const ogAttackerStats: AttackerStats = {
+    baseDamage: ogAvgDamage + ogExtraDmg,
+    damageType: 'Energy',  // Energy damage (respects armor)
+    hits: ogHits + ogExtraHits,
+    critChance: ogEquipmentStats.critChance || 0,
+    critDamage: ogEquipmentStats.critDmg || 0,
+    critChanceBonus: ogEquipmentStats.critChanceBonus || 0,
+    critDmgBonus: ogEquipmentStats.critDmgBonus || 0,
+    ignoreCrit,
+    traits: exitorRho.traits,
+    hasMoved: true,
+    attackType: 'melee',
+    hasAttackedThisBattle: exitorRho.hasAttackedThisBattle,
+    abilityModifiers: hasOGModifiers ? {
+      baseDamageBonus: ogExtraDmg > 0 ? ogExtraDmg : undefined,
+      extraHits: ogExtraHits > 0 ? ogExtraHits : undefined,
+      armorIgnored: ogArmorIgnored > 0 ? ogArmorIgnored : undefined,
+      baseDamageMultiplier: ogDamageMultiplier !== 1 ? ogDamageMultiplier : undefined,
+      buffSources: ogBuffSources,
+    } : undefined,
+  };
+
+  // Calculate Optimised Gait reaction damage
+  const ogCalculator = new DamageCalculator(true);
+  const ogResult = ogCalculator.calculate(ogAttackerStats, defenderStats);
+
+  // Apply Prophet of Gork and Mork damage reduction if active
+  let ogProphetReduction = 1;
+  if (prophetCounter >= prophetThreshold && prophetReductionPct > 0) {
+    ogProphetReduction = prophetMultiplier;
+    console.log(`[Prophet of Gork and Mork: -${prophetReductionPct}% damage on Optimised Gait (attack ${prophetCounter + 1})]`);
+  }
+  const adjustedOGDamage = Math.round(ogResult.damage * ogProphetReduction);
+
+  // Increment attack counter for Optimised Gait
+  prophetCounter++;
+
+  totalDamage += adjustedOGDamage;
+  maxPerHitDamage = Math.max(maxPerHitDamage, ogResult.perHitDamage);
+
+  // Build breakdown for Optimised Gait reaction
+  const ogBreakdown: DamageBreakdown = {
+    damage: ogResult.damage,
+    perHitDamage: ogResult.perHitDamage,
+    hits: ogResult.totalHits,
+    baseDamage: ogResult.baseDamage,
+    flatModifiers: ogResult.flatModifiers,
+    flatModifierSources: ogResult.flatModifierSources,
+    critBonus: ogResult.critBonus,
+    critChanceSources: ogResult.critChanceSources,
+    critDamageSources: ogResult.critDamageSources,
+    extraHits: ogResult.extraHits,
+    extraHitsSources: ogResult.extraHitsSources,
+    damVarMod: ogResult.damVarMod,
+    targetArmor: bossArmor,
+    armorIgnored: ogResult.armorIgnored,
+    armorIgnoredSources: ogResult.armorIgnoredSources,
+    effectiveArmor: ogResult.effectiveArmor,
+    afterArmor: ogResult.afterArmor,
+    pierceRatio: ogResult.pierceRatio,
+    pierceFloor: ogResult.pierceFloor,
+    afterArmorPierce: ogResult.afterArmorPierce,
+    globalMultiplier: ogResult.globalMultiplier,
+    globalMultiplierSources: ogResult.globalMultiplierSources,
+    baseCritChance: ogResult.baseCritChance,
+    baseCritDamage: ogResult.baseCritDamage,
+    critChanceBonus: ogResult.critChanceTotalBonus,
+    critDmgBonus: ogResult.critDamageTotalBonus,
+    critChance: ogResult.effectiveCritChance * 100,
+    critDamage: ogResult.effectiveCritDamage,
+    traitModifiers: ogResult.traitModifiers,
+    traitMultiplier: ogResult.traitMultiplier,
+    // Block reduction (Daemon trait)
+    expectedBlocks: ogResult.expectedBlocks,
+    blockReductionPerHit: ogResult.blockReductionPerHit,
+    totalBlockReduction: ogResult.totalBlockReduction,
+  };
+
+  // Add Prophet of Gork and Mork to global multiplier if active
+  if (ogProphetReduction < 1) {
+    ogBreakdown.globalMultiplier = (ogBreakdown.globalMultiplier || 1) * ogProphetReduction;
+    ogBreakdown.globalMultiplierSources = [
+      ...(ogBreakdown.globalMultiplierSources || []),
+      { name: 'Prophet of Gork and Mork', damageMultiplier: ogProphetReduction }
+    ];
+    ogBreakdown.damage = adjustedOGDamage;
+    ogBreakdown.perHitDamage = Math.round(ogBreakdown.perHitDamage * ogProphetReduction);
+  }
+
+  followUpLogs.push({
+    abilityName: `Optimised Gait (${exitorRho.name})`,
+    damage: adjustedOGDamage,
+    hits: ogResult.totalHits,
+    damageType: 'Energy',
+    attackType: 'melee',
+    breakdown: ogBreakdown,
+    // Attribute damage to Exitor-Rho, not the triggering attacker
+    sourceCharacterId: exitorRho.id,
+    sourceCharacterName: exitorRho.name,
+  });
+
+  console.log(`Optimised Gait: ${ogHits}x ${ogAvgDamage} Energy = ${adjustedOGDamage.toLocaleString()}`);
+
+  // Check if Exitor-Rho has Chordclaw buff active - if so, add Chordclaw follow-up
+  if (exitorRho.cordClawActive) {
+    console.log('\n--- CHORDCLAW FOLLOW-UP (from Optimised Gait) ---');
+
+    const cordClawMinDmg = exitorRho.cordClawMinDmg || 0;
+    const cordClawMaxDmg = exitorRho.cordClawMaxDmg || 0;
+    const cordClawHits = exitorRho.cordClawHits || 2;
+    const cordClawAvgDamage = Math.round((cordClawMinDmg + cordClawMaxDmg) / 2);
+
+    // Build buff pool evaluation context for Chordclaw (additional melee attack)
+    // Uses 'normal' attackCategory since it's an additional attack like CIB
+    const cordClawBuffContext: BuffEvaluationContext = {
+      attacker: exitorRho,
+      attackType: 'melee',
+      attackCategory: 'normal',
+      target: battleState.boss,
+      battleState: battleState,
+    };
+
+    // Get applicable buffs from the pool
+    const cordClawApplicableBuffs = getApplicableBuffs(battleState.buffPool, cordClawBuffContext);
+    const cordClawPoolEffects = combineBuffEffects(cordClawApplicableBuffs);
+
+    // Extract bonuses from pool effects
+    const cordClawExtraDmg = cordClawPoolEffects.baseDamageBonus || 0;
+    const cordClawExtraHits = cordClawPoolEffects.extraHits || 0;
+    const cordClawArmorIgnored = cordClawPoolEffects.armorIgnored || 0;
+    const poolCordClawMultiplier = cordClawPoolEffects.baseDamageMultiplier || 1;
+
+    // High Ground: +50% damage multiplier when toggle is enabled
+    const cordClawHighGroundMultiplier = exitorRho.abilityToggles['HighGround'] ? 1.5 : 1;
+
+    // War Machine: dynamic damage multiplier based on selected Machine of War
+    const cordClawWarMachineMultiplier = exitorRho.abilityToggles['WarMachine'] && battleState.machineOfWar
+      ? 1 + battleState.machineOfWar.extraDmgPct / 100
+      : 1;
+
+    const cordClawDamageMultiplier = poolCordClawMultiplier * cordClawHighGroundMultiplier * cordClawWarMachineMultiplier;
+
+    // Build buff sources for breakdown display
+    type CordClawBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number };
+    const cordClawBuffSources: CordClawBuffSource[] = [];
+
+    for (const poolBuff of cordClawApplicableBuffs) {
+      const effects = poolBuff.effects;
+      const source: CordClawBuffSource = { name: poolBuff.name };
+      if (effects.baseDamageBonus) source.damageBonus = effects.baseDamageBonus;
+      if (effects.extraHits) source.extraHits = effects.extraHits;
+      if (effects.armorIgnored) source.armorIgnored = effects.armorIgnored;
+      if (effects.baseDamageMultiplier && effects.baseDamageMultiplier !== 1) source.damageMultiplier = effects.baseDamageMultiplier;
+      if (Object.keys(source).length > 1) cordClawBuffSources.push(source);
+    }
+
+    // Add High Ground buff source for display
+    if (cordClawHighGroundMultiplier > 1) {
+      cordClawBuffSources.push({
+        name: 'High Ground',
+        damageMultiplier: cordClawHighGroundMultiplier,
+      });
+    }
+
+    // Add Machine of War buff source for display
+    if (cordClawWarMachineMultiplier > 1 && battleState.machineOfWar) {
+      cordClawBuffSources.push({
+        name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
+        damageMultiplier: cordClawWarMachineMultiplier,
+      });
+    }
+
+    const hasCordClawModifiers = cordClawExtraDmg > 0 || cordClawExtraHits > 0 || cordClawArmorIgnored > 0 || cordClawDamageMultiplier !== 1;
+
+    // Build attacker stats for Chordclaw follow-up
+    const cordClawAttackerStats: AttackerStats = {
+      baseDamage: cordClawAvgDamage + cordClawExtraDmg,
+      damageType: 'DirectDamage',  // DirectDamage bypasses armor
+      hits: cordClawHits + cordClawExtraHits,
+      critChance: ogEquipmentStats.critChance || 0,
+      critDamage: ogEquipmentStats.critDmg || 0,
+      critChanceBonus: ogEquipmentStats.critChanceBonus || 0,
+      critDmgBonus: ogEquipmentStats.critDmgBonus || 0,
+      ignoreCrit,
+      traits: exitorRho.traits,
+      hasMoved: true,
+      attackType: 'melee',
+      hasAttackedThisBattle: true,
+      abilityModifiers: hasCordClawModifiers ? {
+        baseDamageBonus: cordClawExtraDmg > 0 ? cordClawExtraDmg : undefined,
+        extraHits: cordClawExtraHits > 0 ? cordClawExtraHits : undefined,
+        armorIgnored: cordClawArmorIgnored > 0 ? cordClawArmorIgnored : undefined,
+        baseDamageMultiplier: cordClawDamageMultiplier !== 1 ? cordClawDamageMultiplier : undefined,
+        buffSources: cordClawBuffSources,
+      } : undefined,
+    };
+
+    // Calculate Chordclaw follow-up damage
+    const cordClawCalculator = new DamageCalculator(true);
+    const cordClawResult = cordClawCalculator.calculate(cordClawAttackerStats, defenderStats);
+
+    console.log(`Chordclaw: ${cordClawResult.totalHits}x ${cordClawResult.perHitDamage} = ${cordClawResult.damage}`);
+
+    // Prophet of Gork and Mork: Apply damage reduction to Chordclaw follow-up
+    let cordClawProphetReduction = 1;
+    if (prophetCounter >= prophetThreshold && prophetReductionPct > 0) {
+      cordClawProphetReduction = prophetMultiplier;
+      console.log(`[Prophet of Gork and Mork: -${prophetReductionPct}% damage on Chordclaw (attack ${prophetCounter + 1})]`);
+    }
+    const adjustedCordClawDamage = Math.round(cordClawResult.damage * cordClawProphetReduction);
+
+    // Increment attack counter for Chordclaw (it's a follow-up attack, counts as a separate attack)
+    prophetCounter++;
+
+    totalDamage += adjustedCordClawDamage;
+    maxPerHitDamage = Math.max(maxPerHitDamage, cordClawResult.perHitDamage);
+
+    // Build breakdown for Chordclaw follow-up
+    const cordClawBreakdown: DamageBreakdown = {
+      damage: cordClawResult.damage,
+      perHitDamage: cordClawResult.perHitDamage,
+      hits: cordClawResult.totalHits,
+      baseDamage: cordClawResult.baseDamage,
+      flatModifiers: cordClawResult.flatModifiers,
+      flatModifierSources: cordClawResult.flatModifierSources,
+      critBonus: cordClawResult.critBonus,
+      critChanceSources: cordClawResult.critChanceSources,
+      critDamageSources: cordClawResult.critDamageSources,
+      extraHits: cordClawResult.extraHits,
+      extraHitsSources: cordClawResult.extraHitsSources,
+      damVarMod: cordClawResult.damVarMod,
+      targetArmor: bossArmor,
+      armorIgnored: cordClawResult.armorIgnored,
+      armorIgnoredSources: cordClawResult.armorIgnoredSources,
+      effectiveArmor: cordClawResult.effectiveArmor,
+      afterArmor: cordClawResult.afterArmor,
+      pierceRatio: cordClawResult.pierceRatio,
+      pierceFloor: cordClawResult.pierceFloor,
+      afterArmorPierce: cordClawResult.afterArmorPierce,
+      globalMultiplier: cordClawResult.globalMultiplier,
+      globalMultiplierSources: cordClawResult.globalMultiplierSources,
+      baseCritChance: cordClawResult.baseCritChance,
+      baseCritDamage: cordClawResult.baseCritDamage,
+      critChanceBonus: cordClawResult.critChanceTotalBonus,
+      critDmgBonus: cordClawResult.critDamageTotalBonus,
+      critChance: cordClawResult.effectiveCritChance * 100,
+      critDamage: cordClawResult.effectiveCritDamage,
+      traitModifiers: cordClawResult.traitModifiers,
+      traitMultiplier: cordClawResult.traitMultiplier,
+      // Block reduction (Daemon trait)
+      expectedBlocks: cordClawResult.expectedBlocks,
+      blockReductionPerHit: cordClawResult.blockReductionPerHit,
+      totalBlockReduction: cordClawResult.totalBlockReduction,
+    };
+
+    // Add Prophet of Gork and Mork to global multiplier if active
+    if (cordClawProphetReduction < 1) {
+      cordClawBreakdown.globalMultiplier = (cordClawBreakdown.globalMultiplier || 1) * cordClawProphetReduction;
+      cordClawBreakdown.globalMultiplierSources = [
+        ...(cordClawBreakdown.globalMultiplierSources || []),
+        { name: 'Prophet of Gork and Mork', damageMultiplier: cordClawProphetReduction }
+      ];
+      cordClawBreakdown.damage = adjustedCordClawDamage;
+      cordClawBreakdown.perHitDamage = Math.round(cordClawBreakdown.perHitDamage * cordClawProphetReduction);
+    }
+
+    followUpLogs.push({
+      abilityName: 'Chordclaw (from Optimised Gait)',
+      damage: adjustedCordClawDamage,
+      hits: cordClawResult.totalHits,
+      damageType: 'DirectDamage',
+      breakdown: cordClawBreakdown,
+      // Attribute damage to Exitor-Rho, not the triggering attacker
+      sourceCharacterId: exitorRho.id,
+      sourceCharacterName: exitorRho.name,
+    });
+
+    console.log(`Total with Chordclaw: ${totalDamage.toLocaleString()}`);
+  }
+
+  console.log(`Total Optimised Gait reaction: ${totalDamage.toLocaleString()}`);
+
+  // Track if LC +2 hits were applied to Exitor-Rho's first special attack
+  // ogExtraHits comes from ogPoolEffects which includes LC bonus from buffPool
+  const exitorRhoUsedFirstSpecial = !hasAlreadyUsedFirstSpecial && ogExtraHits > 0;
+
+  return {
+    totalDamage,
+    prophetCounter,
+    maxPerHitDamage,
+    followUpLogs,
+    exitorRhoId: exitorRho.id,
+    exitorRhoUsedFirstSpecial,
+  };
+}
+
 function createBattleCharacter(character: TeamMember, index: number): BattleCharacter {
   // Calculate stats based on progression and rank
   const stats = calculateStats(character, character.progressionStepIndex, character.rank);
@@ -352,6 +801,19 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       debuffs: char.debuffs
         .map((d) => ({ ...d, duration: d.duration - 1 }))
         .filter((d) => d.duration > 0),
+      // Decrement Chordclaw buff duration and clear if expired
+      cordClawTurnsRemaining: char.cordClawActive
+        ? Math.max(0, (char.cordClawTurnsRemaining || 0) - 1)
+        : undefined,
+      cordClawActive: char.cordClawActive && (char.cordClawTurnsRemaining || 0) > 1
+        ? true
+        : false,
+      // Clear Chordclaw values when buff expires
+      ...((char.cordClawActive && (char.cordClawTurnsRemaining || 0) <= 1) ? {
+        cordClawMinDmg: undefined,
+        cordClawMaxDmg: undefined,
+        cordClawHits: undefined,
+      } : {}),
     }));
 
     // Expire buffs in the pool (decrement duration, remove expired)
@@ -1283,6 +1745,46 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Increment counter for main attack
     prophetAttackCounter++;
 
+    // Collect follow-up attack logs for the battle log (declare early for OG trigger)
+    const followUpAttackLogs: FollowUpAttackLog[] = [];
+
+    // Store Exitor-Rho damage for later update (if OG triggers)
+    let exitorRhoDamageToAdd = 0;
+    let exitorRhoIdForUpdate: string | null = null;
+    let exitorRhoUsedFirstSpecial = false; // Track if LC +2 hits were used
+
+    // Trigger Optimised Gait after main attack (if attacker is Mechanical)
+    const ogResultMainAttack = triggerOptimisedGait({
+      triggeringAttackerId: attackerId,
+      triggeringAttackerName: attacker.name,
+      triggeringAttackerTraits: attacker.traits,
+      battleState: get().battleState!,
+      defenderStats,
+      bossArmor,
+      ignoreCrit,
+      prophetAttackCounter,
+      prophetThreshold,
+      prophetReductionPct,
+      prophetMultiplier,
+      hasExitorRhoUsedFirstSpecial: exitorRhoUsedFirstSpecial, // Track LC +2 hits usage
+    });
+
+    // Store pending OG logs to push AFTER additional attacks (sharesCritChain=true)
+    // This ensures OG appears after CIB Melee, not before it
+    let pendingOGLogs: FollowUpAttackLog[] = [];
+
+    if (ogResultMainAttack) {
+      totalDamage += ogResultMainAttack.totalDamage;
+      prophetAttackCounter = ogResultMainAttack.prophetCounter;
+      maxPerHitDamage = Math.max(maxPerHitDamage, ogResultMainAttack.maxPerHitDamage);
+      // Store pending OG logs instead of pushing immediately
+      pendingOGLogs = [...ogResultMainAttack.followUpLogs];
+      exitorRhoDamageToAdd += ogResultMainAttack.totalDamage;
+      exitorRhoIdForUpdate = ogResultMainAttack.exitorRhoId;
+      // Track if LC +2 hits were used (only the first OG trigger should get them)
+      exitorRhoUsedFirstSpecial = exitorRhoUsedFirstSpecial || ogResultMainAttack.exitorRhoUsedFirstSpecial;
+    }
+
     // Handle follow-up attacks from passives (like LegacyOfCombat, TheBetrayer, WayOfTheShortBlade)
     // Filter based on triggersOnNormalOnly and triggersOnMeleeOnly flags
     const isNormalAttack = attackType === 'melee' || attackType === 'ranged';
@@ -1376,9 +1878,6 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       return true;
     });
 
-    // Collect follow-up attack logs for the battle log
-    const followUpAttackLogs: FollowUpAttackLog[] = [];
-
     // Track if LC +2 hits was applied to any follow-up attack
     let lcHitsAppliedInNormalFollowUps = false;
     // Track effective attacker state for follow-up evaluations
@@ -1395,6 +1894,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       console.log('\n--- FOLLOW-UP ATTACKS ---');
 
       for (const followUp of eligibleFollowUps) {
+        // If this is NOT an additional attack, push any pending OG logs first
+        // This ensures OG appears AFTER additional attacks (CIB) of the previous attack
+        if (!followUp.sharesCritChain && pendingOGLogs.length > 0) {
+          followUpAttackLogs.push(...pendingOGLogs);
+          pendingOGLogs = [];
+        }
+
         // Determine if this follow-up uses character's ranged stats
         const usesCharacterRangedStats = followUp.useCharacterRangedStats ?? false;
 
@@ -1751,10 +2257,55 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           followUpArmorReductionTotal += followUp.armorReduction;
           console.log(`[Boss armor reduced by ${followUp.armorReduction} from ${followUp.abilityName}]`);
         }
+
+        // Trigger Optimised Gait for follow-up attacks from Mechanical allies
+        // Only trigger for follow-up attacks (sharesCritChain=false), NOT additional attacks (sharesCritChain=true)
+        // Additional attacks like CIB are part of the source attack, not separate attacks
+        if (!followUp.sharesCritChain) {
+          const ogResultFollowUp = triggerOptimisedGait({
+            triggeringAttackerId: attackerId,
+            triggeringAttackerName: attacker.name,
+            triggeringAttackerTraits: attacker.traits,
+            battleState: get().battleState!,
+            defenderStats,
+            bossArmor,
+            ignoreCrit,
+            prophetAttackCounter,
+            prophetThreshold,
+            prophetReductionPct,
+            prophetMultiplier,
+            hasExitorRhoUsedFirstSpecial: exitorRhoUsedFirstSpecial, // Track LC +2 hits usage
+          });
+
+          if (ogResultFollowUp) {
+            totalDamage += ogResultFollowUp.totalDamage;
+            prophetAttackCounter = ogResultFollowUp.prophetCounter;
+            maxPerHitDamage = Math.max(maxPerHitDamage, ogResultFollowUp.maxPerHitDamage);
+            // Store pending OG logs instead of pushing immediately
+            // They will be pushed after additional attacks (CIB) of this follow-up
+            pendingOGLogs = [...ogResultFollowUp.followUpLogs];
+            exitorRhoDamageToAdd += ogResultFollowUp.totalDamage;
+            exitorRhoIdForUpdate = ogResultFollowUp.exitorRhoId;
+            // Track if LC +2 hits were used
+            exitorRhoUsedFirstSpecial = exitorRhoUsedFirstSpecial || ogResultFollowUp.exitorRhoUsedFirstSpecial;
+          }
+        }
+      }
+
+      // Push any remaining pending OG logs after all follow-ups are processed
+      if (pendingOGLogs.length > 0) {
+        followUpAttackLogs.push(...pendingOGLogs);
+        pendingOGLogs = [];
       }
 
       console.log('\n--- COMBINED TOTAL ---');
       console.log(`Total Damage: ${totalDamage.toLocaleString()}`);
+    } else {
+      // No eligible follow-ups, but still push any pending OG from main attack
+      if (pendingOGLogs.length > 0) {
+        followUpAttackLogs.push(...pendingOGLogs);
+        pendingOGLogs = [];
+      }
     }
 
     // Handle Drachnyen follow-up attack (Abaddon)
@@ -1946,6 +2497,181 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       console.log(`Total with Drach'nyen: ${totalDamage.toLocaleString()}`);
     }
 
+    // Handle Chordclaw follow-up attack (Exitor-Rho)
+    // Triggers on ALL attacks (melee, ranged, ability) when cordClawActive is true
+    if (attacker.cordClawActive) {
+      console.log('\n--- CHORDCLAW FOLLOW-UP ---');
+
+      const cordClawMinDmg = attacker.cordClawMinDmg || 0;
+      const cordClawMaxDmg = attacker.cordClawMaxDmg || 0;
+      const cordClawHits = attacker.cordClawHits || 2;
+      const cordClawAvgDamage = Math.round((cordClawMinDmg + cordClawMaxDmg) / 2);
+
+      // Get current battle state for buff evaluation
+      const currentBattleStateForCordClaw = get().battleState!;
+
+      // Build buff pool evaluation context for Chordclaw (additional melee attack)
+      // Uses 'normal' attackCategory since it's an additional attack like CIB
+      const cordClawBuffContext: BuffEvaluationContext = {
+        attacker: attacker,
+        attackType: 'melee',
+        attackCategory: 'normal',
+        target: currentBattleStateForCordClaw.boss,
+        battleState: currentBattleStateForCordClaw,
+      };
+
+      // Get applicable buffs from the pool
+      const cordClawApplicableBuffs = getApplicableBuffs(currentBattleStateForCordClaw.buffPool, cordClawBuffContext);
+      const cordClawPoolEffects = combineBuffEffects(cordClawApplicableBuffs);
+
+      // Extract bonuses from pool effects
+      const cordClawExtraDmg = cordClawPoolEffects.baseDamageBonus || 0;
+      const cordClawExtraHits = cordClawPoolEffects.extraHits || 0;
+      const cordClawArmorIgnored = cordClawPoolEffects.armorIgnored || 0;
+      const poolCordClawMultiplier = cordClawPoolEffects.baseDamageMultiplier || 1;
+
+      // High Ground: +50% damage multiplier when toggle is enabled
+      const cordClawHighGroundMultiplier = attacker.abilityToggles['HighGround'] ? 1.5 : 1;
+
+      // War Machine: dynamic damage multiplier based on selected Machine of War
+      const cordClawWarMachineMultiplier = attacker.abilityToggles['WarMachine'] && currentBattleStateForCordClaw.machineOfWar
+        ? 1 + currentBattleStateForCordClaw.machineOfWar.extraDmgPct / 100
+        : 1;
+
+      const cordClawDamageMultiplier = poolCordClawMultiplier * cordClawHighGroundMultiplier * cordClawWarMachineMultiplier;
+
+      // Build buff sources for breakdown display
+      type CordClawBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number };
+      const cordClawBuffSources: CordClawBuffSource[] = [];
+
+      for (const poolBuff of cordClawApplicableBuffs) {
+        const effects = poolBuff.effects;
+        const source: CordClawBuffSource = { name: poolBuff.name };
+        if (effects.baseDamageBonus) source.damageBonus = effects.baseDamageBonus;
+        if (effects.extraHits) source.extraHits = effects.extraHits;
+        if (effects.armorIgnored) source.armorIgnored = effects.armorIgnored;
+        if (effects.baseDamageMultiplier && effects.baseDamageMultiplier !== 1) source.damageMultiplier = effects.baseDamageMultiplier;
+        if (Object.keys(source).length > 1) cordClawBuffSources.push(source);
+      }
+
+      // Add High Ground buff source for display
+      if (cordClawHighGroundMultiplier > 1) {
+        cordClawBuffSources.push({
+          name: 'High Ground',
+          damageMultiplier: cordClawHighGroundMultiplier,
+        });
+      }
+
+      // Add Machine of War buff source for display
+      if (cordClawWarMachineMultiplier > 1 && currentBattleStateForCordClaw.machineOfWar) {
+        cordClawBuffSources.push({
+          name: `Machine of War (+${currentBattleStateForCordClaw.machineOfWar.extraDmgPct}%)`,
+          damageMultiplier: cordClawWarMachineMultiplier,
+        });
+      }
+
+      const hasCordClawModifiers = cordClawExtraDmg > 0 || cordClawExtraHits > 0 || cordClawArmorIgnored > 0 || cordClawDamageMultiplier !== 1;
+
+      // Build attacker stats for Chordclaw follow-up
+      const cordClawAttackerStats: AttackerStats = {
+        baseDamage: cordClawAvgDamage + cordClawExtraDmg,
+        damageType: 'DirectDamage',  // DirectDamage bypasses armor
+        hits: cordClawHits + cordClawExtraHits,
+        critChance: equipmentStats.critChance || 0,
+        critDamage: equipmentStats.critDmg || 0,
+        critChanceBonus: equipmentStats.critChanceBonus || 0,
+        critDmgBonus: equipmentStats.critDmgBonus || 0,
+        ignoreCrit,
+        traits: attacker.traits,
+        hasMoved: true,
+        attackType: 'melee',
+        hasAttackedThisBattle: true,
+        abilityModifiers: hasCordClawModifiers ? {
+          baseDamageBonus: cordClawExtraDmg > 0 ? cordClawExtraDmg : undefined,
+          extraHits: cordClawExtraHits > 0 ? cordClawExtraHits : undefined,
+          armorIgnored: cordClawArmorIgnored > 0 ? cordClawArmorIgnored : undefined,
+          baseDamageMultiplier: cordClawDamageMultiplier !== 1 ? cordClawDamageMultiplier : undefined,
+          buffSources: cordClawBuffSources,
+        } : undefined,
+      };
+
+      // Calculate Chordclaw follow-up damage
+      const cordClawCalculator = new DamageCalculator(true);
+      const cordClawResult = cordClawCalculator.calculate(cordClawAttackerStats, defenderStats);
+
+      console.log(`Chordclaw: ${cordClawResult.totalHits}x ${cordClawResult.perHitDamage} = ${cordClawResult.damage}`);
+
+      // Prophet of Gork and Mork: Apply damage reduction to Chordclaw follow-up
+      let cordClawProphetReduction = 1;
+      if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+        cordClawProphetReduction = prophetMultiplier;
+        console.log(`[Prophet of Gork and Mork: -${prophetReductionPct}% damage on Chordclaw (attack ${prophetAttackCounter + 1})]`);
+      }
+      const adjustedCordClawDamage = Math.round(cordClawResult.damage * cordClawProphetReduction);
+
+      // Increment attack counter for Chordclaw (it's a follow-up attack, counts as a separate attack)
+      prophetAttackCounter++;
+
+      totalDamage += adjustedCordClawDamage;
+      // Track max perHitDamage for Laviscus outrage
+      maxPerHitDamage = Math.max(maxPerHitDamage, cordClawResult.perHitDamage);
+
+      // Build breakdown for Chordclaw follow-up
+      const cordClawBreakdown: DamageBreakdown = {
+        damage: cordClawResult.damage,
+        perHitDamage: cordClawResult.perHitDamage,
+        hits: cordClawResult.totalHits,
+        baseDamage: cordClawResult.baseDamage,
+        flatModifiers: cordClawResult.flatModifiers,
+        flatModifierSources: cordClawResult.flatModifierSources,
+        critBonus: cordClawResult.critBonus,
+        critChanceSources: cordClawResult.critChanceSources,
+        critDamageSources: cordClawResult.critDamageSources,
+        extraHits: cordClawResult.extraHits,
+        extraHitsSources: cordClawResult.extraHitsSources,
+        damVarMod: cordClawResult.damVarMod,
+        targetArmor: bossArmor,
+        armorIgnored: cordClawResult.armorIgnored,
+        armorIgnoredSources: cordClawResult.armorIgnoredSources,
+        effectiveArmor: cordClawResult.effectiveArmor,
+        afterArmor: cordClawResult.afterArmor,
+        pierceRatio: cordClawResult.pierceRatio,
+        pierceFloor: cordClawResult.pierceFloor,
+        afterArmorPierce: cordClawResult.afterArmorPierce,
+        globalMultiplier: cordClawResult.globalMultiplier,
+        globalMultiplierSources: cordClawResult.globalMultiplierSources,
+        baseCritChance: cordClawResult.baseCritChance,
+        baseCritDamage: cordClawResult.baseCritDamage,
+        critChanceBonus: cordClawResult.critChanceTotalBonus,
+        critDmgBonus: cordClawResult.critDamageTotalBonus,
+        critChance: cordClawResult.effectiveCritChance * 100,
+        critDamage: cordClawResult.effectiveCritDamage,
+        traitModifiers: cordClawResult.traitModifiers,
+        traitMultiplier: cordClawResult.traitMultiplier,
+      };
+
+      // Add Prophet of Gork and Mork to global multiplier if active
+      if (cordClawProphetReduction < 1) {
+        cordClawBreakdown.globalMultiplier = (cordClawBreakdown.globalMultiplier || 1) * cordClawProphetReduction;
+        cordClawBreakdown.globalMultiplierSources = [
+          ...(cordClawBreakdown.globalMultiplierSources || []),
+          { name: 'Prophet of Gork and Mork', damageMultiplier: cordClawProphetReduction }
+        ];
+        cordClawBreakdown.damage = adjustedCordClawDamage;
+        cordClawBreakdown.perHitDamage = Math.round(cordClawBreakdown.perHitDamage * cordClawProphetReduction);
+      }
+
+      followUpAttackLogs.push({
+        abilityName: 'Chordclaw',
+        damage: adjustedCordClawDamage,
+        hits: cordClawResult.totalHits,
+        damageType: 'DirectDamage',
+        breakdown: cordClawBreakdown,
+      });
+
+      console.log(`Total with Chordclaw: ${totalDamage.toLocaleString()}`);
+    }
+
     console.groupEnd();
 
     // Build damage breakdown for UI with calculation steps
@@ -2057,6 +2783,27 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 }
 
                 return { ...char, ...updates };
+              }
+
+              // Update Exitor-Rho's damage from Optimised Gait reaction attacks
+              if (exitorRhoIdForUpdate && char.id === exitorRhoIdForUpdate) {
+                // Exitor-Rho may also have RefusalToBeOutdone, so handle both
+                const newOutrage = char.passiveAbilities.includes('RefusalToBeOutdone')
+                  ? (char.outrage || 0) + maxPerHitForOutrage
+                  : char.outrage;
+                const contributors = char.outrageContributors || [];
+                const newContributors = char.passiveAbilities.includes('RefusalToBeOutdone') && isChaos && !contributors.includes(attackerId)
+                  ? [...contributors, attackerId]
+                  : contributors;
+
+                return {
+                  ...char,
+                  totalDamageDealt: char.totalDamageDealt + exitorRhoDamageToAdd,
+                  outrage: newOutrage,
+                  outrageContributors: newContributors,
+                  // Track that Exitor-Rho has used first special attack this turn (for LC +2 hits)
+                  hasUsedFirstSpecialAttackThisTurn: char.hasUsedFirstSpecialAttackThisTurn || exitorRhoUsedFirstSpecial,
+                };
               }
 
               // For other characters: track outrage for Laviscus (always, even for GF attacks)
@@ -2924,6 +3671,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                   if (char.id === characterId) {
                     // Update ability user
                     // Note: Laviscus outrage does NOT reset on ability use, only on normal attack
+
+                    // Check for CordClaw ability - stores follow-up attack buff
+                    const isCordClaw = abilityId === 'CordClaw';
+                    const cordClawValues = isCordClaw ? (getAbilityValues('CordClaw', levelIndex) || {}) : null;
+
                     return {
                       ...char,
                       totalDamageDealt: char.totalDamageDealt + totalDamage,
@@ -2938,6 +3690,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                       hasQualifiedForLCDamage: isAdjacentToBoss,
                       // Mark first special attack used if LC +2 hits was applied
                       hasUsedFirstSpecialAttackThisTurn: char.hasUsedFirstSpecialAttackThisTurn || lcHitsAppliedToAbility,
+                      // CordClaw: Store follow-up attack buff (2x DirectDamage for 2 turns)
+                      ...(isCordClaw ? {
+                        cordClawActive: true,
+                        cordClawMinDmg: cordClawValues!.minDmg_2 as number || 0,
+                        cordClawMaxDmg: cordClawValues!.maxDmg_2 as number || 0,
+                        cordClawHits: cordClawValues!.nrOfHits_2 as number || 2,
+                        cordClawTurnsRemaining: 2,  // This turn + next turn
+                      } : {}),
                     };
                   }
 
