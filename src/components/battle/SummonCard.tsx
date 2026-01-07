@@ -1,20 +1,40 @@
-import { X, Minus, Plus, Sword, Target, Shield, Heart, Zap } from 'lucide-react';
-import type { BattleSummon, BattleLogEntry } from '../../types';
+import { X, Minus, Plus, Sword, Target, Shield, Heart, Zap, Settings } from 'lucide-react';
+import type { BattleSummon, BattleLogEntry, BattleCharacter, SelectedMachineOfWar, PooledBuff } from '../../types';
+import { getSummonBuffConditions, hasSummonBuffConditions } from '../../services/buffConditions';
 
 interface SummonCardProps {
   summon: BattleSummon;
+  team?: BattleCharacter[];
+  selectedMachineOfWar?: SelectedMachineOfWar | null;
+  buffPool?: PooledBuff[];
+  currentTurn?: number;
   onRemove: (summonId: string) => void;
   onUpdateCount: (summonId: string, count: number) => void;
+  onToggleBuffCondition?: (summonId: string, conditionId: string) => void;
   onAttack: (summonId: string, attackType: 'melee' | 'ranged') => BattleLogEntry;
 }
 
 export function SummonCard({
   summon,
+  team = [],
+  selectedMachineOfWar,
+  buffPool,
+  currentTurn,
   onRemove,
   onUpdateCount,
+  onToggleBuffCondition,
   onAttack,
 }: SummonCardProps) {
   const hasRanged = summon.rangedHits && summon.rangedHits > 0;
+
+  // Get buff conditions for this summon
+  const buffConditionOptions = {
+    selectedMachineOfWar,
+    buffPool,
+    currentTurn,
+  };
+  const showBuffConditions = hasSummonBuffConditions(summon, team, buffConditionOptions);
+  const buffConditions = showBuffConditions ? getSummonBuffConditions(summon, team, buffConditionOptions) : [];
 
   const handleMeleeAttack = () => {
     onAttack(summon.id, 'melee');
@@ -99,6 +119,53 @@ export function SummonCard({
           <span className="text-gray-300">{summon.armor}</span>
         </div>
       </div>
+
+      {/* Buff Conditions */}
+      {showBuffConditions && (
+        <div className="mt-2 pt-2 border-t border-green-700/30">
+          <div className="flex items-center gap-1 mb-1">
+            <Settings size={12} className="text-blue-400" />
+            <span className="text-xs font-medium text-gray-400">Buff Conditions</span>
+          </div>
+          <div className="space-y-1.5">
+            {buffConditions.map((condition) => (
+              <label
+                key={condition.id}
+                className="flex items-start gap-2 cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={condition.isActive}
+                  onChange={() => onToggleBuffCondition?.(summon.id, condition.id)}
+                  className={`w-3.5 h-3.5 mt-0.5 rounded border-gray-600 bg-gray-700 focus:ring-offset-0 cursor-pointer ${
+                    condition.category === 'self'
+                      ? 'text-purple-500 focus:ring-purple-500'
+                      : 'text-yellow-500 focus:ring-yellow-500'
+                  }`}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className={`text-xs font-medium ${
+                    condition.isActive
+                      ? (condition.category === 'self' ? 'text-purple-300' : 'text-yellow-300')
+                      : 'text-gray-500'
+                  }`}>
+                    {condition.label}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <span className={condition.isActive ? 'text-green-400' : ''}>{condition.effect}</span>
+                    {condition.sourceCharacter && (
+                      <span className="ml-1">({condition.source})</span>
+                    )}
+                    {!condition.sourceCharacter && (
+                      <span className="ml-1">({condition.source})</span>
+                    )}
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Attack Buttons */}
       <div className="mt-3 flex gap-2">

@@ -28,6 +28,7 @@ export {
   type CalculationLog,
   type TraitModifier,
   type DamageCaps,
+  type BuffSource,
 } from './types';
 
 // Trait evaluation

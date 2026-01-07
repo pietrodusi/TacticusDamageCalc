@@ -56,6 +56,9 @@ export interface BattleSummon {
 
   // Tracking
   totalDamageDealt: number;
+
+  // Buff condition toggles (like character abilityToggles)
+  abilityToggles?: Record<string, boolean>;
 }
 
 /**

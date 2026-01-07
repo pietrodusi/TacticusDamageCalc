@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, FollowUpAttackLog, Boss, AppliedBuffInfo, BuffEvaluationContext, DamageType, SelectedMachineOfWar } from '../types';
 import { calculateStats, calculateEquipmentStats, getBossAbilityConstantModifiers, getMachineOfWarDamageBonus, getSummonUnitData, getSummonIconUrl } from '../services/dataService';
-import { DamageCalculator, type AttackerStats, type DefenderStats, type DamageCaps } from '../services/damage';
+import { DamageCalculator, type AttackerStats, type DefenderStats, type DamageCaps, type BuffSource } from '../services/damage';
 import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, unuseAbility, resetCooldowns, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
 import { getApplicableBuffs, combineBuffEffects, addBuffToPool, getBuffTemplate, expireBuffs } from '../services/buffs';
 
@@ -129,6 +129,7 @@ interface BattleStore {
   addSummon: (summon: import('../types').BattleSummon) => void;
   removeSummon: (summonId: string) => void;
   updateSummonCount: (summonId: string, count: number) => void;
+  toggleSummonBuffCondition: (summonId: string, conditionId: string) => void;
   executeSummonAttack: (summonId: string, attackType: 'melee' | 'ranged') => BattleLogEntry;
 
   // Special ability executions
@@ -3801,6 +3802,27 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }));
   },
 
+  toggleSummonBuffCondition: (summonId, conditionId) => {
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            summons: state.battleState.summons.map((s) =>
+              s.id === summonId
+                ? {
+                    ...s,
+                    abilityToggles: {
+                      ...s.abilityToggles,
+                      [conditionId]: !(s.abilityToggles?.[conditionId] ?? false),
+                    },
+                  }
+                : s
+            ),
+          }
+        : null,
+    }));
+  },
+
   executeSummonAttack: (summonId, attackType) => {
     const { battleState } = get();
     if (!battleState || !battleState.boss) {
@@ -3843,26 +3865,101 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const bossArmorReduction = battleState.bossArmorReduction || 0;
     const bossArmor = Math.max(0, bossBaseArmor - bossArmorReduction);
 
-    // Simple damage calculation for summons:
-    // - No crit
-    // - No equipment bonuses
-    // - No trait bonuses
-    // - Just base damage, armor, and pierce ratio
+    // Apply buff conditions from toggles
+    const toggles = summon.abilityToggles || {};
+    let flatDamageBonus = 0;
+    let extraHitsFromBuffs = 0;
+    let damageMultiplier = 1;
+    const buffSources: BuffSource[] = [];
+
+    // HighGround: +50% damage
+    if (toggles['HighGround']) {
+      damageMultiplier *= 1.5;
+      buffSources.push({ name: 'High Ground', damageMultiplier: 1.5 });
+    }
+
+    // Machine of War: +X% damage
+    if (toggles['WarMachine'] && battleState.machineOfWar) {
+      const mowMultiplier = 1 + (battleState.machineOfWar.extraDmgPct / 100);
+      damageMultiplier *= mowMultiplier;
+      buffSources.push({ name: 'Machine of War', damageMultiplier: mowMultiplier });
+    }
+
+    // Waaagh! buff from Gulgortz
+    const sourceCharacter = battleState.team.find(c => c.id === summon.sourceCharacterId);
+    if (sourceCharacter?.activeAbilities.includes('Waaagh')) {
+      const waaghToggleId = `Waaagh_${sourceCharacter.id}_adjacent`;
+      if (toggles[waaghToggleId]) {
+        const waaghBuff = battleState.buffPool.find(b => b.sourceAbilityId === 'Waaagh');
+        if (waaghBuff) {
+          const levelIndex = sourceCharacter.abilityLevels?.['Waaagh'] ?? 54;
+          const values = getAbilityValues('Waaagh', levelIndex);
+          if (values) {
+            const extraDmg = values.extraDmg as number || 0;
+            const extraHit = values.extraHit as number || 1;
+            flatDamageBonus += extraDmg;
+            extraHitsFromBuffs += extraHit;
+            buffSources.push({ name: "Waaagh!", damageBonus: extraDmg, extraHits: extraHit });
+          }
+        }
+      }
+    }
+
+    // Serene Unifier from Aun'Shi (only phase 3: Storm of Fire)
+    for (const teammate of battleState.team) {
+      if (teammate.id === summon.sourceCharacterId) continue;
+      if (teammate.passiveAbilities.includes('SereneUnifier')) {
+        const toggleId = `SereneUnifier_${teammate.id}_adjacent`;
+        if (toggles[toggleId]) {
+          // Check if it's phase 3 (Storm of Fire)
+          const phase = ((battleState.turn - 1) % 3) + 1;
+          if (phase === 3) {
+            const levelIndex = teammate.abilityLevels?.['SereneUnifier'] ?? 54;
+            const values = getAbilityValues('SereneUnifier', levelIndex);
+            if (values) {
+              const extraDmg = values.extraDmg as number || 0;
+              flatDamageBonus += extraDmg;
+              buffSources.push({ name: 'Serene Unifier', damageBonus: extraDmg });
+            }
+          }
+        }
+      }
+    }
+
+    // Calculate damage with buffs applied
     const baseDamage = summon.damage;
+    const effectiveDamage = baseDamage + flatDamageBonus;
+    const effectiveHits = hits + extraHitsFromBuffs;
     const pierceRatio = 0.3; // Standard pierce ratio
 
     // Calculate damage per hit: max(baseDamage - armor, baseDamage * pierceRatio)
-    const afterArmor = Math.max(0, baseDamage - bossArmor);
-    const pierceFloor = Math.round(baseDamage * pierceRatio);
-    const perHitDamage = Math.max(afterArmor, pierceFloor);
-    const totalDamage = perHitDamage * hits;
+    const afterArmor = Math.max(0, effectiveDamage - bossArmor);
+    const pierceFloor = Math.round(effectiveDamage * pierceRatio);
+    let perHitDamage = Math.max(afterArmor, pierceFloor);
+
+    // Apply damage multiplier
+    perHitDamage = Math.round(perHitDamage * damageMultiplier);
+    const totalDamage = perHitDamage * effectiveHits;
 
     console.group(`=== ${summon.name} (${attackType}) ===`);
     console.log(`Base Damage: ${baseDamage}`);
+    if (flatDamageBonus > 0) {
+      console.log(`Flat Damage Bonus: +${flatDamageBonus}`);
+      console.log(`Effective Damage: ${effectiveDamage}`);
+    }
     console.log(`Boss Armor: ${bossArmor} (base ${bossBaseArmor} - ${bossArmorReduction} reduction)`);
     console.log(`After Armor: ${afterArmor}`);
     console.log(`Pierce Floor (${(pierceRatio * 100).toFixed(0)}%): ${pierceFloor}`);
-    console.log(`Per Hit: ${perHitDamage} × ${hits} hits = ${totalDamage}`);
+    if (damageMultiplier !== 1) {
+      console.log(`Damage Multiplier: ${damageMultiplier.toFixed(2)}x`);
+    }
+    if (extraHitsFromBuffs > 0) {
+      console.log(`Extra Hits from Buffs: +${extraHitsFromBuffs}`);
+    }
+    console.log(`Per Hit: ${perHitDamage} × ${effectiveHits} hits = ${totalDamage}`);
+    if (buffSources.length > 0) {
+      console.log('Buff Sources:', buffSources);
+    }
     console.groupEnd();
 
     // Update battle state with damage dealt
@@ -3884,23 +3981,23 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const damageBreakdown: DamageBreakdown = {
       damage: totalDamage,
       perHitDamage,
-      hits,
+      hits: effectiveHits,
       baseDamage,
-      flatModifiers: 0,
-      flatModifierSources: [],
+      flatModifiers: flatDamageBonus,
+      flatModifierSources: buffSources.filter(s => s.damageBonus).map(s => ({ name: s.name, damageBonus: s.damageBonus })),
       critBonus: 0,
       critChanceSources: [],
       critDamageSources: [],
-      extraHits: 0,
-      extraHitsSources: [],
-      damVarMod: baseDamage,
+      extraHits: extraHitsFromBuffs,
+      extraHitsSources: buffSources.filter(s => s.extraHits).map(s => ({ name: s.name, extraHits: s.extraHits })),
+      damVarMod: effectiveDamage,
       targetArmor: bossArmor,
       afterArmor,
       pierceRatio,
       pierceFloor,
       afterArmorPierce: perHitDamage,
-      globalMultiplier: 1,
-      globalMultiplierSources: [],
+      globalMultiplier: damageMultiplier,
+      globalMultiplierSources: buffSources.filter(s => s.damageMultiplier).map(s => ({ name: s.name, damageMultiplier: s.damageMultiplier })),
       baseCritChance: 0,
       baseCritDamage: 0,
       critChanceBonus: 0,

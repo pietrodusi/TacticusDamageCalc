@@ -73,6 +73,7 @@ export function CalculatorPage() {
     setBossMarkerlight,
     removeSummon,
     updateSummonCount,
+    toggleSummonBuffCondition,
     executeSummonAttack,
     executeTheBetrayerBonus,
   } = useBattleStore();
@@ -769,8 +770,13 @@ export function CalculatorPage() {
                   <SummonCard
                     key={summon.id}
                     summon={summon}
+                    team={battleState.team}
+                    selectedMachineOfWar={selectedMachineOfWar}
+                    buffPool={battleState.buffPool}
+                    currentTurn={battleState.turn}
                     onRemove={removeSummon}
                     onUpdateCount={updateSummonCount}
+                    onToggleBuffCondition={toggleSummonBuffCondition}
                     onAttack={(summonId, attackType) => {
                       const logEntry = executeSummonAttack(summonId, attackType);
                       const targetTurn = editingTurn ?? battleState.turn;

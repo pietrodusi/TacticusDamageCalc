@@ -4,7 +4,7 @@
  * Each condition represents a state the user can toggle (e.g., "Charging", "In Range", "Low HP")
  */
 
-import type { BattleCharacter, SelectedMachineOfWar } from '../types';
+import type { BattleCharacter, SelectedMachineOfWar, BattleSummon, PooledBuff } from '../types';
 import { getAbilityValues, getAbilityNameSync } from './abilities';
 import { getTeamRequiredToggles } from './buffs/buffRegistry';
 import { getMachineOfWarDamageBonus, getMachineOfWarDisplayName } from './dataService';
@@ -622,4 +622,134 @@ export function hasBuffConditions(
   options?: BuffConditionOptions
 ): boolean {
   return getCharacterBuffConditions(character, team, selectedMachineOfWar, options).length > 0;
+}
+
+/**
+ * Options for summon buff condition generation
+ */
+export interface SummonBuffConditionOptions {
+  selectedMachineOfWar?: SelectedMachineOfWar | null;
+  buffPool?: PooledBuff[];  // Active buffs in battle (to check for Waaagh!)
+  currentTurn?: number;     // For turn-cycling abilities like Serene Unifier
+}
+
+/**
+ * Get all buff conditions applicable to a summon
+ * Similar to getCharacterBuffConditions but for summons
+ */
+export function getSummonBuffConditions(
+  summon: BattleSummon,
+  team: BattleCharacter[],
+  options?: SummonBuffConditionOptions
+): BuffCondition[] {
+  const conditions: BuffCondition[] = [];
+  const toggles = summon.abilityToggles || {};
+
+  // Add universal "High Ground" condition for all summons
+  conditions.push({
+    id: 'HighGround',
+    label: 'High Ground',
+    source: 'Position',
+    effect: '+50% damage',
+    isActive: toggles['HighGround'] ?? false,
+    category: 'self',
+  });
+
+  // Add "Machine of War" condition only if a machine is selected
+  if (options?.selectedMachineOfWar) {
+    const extraDmgPct = getMachineOfWarDamageBonus(
+      options.selectedMachineOfWar.machineId,
+      options.selectedMachineOfWar.stars
+    );
+    const machineName = getMachineOfWarDisplayName(options.selectedMachineOfWar.machineId);
+
+    conditions.push({
+      id: 'WarMachine',
+      label: 'Machine of War',
+      source: machineName,
+      effect: `+${extraDmgPct}% damage`,
+      isActive: toggles['WarMachine'] ?? false,
+      category: 'self',
+    });
+  }
+
+  // Check for Waaagh! buff from Gulgortz (applies to Ork summons like Ork Boyz)
+  // Find the source character (Gulgortz) and check if Waaagh is active in buff pool
+  const sourceCharacter = team.find(c => c.id === summon.sourceCharacterId);
+  if (sourceCharacter?.activeAbilities.includes('Waaagh')) {
+    // Check if Waaagh buff is active in the pool
+    const waaghBuff = options?.buffPool?.find(b => b.sourceAbilityId === 'Waaagh');
+    if (waaghBuff) {
+      const levelIndex = sourceCharacter.abilityLevels?.['Waaagh'] ?? 54;
+      const values = getAbilityValues('Waaagh', levelIndex);
+      const abilityName = getAbilityNameSync('Waaagh');
+
+      if (values) {
+        const extraDmg = values.extraDmg as number || 0;
+        const extraHit = values.extraHit as number || 1;
+        const toggleId = `Waaagh_${sourceCharacter.id}_adjacent`;
+
+        conditions.push({
+          id: toggleId,
+          label: `Adjacent to ${sourceCharacter.name}`,
+          source: abilityName,
+          sourceCharacter: sourceCharacter.name,
+          effect: `+${extraDmg} dmg, +${extraHit} hit (normal attacks)`,
+          isActive: toggles[toggleId] ?? false,
+          category: 'aura',
+        });
+      }
+    }
+  }
+
+  // Add aura conditions from teammates (other than source character)
+  for (const teammate of team) {
+    // Skip source character (already handled Waaagh above)
+    if (teammate.id === summon.sourceCharacterId) continue;
+
+    // Serene Unifier (Aun'Shi passive) - turn-cycling aura buff
+    if (teammate.passiveAbilities.includes('SereneUnifier')) {
+      const levelIndex = teammate.abilityLevels?.['SereneUnifier'] ?? 54;
+      const values = getAbilityValues('SereneUnifier', levelIndex);
+      const abilityName = getAbilityNameSync('SereneUnifier');
+
+      if (values) {
+        const extraDmg = values.extraDmg as number || 0;
+
+        // Get current phase based on turn (1-indexed, cycles 1-2-3)
+        const turn = options?.currentTurn || 1;
+        const phase = ((turn - 1) % 3) + 1;  // 1, 2, 3, 1, 2, 3
+        const phaseNames = ['Sense of Stone', "Zephyr's Grace", 'Storm of Fire'];
+        const phaseName = phaseNames[phase - 1];
+
+        const toggleId = `SereneUnifier_${teammate.id}_adjacent`;
+
+        // Only show effect for Storm of Fire (phase 3)
+        const effect = phase === 3 ? `+${extraDmg} dmg (normal)` : 'No combat effect';
+
+        conditions.push({
+          id: toggleId,
+          label: `Adjacent to ${teammate.name}`,
+          source: `${abilityName} (${phaseName})`,
+          sourceCharacter: teammate.name,
+          effect,
+          isActive: toggles[toggleId] ?? false,
+          category: 'aura',
+        });
+      }
+    }
+  }
+
+  return conditions;
+}
+
+/**
+ * Check if a summon has any buff conditions
+ */
+export function hasSummonBuffConditions(
+  summon: BattleSummon,
+  team: BattleCharacter[],
+  options?: SummonBuffConditionOptions
+): boolean {
+  return getSummonBuffConditions(summon, team, options).length > 0;
 }
