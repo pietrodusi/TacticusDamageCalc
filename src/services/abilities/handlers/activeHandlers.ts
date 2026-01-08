@@ -860,6 +860,119 @@ export const InspiredToGreatnessHandler: AbilityHandler = {
   },
 };
 
+/**
+ * RadBombardment (Vitruvius)
+ * Special ranged attack that deals raw damage - ignores all bonuses/modifiers and cannot crit
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Toxic, nrOfHits: 1
+ */
+export const RadBombardmentHandler: AbilityHandler = {
+  abilityId: 'RadBombardment',
+  abilityName: 'Rad Bombardment',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('RadBombardment');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'RadBombardment',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,
+        damageProfile: 'Toxic' as DamageType,
+      },
+      // Raw damage: ignores all Vitruvius's bonuses/modifiers (including elevation) and cannot crit
+      rawDamage: true,
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * EarlyWarningOverride (Re'vas)
+ * Summons 2 Shield Drones and activates Overwatch mode.
+ * Overwatch grants a +extraDmg bonus to a single ranged attack this turn.
+ * Variables: extraDmg, summonHp, summonDmg, summonArmor
+ * Constants: unitId: tauSmnDroneShield, nrOfSummons: 2
+ */
+export const EarlyWarningOverrideHandler: AbilityHandler = {
+  abilityId: 'EarlyWarningOverride',
+  abilityName: 'Early Warning Override',
+  category: 'summon',
+  cooldown: -1,  // One-time use per battle
+  endsTurn: true,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('EarlyWarningOverride');
+
+    return {
+      abilityId: 'EarlyWarningOverride',
+      abilityName,
+      category: 'summon',
+      // Summon 2 Shield Drones
+      summonResult: {
+        unitId: (values.unitId as string) || 'tauSmnDroneShield',
+        hp: values.summonHp as number || 0,
+        damage: values.summonDmg as number || 0,
+        armor: values.summonArmor as number || 0,
+        count: values.nrOfSummons as number || 2,
+      },
+      // Overwatch activation (extraDmg for ranged attack)
+      overwatchResult: {
+        extraDmg: values.extraDmg as number || 0,
+      },
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * DoctrinaImperatives (Tan Gi'da)
+ * Stance-switching ability that toggles between Protector and Conqueror Imperatives.
+ * - Protector: +extraArmor to self and adjacent Mechanical units
+ * - Conqueror: +extraDmg vs reduced armor targets (not relevant for bosses)
+ * Can be used once per turn (cooldown: 0), doesn't end turn.
+ * Only first use counts for "ability used" condition (Legendary Commander).
+ * Variables: extraDmg, extraArmor
+ */
+export const DoctrinaImperativesHandler: AbilityHandler = {
+  abilityId: 'DoctrinaImperatives',
+  abilityName: 'Doctrina Imperatives',
+  category: 'buff',
+  cooldown: 0,  // Once per turn (resets at turn start)
+  endsTurn: false,  // Can attack after using
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('DoctrinaImperatives');
+    const extraArmor = values.extraArmor as number || 0;
+
+    // Note: Stance switching logic is handled in battleStore.ts
+    // This handler returns the Protector buff values for display
+    // The battleStore decides which stance to apply based on current state
+    return {
+      abilityId: 'DoctrinaImperatives',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {
+          armorBonus: extraArmor,
+        },
+        duration: -1,  // Permanent until stance switches
+      },
+      message: `${abilityName}: Protector (+${extraArmor} Armor)`,
+    };
+  },
+};
+
 // Export all active handlers
 export const activeHandlers: AbilityHandler[] = [
   WarHowlHandler,
@@ -884,4 +997,7 @@ export const activeHandlers: AbilityHandler[] = [
   WaaaghHandler,
   InspiredToGreatnessHandler,
   CordClawHandler,
+  RadBombardmentHandler,
+  EarlyWarningOverrideHandler,
+  DoctrinaImperativesHandler,
 ];

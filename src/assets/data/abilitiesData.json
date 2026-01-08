@@ -408,7 +408,7 @@
         "name": "DW-02 Advanced Burst Cannon"
     },
     "EarlyWarningOverride": {
-        "description": "Summons 2 <style=Summon><style=Faction_Tau>Shield Drones</style></style> into free adjacent hexes. Newly summoned <style=Summon><style=Faction_Tau>Shield Drones</style></style> can immediately attack an enemy in <style=Stat_Melee>melee</style>, but cannot move this turn.\n<style=Faction_Tau>Re'vas</style> also starts <style=Buff_Overwatching>Overwatching</style> until the start of her next turn, ignoring the <style=Combat_Weakness>Close Combat Weakness</style> trait and dealing <style=Stat_Damage>+{[extraDmg]} Damage</style>. When defeating a unit while <style=Buff_Overwatching>Overwatching</style>, she remains in <style=Buff_Overwatching>Overwatch</style>, retaining {[hitsReduction]} fewer <style=Stat_Hits>hits</style> compared to the previous attack. \n\nShield Drones' stats:\n<style=Stat_Health>{[summonHp]} Health</style>\n<style=Stat_Damage>{[summonDmg]} Damage</style>\n<style=Stat_Armor>{[summonArmor]} Armour</style>",
+        "description": "Summons 2 Shield Drones into free adjacent hexes. Newly summoned Shield Drones can immediately attack an enemy in melee, but cannot move this turn.\nRe'vas also starts Overwatching until the start of her next turn, dealing +{[extraDmg]} Damage. When defeating a unit while Overwatching, she remains in Overwatch, retaining 1 fewer hits compared to the previous attack.",
         "name": "Early Warning Override"
     },
     "EchoesFromTheWarp": {

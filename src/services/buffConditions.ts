@@ -492,6 +492,35 @@ function getAuraConditions(
       }
     }
 
+    // Doctrina Imperatives (Tan Gi'da active) - armor bonus for Mechanical units
+    // Only show for Mechanical faction characters (including Adeptus Mechanicus)
+    if (teammate.activeAbilities.includes('DoctrinaImperatives')) {
+      // Check if character is Mechanical (Adeptus Mechanicus faction or has Mechanical trait)
+      const isMechanical = character.faction === 'Adeptus Mechanicus' ||
+                           character.traits?.includes('Mechanical');
+
+      if (isMechanical && character.id !== teammate.id) {
+        const levelIndex = teammate.abilityLevels?.['DoctrinaImperatives'] ?? 54;
+        const values = getAbilityValues('DoctrinaImperatives', levelIndex);
+        const abilityName = getAbilityNameSync('DoctrinaImperatives');
+
+        if (values) {
+          const extraArmor = values.extraArmor as number || 0;
+          const toggleId = `DoctrinaImperatives_${teammate.id}_adjacent`;
+
+          conditions.push({
+            id: toggleId,
+            label: `Adjacent to ${teammate.name}`,
+            source: `${abilityName} (Protector)`,
+            sourceCharacter: teammate.name,
+            effect: `+${extraArmor} armor`,
+            isActive: character.abilityToggles[toggleId] ?? false,
+            category: 'aura',
+          });
+        }
+      }
+    }
+
     // Serene Unifier (Aun'Shi passive) - turn-cycling aura buff
     // Don't show for Aun'Shi himself (he doesn't get the bonus from his own aura)
     if (teammate.passiveAbilities.includes('SereneUnifier')) {
@@ -652,6 +681,17 @@ export function getSummonBuffConditions(
     source: 'Position',
     effect: '+50% damage',
     isActive: toggles['HighGround'] ?? false,
+    category: 'self',
+  });
+
+  // Add "Adjacent to Boss" condition for all summons
+  // This controls whether summon uses melee or ranged attacks
+  conditions.push({
+    id: 'adjacentToBoss',
+    label: 'Adjacent to Boss',
+    source: 'Position',
+    effect: 'Enables melee attacks, disables ranged',
+    isActive: toggles['adjacentToBoss'] ?? false,
     category: 'self',
   });
 

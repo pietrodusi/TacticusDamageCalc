@@ -1,6 +1,7 @@
-import { X, Minus, Plus, Sword, Target, Shield, Heart, Zap, Settings } from 'lucide-react';
+import { X, Minus, Plus, Sword, Shield, Heart, Zap, Settings } from 'lucide-react';
 import type { BattleSummon, BattleLogEntry, BattleCharacter, SelectedMachineOfWar, PooledBuff } from '../../types';
 import { getSummonBuffConditions, hasSummonBuffConditions } from '../../services/buffConditions';
+import { getDamageTypeImageUrl } from '../../services/dataService';
 
 interface SummonCardProps {
   summon: BattleSummon;
@@ -26,6 +27,22 @@ export function SummonCard({
   onAttack,
 }: SummonCardProps) {
   const hasRanged = summon.rangedHits && summon.rangedHits > 0;
+  const isAdjacentToBoss = summon.abilityToggles?.['adjacentToBoss'] ?? false;
+
+  // Melee requires being adjacent to boss
+  // Ranged is disabled when adjacent to boss
+  const canMelee = isAdjacentToBoss;
+  const canRanged = hasRanged && !isAdjacentToBoss;
+
+  // Calculate total damage for display (damage × hits)
+  const meleeTotalDamage = summon.damage * summon.meleeHits;
+  const rangedTotalDamage = hasRanged ? summon.damage * (summon.rangedHits || 0) : 0;
+
+  // Get damage type icons
+  const meleeDamageTypeIcon = getDamageTypeImageUrl(summon.meleeDamageType);
+  const rangedDamageTypeIcon = summon.rangedDamageType
+    ? getDamageTypeImageUrl(summon.rangedDamageType)
+    : undefined;
 
   // Get buff conditions for this summon
   const buffConditionOptions = {
@@ -37,11 +54,13 @@ export function SummonCard({
   const buffConditions = showBuffConditions ? getSummonBuffConditions(summon, team, buffConditionOptions) : [];
 
   const handleMeleeAttack = () => {
-    onAttack(summon.id, 'melee');
+    if (canMelee) {
+      onAttack(summon.id, 'melee');
+    }
   };
 
   const handleRangedAttack = () => {
-    if (hasRanged) {
+    if (canRanged) {
       onAttack(summon.id, 'ranged');
     }
   };
@@ -167,22 +186,46 @@ export function SummonCard({
         </div>
       )}
 
-      {/* Attack Buttons */}
-      <div className="mt-3 flex gap-2">
+      {/* Attack Buttons - Same layout as character ActionPanel */}
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <button
           onClick={handleMeleeAttack}
-          className="flex-1 px-3 py-1.5 text-xs font-medium rounded bg-orange-900/40 text-orange-300 hover:bg-orange-900/60 transition-colors flex items-center justify-center gap-1"
+          disabled={!canMelee}
+          className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+            canMelee
+              ? 'hover:bg-red-900/50 hover:border-red-600 text-red-500'
+              : 'opacity-50 cursor-not-allowed'
+          }`}
         >
-          <Sword size={12} />
-          Melee ({summon.meleeHits}x)
+          <div className="flex items-center gap-1">
+            {meleeDamageTypeIcon && (
+              <img src={meleeDamageTypeIcon} alt={summon.meleeDamageType} className="w-4 h-4" />
+            )}
+            <span className="text-xs font-medium">Melee</span>
+          </div>
+          <span className="text-[10px] text-gray-400">
+            {summon.damage} × {summon.meleeHits} = {meleeTotalDamage.toLocaleString()}
+          </span>
         </button>
         {hasRanged && (
           <button
             onClick={handleRangedAttack}
-            className="flex-1 px-3 py-1.5 text-xs font-medium rounded bg-blue-900/40 text-blue-300 hover:bg-blue-900/60 transition-colors flex items-center justify-center gap-1"
+            disabled={!canRanged}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              canRanged
+                ? 'hover:bg-blue-900/50 hover:border-blue-600 text-blue-500'
+                : 'opacity-50 cursor-not-allowed'
+            }`}
           >
-            <Target size={12} />
-            Ranged ({summon.rangedHits}x)
+            <div className="flex items-center gap-1">
+              {rangedDamageTypeIcon && (
+                <img src={rangedDamageTypeIcon} alt={summon.rangedDamageType} className="w-4 h-4" />
+              )}
+              <span className="text-xs font-medium">Ranged</span>
+            </div>
+            <span className="text-[10px] text-gray-400">
+              {summon.damage} × {summon.rangedHits} = {rangedTotalDamage.toLocaleString()}
+            </span>
           </button>
         )}
       </div>

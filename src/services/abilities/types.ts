@@ -69,6 +69,7 @@ export interface ComputedAbilityValues {
   dmgReduction?: number;
   armorReduction?: number;
   blockDmg?: number;
+  extraArmor?: number;  // For DoctrinaImperatives Protector
 
   // Other
   range?: number;
@@ -102,6 +103,9 @@ export interface AbilityStatModifier {
 
   // Pierce bonus
   pierceRatioBonus?: number;       // Bonus pierce ratio percentage (e.g., 10 for +10%)
+
+  // Armor bonus (for defensive buffs like DoctrinaImperatives Protector)
+  armorBonus?: number;             // Increases character's armor (defensive, doesn't affect damage calc)
 
   // Crit bonuses
   critChanceBonus?: number;        // +% crit chance (percentage points)
@@ -280,6 +284,19 @@ export interface ActiveAbilityResult {
   // Ability-specific stat modifiers (for damage abilities that need to show modifiers in breakdown)
   // e.g., TalonsOfTheEmperor scaling damage
   abilityModifiers?: AbilityStatModifier;
+
+  // Raw damage mode: bypasses all bonuses/modifiers and disables crit
+  // Used for abilities like RadBombardment that explicitly ignore character bonuses
+  rawDamage?: boolean;
+
+  // Attack type override for damage abilities (default is 'melee')
+  // Some abilities like RadBombardment are ranged attacks
+  attackType?: 'melee' | 'ranged';
+
+  // For Overwatch abilities (Re'vas Early Warning Override)
+  overwatchResult?: {
+    extraDmg: number;  // Extra damage for Overwatch ranged attack
+  };
 
   // Log message
   message: string;

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { TeamMember, BattleState, BattleCharacter, Action, TurnAction, BattleLogEntry, DamageBreakdown, FollowUpAttackLog, Boss, AppliedBuffInfo, BuffEvaluationContext, DamageType, SelectedMachineOfWar } from '../types';
 import { calculateStats, calculateEquipmentStats, getBossAbilityConstantModifiers, getMachineOfWarDamageBonus, getSummonUnitData, getSummonIconUrl } from '../services/dataService';
-import { DamageCalculator, type AttackerStats, type DefenderStats, type DamageCaps, type BuffSource } from '../services/damage';
+import { DamageCalculator, type AttackerStats, type DefenderStats, type DamageCaps, type BuffSource, evaluateTraitModifiers, type TraitContext } from '../services/damage';
 import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, unuseAbility, resetCooldowns, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
 import { getApplicableBuffs, combineBuffEffects, addBuffToPool, getBuffTemplate, expireBuffs } from '../services/buffs';
 
@@ -24,6 +24,7 @@ interface ExecuteAttackOptions {
   baseDamageCap?: number;        // NEW: Cap 1 - "Its Own Damage" (e.g., Galvanic Field)
   preArmorCap?: number;          // NEW: Cap 2 - "Pre-Armour Damage" (e.g., Psychic Stalk)
   finalDamageCap?: number;       // NEW: Cap 3 - "The Hit" (e.g., Astartes Banner)
+  baseDamageBonus?: number;     // Extra flat damage bonus (e.g., Overwatch +extraDmg)
   skipStateUpdates?: boolean;   // Don't update hasActed, hasAttackedThisBattle, etc.
   abilityName?: string;         // For log display (e.g., "Galvanic Field")
 }
@@ -184,7 +185,7 @@ function triggerOptimisedGait(params: OptimisedGaitParams): OptimisedGaitResult 
   const ogAttackerStats: AttackerStats = {
     baseDamage: ogAvgDamage + ogExtraDmg,
     damageType: 'Energy',  // Energy damage (respects armor)
-    hits: ogHits + ogExtraHits,
+    hits: ogHits,  // Extra hits come via abilityModifiers, not added to base
     critChance: ogEquipmentStats.critChance || 0,
     critDamage: ogEquipmentStats.critDmg || 0,
     critChanceBonus: ogEquipmentStats.critChanceBonus || 0,
@@ -309,7 +310,8 @@ function triggerOptimisedGait(params: OptimisedGaitParams): OptimisedGaitResult 
 
     // Extract bonuses from pool effects
     const cordClawExtraDmg = cordClawPoolEffects.baseDamageBonus || 0;
-    const cordClawExtraHits = cordClawPoolEffects.extraHits || 0;
+    // Chordclaw is additional hits like CIB - doesn't get MA/LC bonus
+    const cordClawExtraHits = 0;
     const cordClawArmorIgnored = cordClawPoolEffects.armorIgnored || 0;
     const poolCordClawMultiplier = cordClawPoolEffects.baseDamageMultiplier || 1;
 
@@ -485,6 +487,19 @@ function createBattleCharacter(character: TeamMember, index: number): BattleChar
   const allAbilities = [...character.activeAbilities, ...character.passiveAbilities];
   const abilityCooldowns = initializeCooldowns(allAbilities);
 
+  // Initialize Doctrina Imperatives stance (default: Protector) and armor buff
+  const hasDoctrinaImperatives = character.activeAbilities.includes('DoctrinaImperatives');
+  let doctrinaStance: 'protector' | 'conqueror' | null = null;
+  let initialActiveBuffs: import('../services/abilities/types').AbilityStatModifier[] = [];
+  if (hasDoctrinaImperatives) {
+    doctrinaStance = 'protector';  // Default stance is Protector
+    const doctrinaValues = getAbilityValues('DoctrinaImperatives', character.abilityLevels?.DoctrinaImperatives ?? 54);
+    if (doctrinaValues) {
+      const extraArmor = doctrinaValues.extraArmor as number || 0;
+      initialActiveBuffs = [{ abilityName: 'Doctrina Imperatives', armorBonus: extraArmor }];
+    }
+  }
+
   return {
     ...character,
     currentHealth: stats.health,
@@ -511,10 +526,12 @@ function createBattleCharacter(character: TeamMember, index: number): BattleChar
     // Ability state
     abilityCooldowns,
     abilityToggles: {},  // User enables these via UI
-    activeBuffs: [],
+    activeBuffs: initialActiveBuffs,
     // Laviscus's Refusal to be Outdone passive tracking
     outrage: 0,
     outrageContributors: [],
+    // Tan Gi'da's Doctrina Imperatives stance (default: Protector)
+    doctrinaImperativeStance: doctrinaStance,
   };
 }
 
@@ -583,6 +600,7 @@ interface BattleStore {
 
   // Special ability executions
   executeTheBetrayerBonus: (characterId: string) => BattleLogEntry;
+  executeOverwatchAttack: (characterId: string) => BattleLogEntry;
 }
 
 export const useBattleStore = create<BattleStore>((set, get) => ({
@@ -693,6 +711,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Initialize Master Annihilator buff if Vitruvius is in team
+    const vitruvius = battleCharacters.find(c => c.passiveAbilities.includes('MasterAnnihilator'));
+    if (vitruvius) {
+      const maTemplate = getBuffTemplate('master_annihilator');
+      const maValues = getAbilityValues('MasterAnnihilator', vitruvius.abilityLevels?.MasterAnnihilator ?? 54);
+
+      if (maValues && maTemplate) {
+        buffPool = addBuffToPool(buffPool, maTemplate, vitruvius, maValues as Record<string, number>, 1);
+      }
+    }
+
     // Initialize Prophet of Gork and Mork if boss has the passive ability
     let prophetOfGorkAndMork: BattleState['prophetOfGorkAndMork'] = undefined;
     if (boss?.passiveAbilities?.includes('ProphetOfGorkAndMork')) {
@@ -730,6 +759,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       buffPool, // Buff pool with LC buffs if Trajann present
       bossArmorReduction: 0, // Cumulative boss armor reduction from abilities
       bossHasMarkerlight: false, // Markerlight debuff on boss
+      bossHasMasterAnnihilatorMark: false, // Master Annihilator debuff on boss (Vitruvius)
+      masterAnnihilatorMaxDmg: 0, // Damage cap for Master Annihilator extra hit
       activeAbilitiesUsedCount: 0, // Count of active abilities used in battle
       custodedUsedAbilityThisTurn: false, // Track if Custodes used ability (Stand Vigil range extension)
       bossAttacksReceivedThisTurn: 0, // Prophet of Gork and Mork counter
@@ -788,6 +819,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       fightingRetreatActive: false,
       // Reset The Betrayer usage for new turn
       hasUsedTheBetrayerThisTurn: false,
+      // Reset Overwatch usage for new turn (trait users can use once per turn)
+      hasUsedOverwatchThisTurn: false,
       // Increment attackTurnsCount if character attacked this turn (for LegacyOfCombat bonus)
       attackTurnsCount: char.attacksThisTurn > 0 ? char.attackTurnsCount + 1 : char.attackTurnsCount,
       // Advance ability cooldowns
@@ -1612,8 +1645,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Combine damage multipliers: passive mods + active buff multiplier + markerlight + high ground + war machine
     const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * markerlightMultiplier * highGroundMultiplier * warMachineMultiplier;
-    // Combine flat damage bonuses: passive mods + active buff bonus
-    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus;
+    // Combine flat damage bonuses: passive mods + active buff bonus + options bonus (Overwatch)
+    const optionsDamageBonus = options?.baseDamageBonus || 0;
+    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus + optionsDamageBonus;
+
+    // Add options damage bonus source for display (Overwatch)
+    if (optionsDamageBonus > 0) {
+      buffSources.push({
+        name: options?.abilityName || 'Overwatch',
+        damageBonus: optionsDamageBonus,
+      });
+    }
 
     // Add Markerlight buff source for display
     if (markerlightMultiplier > 1) {
@@ -2526,7 +2568,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
       // Extract bonuses from pool effects
       const cordClawExtraDmg = cordClawPoolEffects.baseDamageBonus || 0;
-      const cordClawExtraHits = cordClawPoolEffects.extraHits || 0;
+      // Chordclaw is additional hits like CIB - doesn't get MA/LC bonus
+      const cordClawExtraHits = 0;
       const cordClawArmorIgnored = cordClawPoolEffects.armorIgnored || 0;
       const poolCordClawMultiplier = cordClawPoolEffects.baseDamageMultiplier || 1;
 
@@ -2754,6 +2797,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             bossArmorReduction: (state.battleState.bossArmorReduction || 0) + followUpArmorReductionTotal,
             // Update Prophet of Gork and Mork attack counter
             bossAttacksReceivedThisTurn: prophetAttackCounter,
+            // Master Annihilator: Mark boss when Vitruvius does a normal attack
+            bossHasMasterAnnihilatorMark: attacker.passiveAbilities.includes('MasterAnnihilator')
+              ? true
+              : state.battleState.bossHasMasterAnnihilatorMark,
+            masterAnnihilatorMaxDmg: attacker.passiveAbilities.includes('MasterAnnihilator')
+              ? (getAbilityValues('MasterAnnihilator', attacker.abilityLevels?.MasterAnnihilator ?? 54)?.maxDmg as number) || 0
+              : state.battleState.masterAnnihilatorMaxDmg,
             // Remove consumed buffs from the pool
             buffPool: buffsToConsume.length > 0
               ? state.battleState.buffPool.filter(b => !buffsToConsume.includes(b.id))
@@ -2896,14 +2946,88 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Handle ControlEdict (Tan Gi'da) - summon Skitarii Vanguard after attack if Protector stance is active
+    // If summon exists, increment count (max 5). If not, create one.
+    if (attacker.passiveAbilities.includes('ControlEdict') && attacker.doctrinaImperativeStance === 'protector') {
+      const currentState = get().battleState;
+      if (currentState) {
+        const MAX_SKITARII_COUNT = 5;
+        const existingVanguard = currentState.summons.find(s => s.unitId === 'admecSmnVanguard');
+
+        if (existingVanguard) {
+          // Increment count if under max
+          if (existingVanguard.count < MAX_SKITARII_COUNT) {
+            set((state) => ({
+              battleState: state.battleState
+                ? {
+                    ...state.battleState,
+                    summons: state.battleState.summons.map(s =>
+                      s.unitId === 'admecSmnVanguard'
+                        ? { ...s, count: s.count + 1 }
+                        : s
+                    ),
+                  }
+                : null,
+            }));
+            console.log(`[Control Edict: Skitarii Vanguard count increased to ${existingVanguard.count + 1} (max ${MAX_SKITARII_COUNT})]`);
+          } else {
+            console.log(`[Control Edict: Skitarii Vanguard at max count (${MAX_SKITARII_COUNT})]`);
+          }
+        } else {
+          // Create new summon
+          const controlEdictValues = getAbilityValues('ControlEdict', attacker.abilityLevels?.ControlEdict ?? 54) || {};
+          const summonData = getSummonUnitData('admecSmnVanguard');
+          if (summonData) {
+            const meleeWeapon = summonData.weapons.find(w => !w.Range);
+            const rangedWeapon = summonData.weapons.find(w => w.Range);
+
+            const newSummon: import('../types').BattleSummon = {
+              id: `summon_admecSmnVanguard_${Date.now()}`,
+              unitId: 'admecSmnVanguard',
+              name: summonData.name,
+              sourceCharacterId: attackerId,
+              sourceAbilityId: 'ControlEdict',
+              hp: controlEdictValues.summonHp as number || 0,
+              damage: controlEdictValues.summonDmg as number || 0,
+              armor: controlEdictValues.summonArmor as number || 0,
+              meleeHits: meleeWeapon?.hits || 1,
+              meleeDamageType: (meleeWeapon?.DamageProfile as import('../types').DamageType) || 'Physical',
+              rangedHits: rangedWeapon?.hits || 3,
+              rangedDamageType: (rangedWeapon?.DamageProfile as import('../types').DamageType) || 'Toxic',
+              rangedRange: rangedWeapon?.Range,
+              traits: summonData.traits || [],
+              count: 1,
+              createdAtTurn: currentState.turn,
+              iconUrl: getSummonIconUrl('admecSmnVanguard'),
+              activeAbilities: summonData.activeAbilities,
+              totalDamageDealt: 0,
+            };
+
+            set((state) => ({
+              battleState: state.battleState
+                ? {
+                    ...state.battleState,
+                    summons: [...state.battleState.summons, newSummon],
+                  }
+                : null,
+            }));
+
+            console.log(`[Control Edict: Summoned Skitarii Vanguard (Protector stance active)]`);
+          }
+        }
+      }
+    }
+
     return {
       timestamp: Date.now(),
       characterId: attackerId,
       characterName: attacker.name,
+      characterIconUrl: attacker.iconUrl,
       action: 'attack' as const,
       target: targetId,
       damage: totalDamage,
       damageBreakdown,
+      damageType: attackType === 'ranged' ? attacker.rangedDamageType : attacker.meleeDamageType,
       message: `${attacker.name} ${attackType} attacks`,
       followUpAttacks: followUpAttackLogs.length > 0 ? followUpAttackLogs : undefined,
       appliedBuffs: appliedBuffs.length > 0 ? appliedBuffs : undefined,
@@ -3047,6 +3171,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         timestamp: Date.now(),
         characterId,
         characterName: character.name,
+        characterIconUrl: character.iconUrl,
         action: 'ability' as const,
         message: `${character.name} uses ${abilityName} (no effect)`,
       };
@@ -3358,6 +3483,95 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         }));
         console.log(`[Multi-component ability completed: ${character.name} now qualifies for LC damage]`);
       }
+    } else if (result.damageResult && result.rawDamage) {
+      // Raw damage ability (like RadBombardment) - bypasses all bonuses/modifiers and cannot crit
+      // This ability explicitly ignores character bonuses, elevation, and crit
+      console.group(`=== TURN ${battleState.turn}: ${character.name} uses ${abilityName} (RAW DAMAGE) ===`);
+      console.log('[Raw Damage: ignores all bonuses/modifiers, cannot crit]');
+
+      const baseHits = result.damageResult.hits;
+      const avgDamagePerHit = result.damageResult.averageDamage;
+
+      // Use boss armor if available, accounting for armor reduction
+      const baseBossArmor = battleState.boss?.armor ?? 0;
+      const bossArmor = Math.max(0, baseBossArmor - (battleState.bossArmorReduction || 0));
+
+      // Check if boss has Daemon trait for block mechanic
+      const hasDaemonTraitRaw = battleState.boss?.traits?.includes('Daemon') ?? false;
+
+      const defenderStats: DefenderStats = {
+        armor: bossArmor,
+        maxHealth: battleState.boss?.health ?? 100000,
+        traits: battleState.boss?.traits,
+        // Daemon block stats
+        daemonBlockChance: hasDaemonTraitRaw ? 0.25 : undefined,
+        daemonBlockMaxAmount: hasDaemonTraitRaw ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
+      };
+
+      // Raw damage stats: no crit, no traits, no bonuses
+      const rawStats: AttackerStats = {
+        baseDamage: avgDamagePerHit,
+        damageType: result.damageResult.damageProfile,
+        hits: baseHits,
+        critChance: 0,  // No crit
+        critDamage: 0,  // No crit
+        critChanceBonus: 0,
+        critDmgBonus: 0,
+        ignoreCrit: true,  // Force ignore crit
+        traits: [],  // No trait bonuses
+        hasMoved: true,
+        attackType: result.attackType || 'ranged',
+        hasAttackedThisBattle: character.hasAttackedThisBattle,
+        attacksThisTurn: character.attacksThisTurn,
+        firstAttackTurn: character.firstAttackTurn,
+        currentTurn: battleState.turn,
+        abilityToggles: {},  // No toggles (ignores High Ground, etc.)
+        // No abilityModifiers - raw damage has no bonuses
+      };
+
+      const rawCalc = new DamageCalculator(true);
+      const rawResult = rawCalc.calculate(rawStats, defenderStats);
+
+      rawCalc.printLogs();
+      console.log('\n--- SUMMARY ---');
+      console.log(`Damage: ${rawResult.damage.toLocaleString()}`);
+      console.groupEnd();
+
+      totalDamage = rawResult.damage;
+      maxPerHitDamage = Math.max(maxPerHitDamage, rawResult.perHitDamage);
+
+      // Build breakdown for display
+      damageBreakdown = {
+        damage: rawResult.damage,
+        perHitDamage: rawResult.perHitDamage,
+        hits: rawResult.totalHits,
+        baseDamage: rawResult.baseDamage,
+        flatModifiers: 0,
+        flatModifierSources: [],  // No modifiers for raw damage
+        critBonus: 0,
+        critChanceSources: [],    // No crit for raw damage
+        critDamageSources: [],    // No crit for raw damage
+        extraHits: 0,
+        extraHitsSources: [],     // No extra hits for raw damage
+        damVarMod: rawResult.damVarMod,
+        targetArmor: bossArmor,
+        afterArmor: rawResult.afterArmor,
+        pierceRatio: rawResult.pierceRatio,
+        pierceFloor: rawResult.pierceFloor,
+        afterArmorPierce: rawResult.afterArmorPierce,
+        globalMultiplier: rawResult.globalMultiplier,
+        globalMultiplierSources: [],  // No multipliers for raw damage
+        baseCritChance: 0,
+        baseCritDamage: 0,
+        critChanceBonus: 0,
+        critDmgBonus: 0,
+        critChance: 0,
+        critDamage: 0,
+        // Daemon block stats
+        expectedBlocks: rawResult.expectedBlocks,
+        blockReductionPerHit: rawResult.blockReductionPerHit,
+        totalBlockReduction: rawResult.totalBlockReduction,
+      };
     } else if (result.damageResult) {
       // Single component damage ability (like Martial Inspiration)
       // Displayed as a special attack with purple shading
@@ -3368,7 +3582,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // Get LC bonuses from buff pool for single-component ability attacks
       const singleAbilityBuffContext: BuffEvaluationContext = {
         attacker: character,
-        attackType: 'melee',
+        attackType: result.attackType || 'melee',
         attackCategory: 'ability',
         target: battleState.boss,
         battleState,
@@ -3394,13 +3608,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         console.log(`[Pool Buff applied to ability: +${lcExtraDmg} dmg, +${lcExtraHits} hits, ×${poolDamageMultiplier.toFixed(2)} mult]`);
       }
 
-      // Get Lord of the Host aura bonuses for ability attacks (melee only)
-      // Martial Inspiration is a melee attack and should receive aura bonuses
+      // Get Lord of the Host aura bonuses for ability attacks
+      // Use the ability's attack type for filtering (melee or ranged)
+      const abilityAttackType = result.attackType || 'melee';
       const abilityAuraBonuses = getCharacterAuraBonuses(character, battleState.team);
       const activeAbilityAuras = abilityAuraBonuses.filter(a => {
         if (!a.isActive) return false;
-        // Only apply melee-restricted auras since Martial Inspiration is melee
-        if (a.attackTypeRestriction && a.attackTypeRestriction !== 'melee') return false;
+        // Only apply auras matching the ability's attack type
+        if (a.attackTypeRestriction && a.attackTypeRestriction !== abilityAttackType) return false;
         return true;
       });
 
@@ -3806,6 +4021,64 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           name: abilityName,
           effect: 'Markerlight, Movement reset, RangedSpecialist override',
         });
+      } else if (abilityId === 'DoctrinaImperatives') {
+        // Special handling for Doctrina Imperatives (Tan Gi'da)
+        // Toggles between Protector (+armor) and Conqueror stances
+        // Only first use counts for LC qualification
+        const abilityValues = getAbilityValues(abilityId, levelIndex) || {};
+        const extraArmor = abilityValues.extraArmor as number || 0;
+
+        // Determine new stance based on current stance
+        const currentStance = character.doctrinaImperativeStance;
+        let newStance: 'protector' | 'conqueror';
+        if (currentStance === null || currentStance === undefined || currentStance === 'conqueror') {
+          newStance = 'protector';
+        } else {
+          newStance = 'conqueror';
+        }
+
+        // Check if this is the first use this battle (for LC qualification)
+        const isFirstUse = !character.hasUsedDoctrinaThisBattle;
+
+        set((state) => ({
+          battleState: state.battleState
+            ? {
+                ...state.battleState,
+                activeAbilitiesUsedCount: isFirstUse
+                  ? state.battleState.activeAbilitiesUsedCount + 1
+                  : state.battleState.activeAbilitiesUsedCount,
+                team: state.battleState.team.map((char) =>
+                  char.id === characterId
+                    ? {
+                        ...char,
+                        hasUsedAbilityThisTurn: true,
+                        // LC: Only first use counts for qualification
+                        hasQualifiedForLCDamage: isFirstUse ? isAdjacentToBoss : char.hasQualifiedForLCDamage,
+                        // Track stance and first use
+                        doctrinaImperativeStance: newStance,
+                        hasUsedDoctrinaThisBattle: true,
+                        // Apply armor buff when switching to Protector
+                        activeBuffs: newStance === 'protector'
+                          ? [
+                              ...char.activeBuffs.filter(b => b.abilityName !== 'Doctrina Imperatives'),
+                              { abilityName: 'Doctrina Imperatives', armorBonus: extraArmor },
+                            ]
+                          : char.activeBuffs.filter(b => b.abilityName !== 'Doctrina Imperatives'),
+                      }
+                    : char
+                ),
+              }
+            : null,
+        }));
+
+        const stanceName = newStance === 'protector' ? 'Protector' : 'Conqueror';
+        console.log(`[Doctrina Imperatives: switched to ${stanceName}${newStance === 'protector' ? ` (+${extraArmor} armor)` : ''}]`);
+
+        // Add to appliedBuffs for BattleLog display
+        appliedBuffs.push({
+          name: abilityName,
+          effect: newStance === 'protector' ? `${stanceName}: +${extraArmor} Armor` : `${stanceName}: No combat effect`,
+        });
       } else if (buffTemplate) {
         // Use new buff pool system
         const abilityValues = getAbilityValues(abilityId, levelIndex) || {};
@@ -3859,6 +4132,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
               rangedHits: rangedWeapon?.hits,
               rangedDamageType: rangedWeapon?.DamageProfile as import('../types').DamageType | undefined,
               rangedRange: rangedWeapon?.Range,
+              traits: summonData.traits || [],
               count: summonCount,
               createdAtTurn: battleState.turn,
               iconUrl: getSummonIconUrl(result.summonResult.unitId),
@@ -3936,10 +4210,89 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           });
         }
       }
-    } else {
-      // Other non-damage ability (e.g., healing without buff) - mark ability as used
+    } else if (result.summonResult) {
+      // Summon ability (like EarlyWarningOverride) - create summons and handle special effects
       // Check if character is adjacent to boss for LC qualification
       const isAdjacentToBoss = character.abilityToggles['adjacentToBoss'] ?? false;
+
+      // Create summons
+      const summonData = getSummonUnitData(result.summonResult.unitId);
+      if (summonData) {
+        const summonCount = result.summonResult.count || 1;
+        const meleeWeapon = summonData.weapons.find(w => !w.Range);
+        const rangedWeapon = summonData.weapons.find(w => w.Range);
+
+        const newSummon: import('../types').BattleSummon = {
+          id: `summon_${result.summonResult.unitId}_${Date.now()}`,
+          unitId: result.summonResult.unitId,
+          name: summonData.name,
+          sourceCharacterId: characterId,
+          sourceAbilityId: abilityId,
+          hp: result.summonResult.hp,
+          damage: result.summonResult.damage,
+          armor: result.summonResult.armor,
+          meleeHits: meleeWeapon?.hits || 2,
+          meleeDamageType: (meleeWeapon?.DamageProfile as import('../types').DamageType) || 'Physical',
+          rangedHits: rangedWeapon?.hits,
+          rangedDamageType: rangedWeapon?.DamageProfile as import('../types').DamageType | undefined,
+          rangedRange: rangedWeapon?.Range,
+          traits: summonData.traits || [],
+          count: summonCount,
+          createdAtTurn: battleState.turn,
+          iconUrl: getSummonIconUrl(result.summonResult.unitId),
+          activeAbilities: summonData.activeAbilities,
+          totalDamageDealt: 0,
+        };
+
+        set((state) => ({
+          battleState: state.battleState
+            ? {
+                ...state.battleState,
+                summons: [...state.battleState.summons, newSummon],
+              }
+            : null,
+        }));
+
+        console.log(`[Summon created: ${summonCount}x ${summonData.name}]`);
+      }
+
+      // Handle Overwatch activation (Re'vas Early Warning Override)
+      const overwatchExtraDmg = result.overwatchResult?.extraDmg || 0;
+
+      set((state) => ({
+        battleState: state.battleState
+          ? {
+              ...state.battleState,
+              activeAbilitiesUsedCount: state.battleState.activeAbilitiesUsedCount + 1,
+              team: state.battleState.team.map((char) =>
+                char.id === characterId
+                  ? {
+                      ...char,
+                      hasUsedAbilityThisTurn: true,
+                      hasQualifiedForLCDamage: isAdjacentToBoss,
+                      // Activate Overwatch for Re'vas
+                      ...(overwatchExtraDmg > 0 ? {
+                        overwatchActive: true,
+                        overwatchExtraDmg: overwatchExtraDmg,
+                        hasUsedOverwatchThisTurn: false,
+                      } : {}),
+                    }
+                  : char
+              ),
+            }
+          : null,
+      }));
+
+      if (overwatchExtraDmg > 0) {
+        console.log(`[Overwatch activated: +${overwatchExtraDmg} damage]`);
+      }
+    } else {
+      // Other non-damage ability (e.g., healing without buff, summon) - mark ability as used
+      // Check if character is adjacent to boss for LC qualification
+      const isAdjacentToBoss = character.abilityToggles['adjacentToBoss'] ?? false;
+
+      // Check for Overwatch activation (e.g., Early Warning Override summon ability)
+      const overwatchExtraDmg = result.overwatchResult?.extraDmg || 0;
 
       set((state) => ({
         battleState: state.battleState
@@ -3953,12 +4306,22 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                       hasUsedAbilityThisTurn: true,
                       // LC: Any active ability qualifies IMMEDIATELY
                       hasQualifiedForLCDamage: isAdjacentToBoss,
+                      // Activate Overwatch for abilities like Early Warning Override
+                      ...(overwatchExtraDmg > 0 ? {
+                        overwatchActive: true,
+                        overwatchExtraDmg: overwatchExtraDmg,
+                        hasUsedOverwatchThisTurn: false,
+                      } : {}),
                     }
                   : char
               ),
             }
           : null,
       }));
+
+      if (overwatchExtraDmg > 0) {
+        console.log(`[Overwatch activated: +${overwatchExtraDmg} damage]`);
+      }
     }
 
     // LC buffs are now automatically tracked via hasQualifiedForLCDamage
@@ -4394,6 +4757,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       timestamp: Date.now(),
       characterId,
       characterName: character.name,
+      characterIconUrl: character.iconUrl,
       action: 'ability' as const,
       damage: totalDamage > 0 ? totalDamage : undefined,
       damageBreakdown,
@@ -4686,6 +5050,34 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Evaluate trait modifiers for summons (e.g., RapidAssault, BeastSnagga)
+    if (summon.traits && summon.traits.length > 0) {
+      const traitContext: TraitContext = {
+        attackType,
+        hasMoved: false, // Summons don't track movement
+        hasAttackedThisBattle: summon.totalDamageDealt > 0,
+        attacksThisTurn: 0, // Summons don't track attacks per turn
+        firstAttackTurn: summon.totalDamageDealt > 0 ? summon.createdAtTurn : null,
+        currentTurn: battleState.turn,
+        targetTraits: battleState.boss?.traits || [],
+        abilityToggles: toggles,
+      };
+
+      const traitEvaluation = evaluateTraitModifiers(summon.traits, traitContext);
+      if (traitEvaluation.totalMultiplier !== 1) {
+        damageMultiplier *= traitEvaluation.totalMultiplier;
+        // Add applicable trait modifiers to buff sources
+        for (const mod of traitEvaluation.modifiers) {
+          if (mod.applicable) {
+            buffSources.push({
+              name: mod.traitName,
+              damageMultiplier: mod.damageMultiplier,
+            });
+          }
+        }
+      }
+    }
+
     // Calculate damage with buffs applied
     const baseDamage = summon.damage;
     const effectiveDamage = baseDamage + flatDamageBonus;
@@ -4770,9 +5162,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       timestamp: Date.now(),
       characterId: summonId,
       characterName: summon.name,
+      characterIconUrl: summon.iconUrl,
       action: attackType === 'melee' ? 'meleeAttack' as const : 'rangedAttack' as const,
       damage: totalDamage,
       damageBreakdown,
+      damageType: damageType,
       message: `${summon.name} deals ${totalDamage.toLocaleString()} ${damageType} damage`,
       attackType,
     };
@@ -4814,6 +5208,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         timestamp: Date.now(),
         characterId,
         characterName: character.name,
+        characterIconUrl: character.iconUrl,
         action: 'ability' as const,
         message: 'The Betrayer ability not found',
       };
@@ -5092,10 +5487,77 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       timestamp: Date.now(),
       characterId,
       characterName: character.name,
+      characterIconUrl: character.iconUrl,
       action: 'ability' as const,
       damage: result.damage,
       damageBreakdown,
+      damageType: damageType,
       message: `The Betrayer deals ${result.damage.toLocaleString()} damage (${hits}x ${damageType})`,
+    };
+  },
+
+  /**
+   * Execute Overwatch attack
+   * Available for characters with Overwatch trait (once per turn) or after Early Warning Override (+extraDmg)
+   * Attack type depends on adjacency: melee if adjacent to boss, ranged otherwise
+   */
+  executeOverwatchAttack: (characterId) => {
+    const { battleState, executeAttack } = get();
+    if (!battleState || !battleState.boss) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'rangedAttack' as const,
+        message: 'Battle not active',
+      };
+    }
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'rangedAttack' as const,
+        message: 'Character not found',
+      };
+    }
+
+    // Determine attack type based on adjacency
+    const isAdjacentToBoss = character.abilityToggles?.['adjacentToBoss'] ?? false;
+    const attackType = isAdjacentToBoss ? 'melee' : 'ranged';
+
+    // Get Overwatch extra damage (only if overwatchActive from Early Warning Override)
+    const hasOverwatchActive = character.overwatchActive ?? false;
+    const overwatchExtraDmg = hasOverwatchActive ? (character.overwatchExtraDmg || 0) : 0;
+
+    // Execute attack with optional extra damage modifier
+    const result = executeAttack(characterId, 'boss', attackType, overwatchExtraDmg > 0 ? {
+      baseDamageBonus: overwatchExtraDmg,
+      abilityName: 'Overwatch',
+    } : undefined);
+
+    // Mark Overwatch as used this turn and deactivate ability bonus
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            team: state.battleState.team.map((c) =>
+              c.id === characterId
+                ? { ...c, hasUsedOverwatchThisTurn: true, overwatchActive: false }
+                : c
+            ),
+          }
+        : null,
+    }));
+
+    const bonusText = overwatchExtraDmg > 0 ? ` (+${overwatchExtraDmg} bonus)` : '';
+    console.log(`[Overwatch ${attackType} attack${bonusText}]`);
+
+    return {
+      ...result,
+      message: `Overwatch ${attackType} deals ${result.damage?.toLocaleString() || 0} damage${bonusText}`,
     };
   },
 }));

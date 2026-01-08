@@ -1,4 +1,4 @@
-import { Move, Sparkles, Clock, Wrench } from 'lucide-react';
+import { Move, Sparkles, Clock, Wrench, Crosshair } from 'lucide-react';
 import type { BattleCharacter, ActionType } from '../../types';
 import { getDamageTypeImageUrl } from '../../services/dataService';
 import { getAbilityNameSync, getAbilityValues, executeActiveAbility, classifyAbility, isAbilityReady, getCooldownDisplayText, getFormattedAbilityDescription } from '../../services/abilities';
@@ -7,13 +7,22 @@ interface ActionPanelProps {
   character: BattleCharacter;
   onAction: (type: ActionType) => void;
   onExecuteBetrayer?: () => void;
+  onExecuteOverwatch?: () => void;
 }
 
-export function ActionPanel({ character, onAction, onExecuteBetrayer }: ActionPanelProps) {
+export function ActionPanel({ character, onAction, onExecuteBetrayer, onExecuteOverwatch }: ActionPanelProps) {
   const hasRanged = character.rangedHits !== undefined && character.rangedHits > 0;
   const hasActiveAbility = character.activeAbilities.length > 0;
   const hasMechanicTrait = character.traits.includes('Mechanic');
   const hasTheBetrayerAbility = character.passiveAbilities?.includes('TheBetrayer') ?? false;
+  const isAdjacentToBoss = character.abilityToggles?.['adjacentToBoss'] ?? false;
+  // Overwatch check - available for Re'vas (has EarlyWarningOverride ability)
+  const hasEarlyWarningOverride = character.activeAbilities?.includes('EarlyWarningOverride') ?? false;
+  const hasOverwatchActive = character.overwatchActive ?? false;  // Activated by Early Warning Override (has +extraDmg)
+  const hasUsedOverwatchThisTurn = character.hasUsedOverwatchThisTurn ?? false;
+  // Show for Re'vas (has EWO ability), enable only when EWO was used this turn
+  const showOverwatchButton = hasEarlyWarningOverride;
+  const canUseOverwatch = hasOverwatchActive && !hasUsedOverwatchThisTurn;
 
   // Get active ability info
   const activeAbilityId = character.activeAbilities[0];
@@ -120,6 +129,16 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer }: ActionPa
     ? getFormattedAbilityDescription(activeAbilityId, abilityLevelIndex)
     : null;
 
+  // Get Doctrina Imperatives stance for display
+  const getDoctrinaStanceDisplay = (): string | null => {
+    if (activeAbilityId !== 'DoctrinaImperatives') return null;
+    const stance = character.doctrinaImperativeStance;
+    if (stance === 'protector') return 'Protector';
+    if (stance === 'conqueror') return 'Conqueror';
+    return null;  // Not yet activated
+  };
+  const doctrinaStance = getDoctrinaStanceDisplay();
+
   const colorClasses = {
     green: 'hover:bg-green-900/50 hover:border-green-600 text-green-500',
     red: 'hover:bg-red-900/50 hover:border-red-600 text-red-500',
@@ -147,11 +166,12 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer }: ActionPa
       {/* Attack Actions */}
       <div className="grid grid-cols-2 gap-2">
         {/* Melee Attack */}
+        {/* Melee requires being adjacent to boss */}
         <button
-          onClick={() => !isTurnEnded && !character.hasActed && onAction('meleeAttack')}
-          disabled={isTurnEnded || character.hasActed}
+          onClick={() => !isTurnEnded && !character.hasActed && isAdjacentToBoss && onAction('meleeAttack')}
+          disabled={isTurnEnded || character.hasActed || !isAdjacentToBoss}
           className={`flex flex-col items-center gap-1 p-3 rounded-lg border border-gray-700 transition-colors ${
-            isTurnEnded || character.hasActed ? disabledClasses : colorClasses.red
+            isTurnEnded || character.hasActed || !isAdjacentToBoss ? disabledClasses : colorClasses.red
           }`}
         >
           <div className="flex items-center gap-1">
@@ -166,12 +186,13 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer }: ActionPa
         </button>
 
         {/* Ranged Attack (only show if character has ranged) */}
+        {/* Disable ranged when adjacent to boss */}
         {hasRanged && (
           <button
-            onClick={() => !isTurnEnded && !character.hasActed && onAction('rangedAttack')}
-            disabled={isTurnEnded || character.hasActed}
+            onClick={() => !isTurnEnded && !character.hasActed && !isAdjacentToBoss && onAction('rangedAttack')}
+            disabled={isTurnEnded || character.hasActed || isAdjacentToBoss}
             className={`flex flex-col items-center gap-1 p-3 rounded-lg border border-gray-700 transition-colors ${
-              isTurnEnded || character.hasActed ? disabledClasses : colorClasses.blue
+              isTurnEnded || character.hasActed || isAdjacentToBoss ? disabledClasses : colorClasses.blue
             }`}
           >
             <div className="flex items-center gap-1">
@@ -188,18 +209,20 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer }: ActionPa
       </div>
 
       {/* Other Actions */}
-      <div className={`grid gap-2 ${hasMechanicTrait || hasTheBetrayerAbility ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
-        {/* Move */}
-        <button
-          onClick={() => !isTurnEnded && !character.hasMoved && onAction('move')}
-          disabled={isTurnEnded || character.hasMoved}
-          className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
-            isTurnEnded || character.hasMoved ? disabledClasses : colorClasses.green
-          }`}
-        >
-          <Move size={18} />
-          <span className="text-xs font-medium">Move</span>
-        </button>
+      <div className={`grid gap-2 ${hasMechanicTrait || hasTheBetrayerAbility || showOverwatchButton ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
+        {/* Move - hidden for now */}
+        {false && (
+          <button
+            onClick={() => !isTurnEnded && !character.hasMoved && onAction('move')}
+            disabled={isTurnEnded || character.hasMoved}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              isTurnEnded || character.hasMoved ? disabledClasses : colorClasses.green
+            }`}
+          >
+            <Move size={18} />
+            <span className="text-xs font-medium">Move</span>
+          </button>
+        )}
 
         {/* Repair (only for Mechanic trait) */}
         {hasMechanicTrait && (
@@ -232,7 +255,12 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer }: ActionPa
           <span className="text-xs font-medium truncate max-w-full">
             {activeAbilityName || 'No Ability'}
           </span>
-          {!abilityReady ? (
+          {/* Show current stance for Doctrina Imperatives */}
+          {doctrinaStance ? (
+            <span className={`text-[10px] ${doctrinaStance === 'Protector' ? 'text-green-400' : 'text-red-400'}`}>
+              {doctrinaStance} Imperative
+            </span>
+          ) : !abilityReady ? (
             <span className="text-[10px] text-red-400">
               {cooldownText}
             </span>
@@ -246,17 +274,19 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer }: ActionPa
           )}
         </button>
 
-        {/* Wait */}
-        <button
-          onClick={() => !isTurnEnded && onAction('wait')}
-          disabled={isTurnEnded}
-          className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
-            isTurnEnded ? disabledClasses : colorClasses.gray
-          }`}
-        >
-          <Clock size={18} />
-          <span className="text-xs font-medium">Wait</span>
-        </button>
+        {/* Wait - hidden for now */}
+        {false && (
+          <button
+            onClick={() => !isTurnEnded && onAction('wait')}
+            disabled={isTurnEnded}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              isTurnEnded ? disabledClasses : colorClasses.gray
+            }`}
+          >
+            <Clock size={18} />
+            <span className="text-xs font-medium">Wait</span>
+          </button>
+        )}
 
         {/* The Betrayer (bonus attack for Kharn) */}
         {hasTheBetrayerAbility && onExecuteBetrayer && (
@@ -279,6 +309,27 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer }: ActionPa
                 ~{executePreview.total.toLocaleString()} dmg
               </span>
             )}
+          </button>
+        )}
+
+        {/* Overwatch (visible for Re'vas, enabled only after Early Warning Override) */}
+        {/* Can be used even after turn ends (EWO ends turn but enables Overwatch). */}
+        {showOverwatchButton && onExecuteOverwatch && (
+          <button
+            onClick={() => canUseOverwatch && onExecuteOverwatch()}
+            disabled={!canUseOverwatch}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              !canUseOverwatch ? disabledClasses : 'hover:bg-cyan-900/50 hover:border-cyan-600 text-cyan-500'
+            }`}
+            title={`Overwatch: ${isAdjacentToBoss ? 'Melee' : 'Ranged'} attack with +${character.overwatchExtraDmg || 0} damage (requires Early Warning Override)`}
+          >
+            <div className="flex items-center gap-1">
+              <Crosshair size={18} />
+              <span className="text-xs font-medium">Overwatch</span>
+            </div>
+            <span className="text-[10px] text-gray-400">
+              {isAdjacentToBoss ? 'Melee' : 'Ranged'} +{character.overwatchExtraDmg || 0}
+            </span>
           </button>
         )}
       </div>

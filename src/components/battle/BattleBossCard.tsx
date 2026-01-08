@@ -1,4 +1,4 @@
-import { Skull, Shield, Sword, Heart, Target, Zap } from 'lucide-react';
+import { Skull, Shield, Sword, Heart, Target, Zap, Crosshair } from 'lucide-react';
 import type { Boss } from '../../types';
 import { getBossRankDisplayName } from '../../services/dataService';
 
@@ -14,6 +14,9 @@ interface BattleBossCardProps {
     damageReductionPct: number;
   };
   bossAttacksReceivedThisTurn?: number;
+  // Master Annihilator debuff (Vitruvius)
+  bossHasMasterAnnihilatorMark?: boolean;
+  masterAnnihilatorMaxDmg?: number;
 }
 
 export function BattleBossCard({
@@ -24,6 +27,8 @@ export function BattleBossCard({
   onMarkerlightChange,
   prophetOfGorkAndMork,
   bossAttacksReceivedThisTurn = 0,
+  bossHasMasterAnnihilatorMark = false,
+  masterAnnihilatorMaxDmg = 0,
 }: BattleBossCardProps) {
   const remainingHealth = Math.max(0, boss.health - totalDamageDealt);
   const healthPercentage = (remainingHealth / boss.health) * 100;
@@ -141,23 +146,36 @@ export function BattleBossCard({
           )}
 
           {/* Boss Debuffs */}
-          {onMarkerlightChange && (
+          {(onMarkerlightChange || bossHasMasterAnnihilatorMark) && (
             <div className="mt-2 pt-2 border-t border-gray-700/50">
-              <label className="flex items-center gap-2 cursor-pointer text-xs">
-                <input
-                  type="checkbox"
-                  checked={bossHasMarkerlight}
-                  onChange={(e) => onMarkerlightChange(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-offset-gray-800"
-                />
-                <Target size={12} className={bossHasMarkerlight ? 'text-yellow-400' : 'text-gray-500'} />
-                <span className={bossHasMarkerlight ? 'text-yellow-400' : 'text-gray-400'}>
-                  Markerlight
-                </span>
-                <span className="text-gray-500 text-[10px]">
-                  (T'au +15% ranged dmg)
-                </span>
-              </label>
+              {onMarkerlightChange && (
+                <label className="flex items-center gap-2 cursor-pointer text-xs">
+                  <input
+                    type="checkbox"
+                    checked={bossHasMarkerlight}
+                    onChange={(e) => onMarkerlightChange(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-offset-gray-800"
+                  />
+                  <Target size={12} className={bossHasMarkerlight ? 'text-yellow-400' : 'text-gray-500'} />
+                  <span className={bossHasMarkerlight ? 'text-yellow-400' : 'text-gray-400'}>
+                    Markerlight
+                  </span>
+                  <span className="text-gray-500 text-[10px]">
+                    (T'au +15% ranged dmg)
+                  </span>
+                </label>
+              )}
+
+              {/* Master Annihilator debuff - automatic, not a checkbox */}
+              {bossHasMasterAnnihilatorMark && (
+                <div className={`flex items-center gap-2 text-xs ${onMarkerlightChange ? 'mt-1.5' : ''}`}>
+                  <Crosshair size={12} className="text-orange-400" />
+                  <span className="text-orange-400">Master Annihilator</span>
+                  <span className="text-gray-500 text-[10px]">
+                    (+1 hit, cap {masterAnnihilatorMaxDmg.toLocaleString()})
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

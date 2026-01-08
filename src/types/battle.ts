@@ -1,4 +1,4 @@
-import type { Character, TeamMember } from './character';
+import type { Character, TeamMember, DamageType } from './character';
 import type { Boss } from './boss';
 import type { AbilityCooldownState, AbilityStatModifier } from '../services/abilities/types';
 import type { PooledBuff } from './buff';
@@ -63,6 +63,13 @@ export interface BattleCharacter extends TeamMember {
   cordClawMaxDmg?: number;
   cordClawHits?: number;
   cordClawTurnsRemaining?: number;  // Turns remaining (starts at 2, decrements at turn end)
+  // Re'vas's Early Warning Override - Overwatch tracking
+  overwatchActive?: boolean;  // When true, Overwatch attack button is available
+  overwatchExtraDmg?: number;  // Extra damage for Overwatch ranged attack
+  hasUsedOverwatchThisTurn?: boolean;  // When true, Overwatch attack already used this turn
+  // Tan Gi'da's Doctrina Imperatives stance tracking
+  doctrinaImperativeStance?: 'protector' | 'conqueror' | null;  // null = not yet activated
+  hasUsedDoctrinaThisBattle?: boolean;  // Track if ability was used this battle (for LC qualification - only first use counts)
 }
 
 export interface Buff {
@@ -198,10 +205,12 @@ export interface BattleLogEntry {
   timestamp: number;
   characterId: string;
   characterName: string;
+  characterIconUrl?: string;  // Character or summon icon for display
   action: ActionType;
   target?: string;
   damage?: number;
   damageBreakdown?: DamageBreakdown;
+  damageType?: DamageType;  // Damage type for icon display
   healing?: number;
   message: string;
   followUpAttacks?: FollowUpAttackLog[];  // Follow-up attacks from passives
@@ -227,6 +236,9 @@ export interface BattleState {
   pendingRepairAction?: PendingRepairAction;
   // Boss debuffs - Markerlight gives T'au Empire +15% ranged damage
   bossHasMarkerlight: boolean;
+  // Master Annihilator debuff (Vitruvius) - all attacks get +1 hit (except Psychic)
+  bossHasMasterAnnihilatorMark: boolean;
+  masterAnnihilatorMaxDmg: number;  // Damage cap for the extra hit
   // Count of active abilities used in battle (for Atlacoya's TalonsOfTheEmperor scaling)
   activeAbilitiesUsedCount: number;
   // Track if a Custodes character used an Active Ability this turn (for Stand Vigil range extension)

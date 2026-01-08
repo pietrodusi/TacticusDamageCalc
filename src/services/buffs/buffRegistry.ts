@@ -534,6 +534,42 @@ export const sereneUnifierStormOfFireBuffTemplate: BuffTemplate = {
   // No duration - permanent aura-style buff (evaluated each attack based on turn phase)
 };
 
+/**
+ * MasterAnnihilator buff template (Vitruvius passive)
+ * When boss is marked by Vitruvius's normal attack, all friendly attacks get +1 hit
+ * - Applies to main attacks and separate follow-up attacks (The Betrayer, Legacy of Combat, etc.)
+ * - Does NOT apply to additional hits that share crit chain (CIB, Chordclaw) - handled in battleStore
+ * - Does NOT apply to Psychic damage attacks
+ * Variables: maxDmg (damage cap for extra hit - applied in battleStore)
+ */
+export const masterAnnihilatorBuffTemplate: BuffTemplate = {
+  buffId: 'master_annihilator',
+  name: 'Master Annihilator',
+  sourceAbilityId: 'MasterAnnihilator',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, _buff) => {
+      // Check if boss is marked
+      if (!context.battleState.bossHasMasterAnnihilatorMark) return false;
+
+      // Don't apply to Psychic damage attacks
+      // Check based on attack type and character's damage type
+      const damageType = context.attackType === 'melee'
+        ? context.attacker.meleeDamageType
+        : context.attacker.rangedDamageType;
+      if (damageType === 'Psychic') return false;
+
+      return true;
+    },
+  },
+  getEffects: () => ({
+    extraHits: 1,
+    // Note: finalDamageCap for the extra hit is applied in battleStore
+    // based on battleState.masterAnnihilatorMaxDmg
+  }),
+  // No duration - permanent debuff on boss (until Vitruvius attacks different enemy or is defeated)
+};
+
 // Registry of all buff templates by ability ID
 export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   WarHowl: warHowlBuffTemplate,
@@ -561,6 +597,8 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   stand_vigil: standVigilBuffTemplate,
   // Aun'Shi abilities
   serene_unifier_storm_of_fire: sereneUnifierStormOfFireBuffTemplate,
+  // Vitruvius abilities
+  master_annihilator: masterAnnihilatorBuffTemplate,
 };
 
 /**

@@ -76,6 +76,7 @@ export function CalculatorPage() {
     toggleSummonBuffCondition,
     executeSummonAttack,
     executeTheBetrayerBonus,
+    executeOverwatchAttack,
   } = useBattleStore();
 
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
@@ -402,6 +403,20 @@ export function CalculatorPage() {
 
     // Execute The Betrayer bonus attack (does NOT end turn)
     const executeLog = executeTheBetrayerBonus(characterId);
+    setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
+  };
+
+  // Handle Overwatch execute action for Re'vas
+  const handleExecuteOverwatch = (characterId: string) => {
+    if (!battleState) return;
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) return;
+
+    const targetTurn = activeTurn;
+
+    // Execute Overwatch attack (does NOT end turn, but can only be used once)
+    const executeLog = executeOverwatchAttack(characterId);
     setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
   };
 
@@ -756,6 +771,7 @@ export function CalculatorPage() {
                   onUndo={() => handleUndoActions(character.id)}
                   onToggleAbility={(abilityId) => toggleAbility(character.id, abilityId)}
                   onExecuteBetrayer={() => handleExecuteBetrayer(character.id)}
+                  onExecuteOverwatch={() => handleExecuteOverwatch(character.id)}
                 />
               );
             })}
@@ -811,6 +827,8 @@ export function CalculatorPage() {
                   onMarkerlightChange={hasMarkerlightRelevance ? setBossMarkerlight : undefined}
                   prophetOfGorkAndMork={battleState.prophetOfGorkAndMork}
                   bossAttacksReceivedThisTurn={battleState.bossAttacksReceivedThisTurn}
+                  bossHasMasterAnnihilatorMark={battleState.bossHasMasterAnnihilatorMark}
+                  masterAnnihilatorMaxDmg={battleState.masterAnnihilatorMaxDmg}
                 />
               </>
             );

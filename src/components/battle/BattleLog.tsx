@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { BattleLogEntry, DamageBreakdown, BattleCharacter } from '../../types';
 import type { BuffSource } from '../../services/damage/types';
 import { Sword, Move, Sparkles, Clock, RotateCcw, Crosshair, Pencil, X, Zap, ChevronDown, ChevronRight, Wrench, User } from 'lucide-react';
+import { getDamageTypeImageUrl } from '../../services/dataService';
 
 // Extended entry with turn number
 export interface TurnLogEntry extends BattleLogEntry {
@@ -33,7 +34,9 @@ function formatSourcesInline(sources: BuffSource[], valueKey: keyof BuffSource):
 }
 
 // Component to display damage breakdown with sources inline
-function DamageBreakdownDisplay({ breakdown, sourceName }: { breakdown: DamageBreakdown; sourceName?: string }) {
+function DamageBreakdownDisplay({ breakdown, sourceName, damageType }: { breakdown: DamageBreakdown; sourceName?: string; damageType?: string }) {
+  // Get damage type icon
+  const damageTypeIcon = damageType ? getDamageTypeImageUrl(damageType) : undefined;
   // Build global multiplier description with sources inline
   const globalMultiplierText = breakdown.globalMultiplier !== 1
     ? `×${breakdown.globalMultiplier.toFixed(2)}${formatSourcesInline(breakdown.globalMultiplierSources, 'damageMultiplier')}`
@@ -140,11 +143,16 @@ function DamageBreakdownDisplay({ breakdown, sourceName }: { breakdown: DamageBr
           </div>
         )}
         <div className="flex justify-between text-gray-500">
-          <span>Pierce {breakdown.pierceRatioBonus && breakdown.pierceRatioBonus > 0 ? (
-            <>({(breakdown.pierceRatio * 100).toFixed(0)} <span className="text-green-400">+{breakdown.pierceRatioBonus.toFixed(0)} {breakdown.pierceRatioBonusSources && breakdown.pierceRatioBonusSources.length > 0 ? `(${breakdown.pierceRatioBonusSources.map(s => s.name).join(', ')})` : ''}</span>%):</>
-          ) : (
-            <>({(breakdown.pierceRatio * 100).toFixed(0)}%):</>
-          )}</span>
+          <span className="flex items-center gap-1">
+            {damageTypeIcon && (
+              <img src={damageTypeIcon} alt={damageType} className="w-3 h-3" />
+            )}
+            Pierce {breakdown.pierceRatioBonus && breakdown.pierceRatioBonus > 0 ? (
+              <>({(breakdown.pierceRatio * 100).toFixed(0)} <span className="text-green-400">+{breakdown.pierceRatioBonus.toFixed(0)} {breakdown.pierceRatioBonusSources && breakdown.pierceRatioBonusSources.length > 0 ? `(${breakdown.pierceRatioBonusSources.map(s => s.name).join(', ')})` : ''}</span>%):</>
+            ) : (
+              <>({(breakdown.pierceRatio * 100).toFixed(0)}%):</>
+            )}
+          </span>
           <span>{breakdown.pierceFloor.toFixed(0)}</span>
         </div>
         <div className="flex justify-between text-gray-400">
@@ -316,12 +324,22 @@ export function BattleLog({ entries, currentTurn, editingTurn, isComplete, team,
                       return characterIds.map(charId => {
                         const charEntries = turnEntries.filter(e => e.characterId === charId);
                         const characterName = charEntries[0]?.characterName || 'Unknown';
+                        const characterIconUrl = charEntries[0]?.characterIconUrl;
 
                         return (
                           <div key={charId} className="bg-gray-800/50 rounded p-2">
-                            {/* Character header with undo button */}
+                            {/* Character header with icon and undo button */}
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-medium text-gray-300">{characterName}</span>
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                  {characterIconUrl ? (
+                                    <img src={characterIconUrl} alt={characterName} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <User size={10} className="text-gray-500" />
+                                  )}
+                                </div>
+                                <span className="text-xs font-medium text-gray-300">{characterName}</span>
+                              </div>
                               {onUndoCharacterTurn && (
                                 <button
                                   onClick={() => onUndoCharacterTurn(charId, turn)}
@@ -350,6 +368,7 @@ export function BattleLog({ entries, currentTurn, editingTurn, isComplete, team,
                                         <DamageBreakdownDisplay
                                           breakdown={entry.damageBreakdown}
                                           sourceName={entry.action === 'ability' ? undefined : (entry.attackType === 'ranged' ? 'Ranged Attack' : 'Melee Attack')}
+                                          damageType={entry.damageType}
                                         />
                                       ) : entry.damage !== undefined && entry.damage > 0 ? (
                                         <p className="text-red-400 text-xs">
@@ -366,6 +385,7 @@ export function BattleLog({ entries, currentTurn, editingTurn, isComplete, team,
                                             // Remove the "(CharName)" suffix from ability name since we show source inline
                                             const abilityName = followUp.abilityName.replace(/\s*\([^)]+\)\s*$/, '');
                                             const sourceName = `${abilityName}${attackTypeLabel}`;
+                                            const followUpDamageTypeIcon = followUp.damageType ? getDamageTypeImageUrl(followUp.damageType) : undefined;
 
                                             if (isReaction) {
                                               // Reaction attack - cyan styling with source character header
@@ -383,15 +403,22 @@ export function BattleLog({ entries, currentTurn, editingTurn, isComplete, team,
                                                     <span className="font-medium">{sourceChar?.name || 'Unknown'} reacts</span>
                                                   </div>
                                                   {followUp.breakdown ? (
-                                                    <DamageBreakdownDisplay breakdown={followUp.breakdown} sourceName={sourceName} />
+                                                    <DamageBreakdownDisplay breakdown={followUp.breakdown} sourceName={sourceName} damageType={followUp.damageType} />
                                                   ) : (
                                                     <div className="text-xs">
                                                       <div className="flex items-center gap-1 text-cyan-300 font-medium">
-                                                        <Zap size={10} className="text-cyan-400" />
+                                                        {followUpDamageTypeIcon && (
+                                                          <img src={followUpDamageTypeIcon} alt={followUp.damageType} className="w-3 h-3" />
+                                                        )}
                                                         <span>{sourceName}</span>
                                                       </div>
                                                       <div className="flex justify-between mt-0.5">
-                                                        <span className="text-gray-500">{followUp.hits}x {followUp.damageType}:</span>
+                                                        <span className="flex items-center gap-1 text-gray-500">
+                                                          {followUpDamageTypeIcon && (
+                                                            <img src={followUpDamageTypeIcon} alt={followUp.damageType} className="w-3 h-3" />
+                                                          )}
+                                                          {followUp.hits}x {followUp.damageType}:
+                                                        </span>
                                                         <span className="text-cyan-300">{followUp.damage.toLocaleString()}</span>
                                                       </div>
                                                     </div>
@@ -403,16 +430,23 @@ export function BattleLog({ entries, currentTurn, editingTurn, isComplete, team,
                                               return (
                                                 <div key={index} className="bg-purple-900/30 rounded p-1.5 border-l-2 border-purple-500">
                                                   {followUp.breakdown ? (
-                                                    <DamageBreakdownDisplay breakdown={followUp.breakdown} sourceName={sourceName} />
+                                                    <DamageBreakdownDisplay breakdown={followUp.breakdown} sourceName={sourceName} damageType={followUp.damageType} />
                                                   ) : (
                                                     <>
                                                       <div className="flex items-center gap-1 text-xs">
-                                                        <Zap size={10} className="text-purple-400" />
+                                                        {followUpDamageTypeIcon && (
+                                                          <img src={followUpDamageTypeIcon} alt={followUp.damageType} className="w-3 h-3" />
+                                                        )}
                                                         <span className="text-purple-300 font-medium">{sourceName}</span>
                                                       </div>
                                                       <div className="text-xs space-y-0.5 mt-0.5">
                                                         <div className="flex justify-between">
-                                                          <span className="text-gray-500">{followUp.hits}x {followUp.damageType}:</span>
+                                                          <span className="flex items-center gap-1 text-gray-500">
+                                                            {followUpDamageTypeIcon && (
+                                                              <img src={followUpDamageTypeIcon} alt={followUp.damageType} className="w-3 h-3" />
+                                                            )}
+                                                            {followUp.hits}x {followUp.damageType}:
+                                                          </span>
                                                           <span className="text-purple-300">{followUp.damage.toLocaleString()}</span>
                                                         </div>
                                                       </div>

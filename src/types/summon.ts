@@ -44,6 +44,9 @@ export interface BattleSummon {
   rangedDamageType?: DamageType;
   rangedRange?: number;
 
+  // Traits (from summons.json, for damage calculation)
+  traits: string[];
+
   // State
   count: number;                 // Number of summons (user can modify, for display only)
   createdAtTurn: number;
