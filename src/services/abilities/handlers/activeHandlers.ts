@@ -175,6 +175,290 @@ export const DeathFromAboveHandler: AbilityHandler = {
 };
 
 /**
+ * MortisRound (Certus)
+ * Ranged HeavyRound damage attack with 1 hit
+ * Note: Heavy Weapon trait applies double to this ability (handled in damage calculation)
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: HeavyRound
+ */
+export const MortisRoundHandler: AbilityHandler = {
+  abilityId: 'MortisRound',
+  abilityName: 'Mortis Round',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('MortisRound');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'MortisRound',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,  // Fixed 1 hit
+        damageProfile: (values.damageProfile as DamageType) || 'HeavyRound',
+      },
+      attackType: 'ranged',  // Ranged ability
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * MacroPlasmaIncinerator (Galatian)
+ * Ranged Plasma damage attack with 3 hits
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Plasma, nrOfHits: 3
+ */
+export const MacroPlasmaIncineratorHandler: AbilityHandler = {
+  abilityId: 'MacroPlasmaIncinerator',
+  abilityName: 'Macro Plasma Incinerator',
+  category: 'damage',
+  cooldown: 1,  // Initial cooldown 1 turn
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('MacroPlasmaIncinerator');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 3;
+
+    return {
+      abilityId: 'MacroPlasmaIncinerator',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: (values.damageProfile as DamageType) || 'Plasma',
+      },
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * DutyEternal (Galatian)
+ * Summons a Redemptor Dreadnought
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: unitId: ultraSmnDreadnought, initialCooldownTurns: 2
+ */
+export const DutyEternalHandler: AbilityHandler = {
+  abilityId: 'DutyEternal',
+  abilityName: 'Duty Eternal',
+  category: 'summon',
+  cooldown: 2,  // Initial cooldown 2 turns
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('DutyEternal');
+
+    return {
+      abilityId: 'DutyEternal',
+      abilityName,
+      category: 'summon',
+      summonResult: {
+        unitId: (values.unitId as string) || 'ultraSmnDreadnought',
+        hp: values.summonHp as number || 0,
+        damage: values.summonDmg as number || 0,
+        armor: values.summonArmor as number || 0,
+      },
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * StormOfWrath (Tigurius)
+ * Ranged Psychic damage attack with 1 hit
+ * Raw damage - ignores attacker bonuses and can't crit
+ * Variables: minDmg, maxDmg, maxAdjacentTargets
+ * Constants: damageProfile: Psychic
+ */
+export const StormOfWrathHandler: AbilityHandler = {
+  abilityId: 'StormOfWrath',
+  abilityName: 'Storm Of Wrath',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('StormOfWrath');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'StormOfWrath',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,
+        damageProfile: (values.damageProfile as DamageType) || 'Psychic',
+      },
+      rawDamage: true,  // Ignores attacker bonuses and can't crit
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * TacticalPrecision (Titus)
+ * Melee ability with two damage components:
+ * - Primary: 1x Bolter damage (minDmg, maxDmg)
+ * - Secondary: 3x Chain damage (minDmg_2, maxDmg_2)
+ * Also provides extraCritDmg bonus
+ * Variables: minDmg, maxDmg, minDmg_2, maxDmg_2, extraCritDmg
+ */
+export const TacticalPrecisionHandler: AbilityHandler = {
+  abilityId: 'TacticalPrecision',
+  abilityName: 'Tactical Precision',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('TacticalPrecision');
+
+    // Primary damage: 1x Bolter
+    const minDmg1 = values.minDmg as number || 0;
+    const maxDmg1 = values.maxDmg as number || 0;
+    const avgDmg1 = Math.round((minDmg1 + maxDmg1) / 2);
+    const hits1 = values.nrOfHits as number || 1;
+
+    // Secondary damage: 3x Chain
+    const minDmg2 = values.minDmg_2 as number || 0;
+    const maxDmg2 = values.maxDmg_2 as number || 0;
+    const avgDmg2 = Math.round((minDmg2 + maxDmg2) / 2);
+    const hits2 = values.nrOfHits_2 as number || 3;
+
+    return {
+      abilityId: 'TacticalPrecision',
+      abilityName,
+      category: 'damage',
+      damageComponents: [
+        {
+          minDamage: minDmg1,
+          maxDamage: maxDmg1,
+          averageDamage: avgDmg1,
+          hits: hits1,
+          damageProfile: (values.damageProfile as DamageType) || 'Bolter',
+        },
+        {
+          minDamage: minDmg2,
+          maxDamage: maxDmg2,
+          averageDamage: avgDmg2,
+          hits: hits2,
+          damageProfile: (values.damageProfile_2 as DamageType) || 'Chain',
+        },
+      ],
+      abilityModifiers: {
+        critDamageBonus: values.extraCritDmg as number || 0,
+      },
+      attackType: 'melee',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * BlackRage (Lucien)
+ * Buff ability that grants +extraDmg damage to all attacks
+ * Sets HP to hpPct% and grants +1 movement
+ * Variables: extraDmg, hpPct
+ */
+export const BlackRageHandler: AbilityHandler = {
+  abilityId: 'BlackRage',
+  abilityName: 'Black Rage',
+  category: 'buff',
+  cooldown: -1,
+  endsTurn: false,  // Buff abilities don't end turn
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('BlackRage');
+    const extraDmg = values.extraDmg as number || 0;
+
+    return {
+      abilityId: 'BlackRage',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {
+          baseDamageBonus: extraDmg,
+        },
+        duration: -1,  // Lasts rest of battle
+      },
+      message: `${abilityName}: +${extraDmg} damage`,
+    };
+  },
+};
+
+/**
+ * HammerOfWrath (Mataneo)
+ * Melee ability with two damage components:
+ * - 2x Power damage (minDmg, maxDmg)
+ * - 1x Physical damage (minDmg_2, maxDmg_2) applied to adjacent enemies
+ * Variables: minDmg, maxDmg, minDmg_2, maxDmg_2
+ * At or below healthPct%: bonus effects (not modeled here)
+ */
+export const HammerOfWrathHandler: AbilityHandler = {
+  abilityId: 'HammerOfWrath',
+  abilityName: 'Hammer of Wrath',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('HammerOfWrath');
+
+    // Primary damage: 2x Power
+    const minDmg1 = values.minDmg as number || 0;
+    const maxDmg1 = values.maxDmg as number || 0;
+    const avgDmg1 = Math.round((minDmg1 + maxDmg1) / 2);
+    const hits1 = values.nrOfHits as number || 2;
+
+    // Secondary damage: 1x Physical (adjacent enemies)
+    const minDmg2 = values.minDmg_2 as number || 0;
+    const maxDmg2 = values.maxDmg_2 as number || 0;
+    const avgDmg2 = Math.round((minDmg2 + maxDmg2) / 2);
+    const hits2 = values.nrOfHits_2 as number || 1;
+
+    return {
+      abilityId: 'HammerOfWrath',
+      abilityName,
+      category: 'damage',
+      damageComponents: [
+        {
+          minDamage: minDmg1,
+          maxDamage: maxDmg1,
+          averageDamage: avgDmg1,
+          hits: hits1,
+          damageProfile: (values.damageProfile as DamageType) || 'Power',
+        },
+        {
+          minDamage: minDmg2,
+          maxDamage: maxDmg2,
+          averageDamage: avgDmg2,
+          hits: hits2,
+          damageProfile: (values.damageProfile_2 as DamageType) || 'Physical',
+        },
+      ],
+      attackType: 'melee',
+      message: abilityName,
+    };
+  },
+};
+
+/**
  * AberrantHypermorph (Genestealer)
  * Summons an Aberrant Hypermorph
  * Variables: summonHp, summonDmg, summonArmor
@@ -973,6 +1257,2877 @@ export const DoctrinaImperativesHandler: AbilityHandler = {
   },
 };
 
+/**
+ * Foehammer (Arjac)
+ * Ranged Power damage attack with +extraDmg per defeated character
+ * Note: Defeated character tracking not modeled - bonus displayed in description
+ * Variables: minDmg, maxDmg, extraDmg
+ * Constants: damageProfile: Power, range: 2, nrOfHits: 1
+ */
+export const FoehammerHandler: AbilityHandler = {
+  abilityId: 'Foehammer',
+  abilityName: 'Foehammer',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('Foehammer');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const extraDmgPerDefeated = values.extraDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    // Note: +extraDmg per defeated character is not tracked automatically
+    // User should account for this bonus manually if applicable
+    return {
+      abilityId: 'Foehammer',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,
+        damageProfile: 'Power' as DamageType,
+      },
+      attackType: 'ranged',
+      message: `${abilityName} (+${extraDmgPerDefeated}/defeated)`,
+    };
+  },
+};
+
+/**
+ * Stormcaller (Njal)
+ * Ranged Psychic damage attack with 3 hits
+ * Creates Ice hexes on enemies hit
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Psychic, range: 3, nrOfHits: 3
+ */
+export const StormcallerHandler: AbilityHandler = {
+  abilityId: 'Stormcaller',
+  abilityName: 'Stormcaller',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('Stormcaller');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 3;
+
+    return {
+      abilityId: 'Stormcaller',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Psychic' as DamageType,
+      },
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * GrapnelLauncher (Tjark)
+ * Ranged Physical damage attack with 1 hit
+ * Knockback effect (ignored - bosses are Immune)
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Physical, range: 3, nrOfHits: 1
+ */
+export const GrapnelLauncherHandler: AbilityHandler = {
+  abilityId: 'GrapnelLauncher',
+  abilityName: 'Grapnel Launcher',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('GrapnelLauncher');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'GrapnelLauncher',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,
+        damageProfile: 'Physical' as DamageType,
+      },
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * GreatFrostAxe (Ulf)
+ * Melee Piercing damage attack with 4 hits
+ * Creates Ice hexes, +critDmg from Ice already applied to this attack
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Piercing, nrOfHits: 4
+ */
+export const GreatFrostAxeHandler: AbilityHandler = {
+  abilityId: 'GreatFrostAxe',
+  abilityName: 'Great Frost Axe',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('GreatFrostAxe');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 4;
+
+    return {
+      abilityId: 'GreatFrostAxe',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Piercing' as DamageType,
+      },
+      attackType: 'melee',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * DarkTalonStrike (Azrael)
+ * Ranged multi-component attack: 1x DirectDamage + 6x Bolter
+ * Variables: minDmg, maxDmg, minDmg_2, maxDmg_2
+ * Constants: damageProfile: DirectDamage, damageProfile_2: Bolter, nrOfHits: 1, nrOfHits_2: 6
+ */
+export const DarkTalonStrikeHandler: AbilityHandler = {
+  abilityId: 'DarkTalonStrike',
+  abilityName: 'Dark Talon Strike',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('DarkTalonStrike');
+
+    // Primary damage: 1x DirectDamage
+    const minDmg1 = values.minDmg as number || 0;
+    const maxDmg1 = values.maxDmg as number || 0;
+    const avgDmg1 = Math.round((minDmg1 + maxDmg1) / 2);
+    const hits1 = values.nrOfHits as number || 1;
+
+    // Secondary damage: 6x Bolter
+    const minDmg2 = values.minDmg_2 as number || 0;
+    const maxDmg2 = values.maxDmg_2 as number || 0;
+    const avgDmg2 = Math.round((minDmg2 + maxDmg2) / 2);
+    const hits2 = values.nrOfHits_2 as number || 6;
+
+    return {
+      abilityId: 'DarkTalonStrike',
+      abilityName,
+      category: 'damage',
+      damageComponents: [
+        {
+          minDamage: minDmg1,
+          maxDamage: maxDmg1,
+          averageDamage: avgDmg1,
+          hits: hits1,
+          damageProfile: 'DirectDamage' as DamageType,
+        },
+        {
+          minDamage: minDmg2,
+          maxDamage: maxDmg2,
+          averageDamage: avgDmg2,
+          hits: hits2,
+          damageProfile: 'Bolter' as DamageType,
+        },
+      ],
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * Supercharge (Sarquael)
+ * Ranged multi-component attack: 1x Plasma + 1x additional shot with pierce bonus
+ * Variables: minDmg, maxDmg, minDmg_2, maxDmg_2, extraPierceRatio
+ * Constants: damageProfile: Plasma, nrOfHits: 1, nrOfHits_2: 1
+ */
+export const SuperchargeHandler: AbilityHandler = {
+  abilityId: 'Supercharge',
+  abilityName: 'Supercharge',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('Supercharge');
+
+    // Primary damage: 1x Plasma
+    const minDmg1 = values.minDmg as number || 0;
+    const maxDmg1 = values.maxDmg as number || 0;
+    const avgDmg1 = Math.round((minDmg1 + maxDmg1) / 2);
+
+    // Secondary damage: 1x additional shot
+    const minDmg2 = values.minDmg_2 as number || 0;
+    const maxDmg2 = values.maxDmg_2 as number || 0;
+    const avgDmg2 = Math.round((minDmg2 + maxDmg2) / 2);
+
+    const extraPierceRatio = values.extraPierceRatio as number || 0;
+
+    return {
+      abilityId: 'Supercharge',
+      abilityName,
+      category: 'damage',
+      damageComponents: [
+        {
+          minDamage: minDmg1,
+          maxDamage: maxDmg1,
+          averageDamage: avgDmg1,
+          hits: 1,
+          damageProfile: 'Plasma' as DamageType,
+        },
+        {
+          minDamage: minDmg2,
+          maxDamage: maxDmg2,
+          averageDamage: avgDmg2,
+          hits: 1,
+          damageProfile: 'Plasma' as DamageType,
+        },
+      ],
+      abilityModifiers: {
+        pierceRatioBonus: extraPierceRatio,
+      },
+      attackType: 'ranged',
+      message: `${abilityName} (+${extraPierceRatio}% pierce)`,
+    };
+  },
+};
+
+/**
+ * PlasmaCannon (Baraqiel)
+ * Ranged 3x Plasma damage with cooldown
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Plasma, nrOfHits: 3, cooldownTurns: 1, initialCooldownTurns: 1
+ */
+export const PlasmaCannonHandler: AbilityHandler = {
+  abilityId: 'PlasmaCannon',
+  abilityName: 'Plasma Cannon',
+  category: 'damage',
+  cooldown: 1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('PlasmaCannon');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 3;
+
+    return {
+      abilityId: 'PlasmaCannon',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Plasma' as DamageType,
+      },
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * CalibaniteGreatsword (Forcas)
+ * Melee Power damage attack with variable hits (3 at low level, 1 at high level)
+ * Variables: nrOfHits (3→1), minDmg, maxDmg
+ * Constants: damageProfile: Power
+ */
+export const CalibaniteGreatswordHandler: AbilityHandler = {
+  abilityId: 'CalibaniteGreatsword',
+  abilityName: 'Calibanite Greatsword',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('CalibaniteGreatsword');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 1;
+
+    return {
+      abilityId: 'CalibaniteGreatsword',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Power' as DamageType,
+      },
+      attackType: 'melee',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * ExemplarOfHate (Asmodai)
+ * Buff ability that grants +extraDmg damage and dmgPct% multiplier to normal attack
+ * Damage capped at maxDmg
+ * Variables: extraDmg, maxDmg, dmgPct
+ */
+export const ExemplarOfHateHandler: AbilityHandler = {
+  abilityId: 'ExemplarOfHate',
+  abilityName: 'Exemplar of Hate',
+  category: 'buff',
+  cooldown: -1,
+  endsTurn: false,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('ExemplarOfHate');
+    const extraDmg = values.extraDmg as number || 0;
+    const dmgPct = values.dmgPct as number || 100;
+
+    return {
+      abilityId: 'ExemplarOfHate',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {
+          baseDamageBonus: extraDmg,
+          baseDamageMultiplier: dmgPct / 100,
+        },
+        duration: 1,
+      },
+      message: `${abilityName}: +${extraDmg} dmg, ×${dmgPct}%`,
+    };
+  },
+};
+
+/**
+ * FragstormGrenadeLauncher (Burchard)
+ * Ranged 6x Blast damage
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Blast, nrOfHits: 6, range: 2
+ */
+export const FragstormGrenadeLauncherHandler: AbilityHandler = {
+  abilityId: 'FragstormGrenadeLauncher',
+  abilityName: 'Fragstorm Grenade Launcher',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('FragstormGrenadeLauncher');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 6;
+
+    return {
+      abilityId: 'FragstormGrenadeLauncher',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Blast' as DamageType,
+      },
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * HolyDuel (Jaeger)
+ * Buff ability - grants +extraDmg to next attack, -dmgReduction from target
+ * Challenges target to 1v1 (defensive part not modeled)
+ * Variables: extraDmg, dmgReduction
+ */
+export const HolyDuelHandler: AbilityHandler = {
+  abilityId: 'HolyDuel',
+  abilityName: 'Holy Duel',
+  category: 'buff',
+  cooldown: -1,
+  endsTurn: false,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('HolyDuel');
+    const extraDmg = values.extraDmg as number || 0;
+
+    return {
+      abilityId: 'HolyDuel',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {
+          baseDamageBonus: extraDmg,
+        },
+        duration: 1,
+      },
+      message: `${abilityName}: +${extraDmg} damage`,
+    };
+  },
+};
+
+/**
+ * UnbreakableDuty (Thoread)
+ * Team buff - grants +extraDmg to allies within range 2
+ * Also grants +extraHp and -dmgReductionPct% (defensive, not modeled)
+ * Variables: extraDmg, extraHp, dmgReductionPct
+ * Constants: range: 2
+ */
+export const UnbreakableDutyHandler: AbilityHandler = {
+  abilityId: 'UnbreakableDuty',
+  abilityName: 'Unbreakable Duty',
+  category: 'buff',
+  cooldown: -1,
+  endsTurn: false,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('UnbreakableDuty');
+    const extraDmg = values.extraDmg as number || 0;
+
+    return {
+      abilityId: 'UnbreakableDuty',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {
+          baseDamageBonus: extraDmg,
+        },
+        duration: 99,  // Lasts until end of battle
+      },
+      message: `${abilityName}: Team +${extraDmg} damage (range 2)`,
+    };
+  },
+};
+
+/**
+ * ArmoriumCherub (Vindicta)
+ * Ranged 4x Flame damage
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Flame, nrOfHits: 4, range: 2
+ */
+export const ArmoriumCherubHandler: AbilityHandler = {
+  abilityId: 'ArmoriumCherub',
+  abilityName: 'Armorium Cherub',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('ArmoriumCherub');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 4;
+
+    return {
+      abilityId: 'ArmoriumCherub',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Flame' as DamageType,
+      },
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * SanctorumMissile (Morvenn Vahl)
+ * Ranged 2x Blast damage + 1 additional hit
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Blast, nrOfHits: 2, nrOfHits_2: 1, range: 3
+ */
+export const SanctorumMissileHandler: AbilityHandler = {
+  abilityId: 'SanctorumMissile',
+  abilityName: 'Sanctorum Missile',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SanctorumMissile');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = (values.nrOfHits as number || 2) + (values.nrOfHits_2 as number || 1);
+
+    return {
+      abilityId: 'SanctorumMissile',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Blast' as DamageType,
+      },
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * BrazierOfHolyFire (Roswitha)
+ * Ranged multi-component: 2x Flame (initial) + 4x Flame (follow-up to target and adjacent)
+ * Variables: minDmg, maxDmg, extraDmgPct, extraDmgPct_2
+ * Constants: damageProfile: Flame, nrOfHits: 2, nrOfHits_2: 4
+ */
+export const BrazierOfHolyFireHandler: AbilityHandler = {
+  abilityId: 'BrazierOfHolyFire',
+  abilityName: 'Brazier of Holy Fire',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('BrazierOfHolyFire');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits1 = values.nrOfHits as number || 2;
+    const hits2 = values.nrOfHits_2 as number || 4;
+
+    return {
+      abilityId: 'BrazierOfHolyFire',
+      abilityName,
+      category: 'damage',
+      damageComponents: [
+        {
+          minDamage: minDmg,
+          maxDamage: maxDmg,
+          averageDamage: avgDmg,
+          hits: hits1,
+          damageProfile: 'Flame' as DamageType,
+        },
+        {
+          minDamage: minDmg,
+          maxDamage: maxDmg,
+          averageDamage: avgDmg,
+          hits: hits2,
+          damageProfile: 'Flame' as DamageType,
+        },
+      ],
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * SkyStrike (Celestine)
+ * Melee attack with +extraDmg bonus
+ * Celestine flies to target and attacks
+ * Variables: extraDmg
+ * Constants: initialCooldownTurns: 1
+ */
+export const SkyStrikeHandler: AbilityHandler = {
+  abilityId: 'SkyStrike',
+  abilityName: 'Sky Strike',
+  category: 'buff',
+  cooldown: -1,
+  endsTurn: false,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SkyStrike');
+    const extraDmg = values.extraDmg as number || 0;
+
+    return {
+      abilityId: 'SkyStrike',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {
+          baseDamageBonus: extraDmg,
+        },
+        duration: 1,
+      },
+      message: `${abilityName}: +${extraDmg} damage to next attack`,
+    };
+  },
+};
+
+/**
+ * ThriceBlessedConflagration (Exorcist)
+ * Ranged 1x Flame damage with +extraDmgPct% to Daemons
+ * Variables: minDmg, maxDmg, extraDmgPct, nrOfRounds
+ * Constants: nrOfHits: 1, damageProfile: Flame
+ */
+export const ThriceBlessedConflagrationHandler: AbilityHandler = {
+  abilityId: 'ThriceBlessedConflagration',
+  abilityName: 'Thrice-Blessed Conflagration',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('ThriceBlessedConflagration');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraDmgPct = values.extraDmgPct as number || 0;
+
+    return {
+      abilityId: 'ThriceBlessedConflagration',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,
+        damageProfile: 'Flame' as DamageType,
+      },
+      attackType: 'ranged',
+      message: `${abilityName} (+${extraDmgPct}% vs Daemon)`,
+    };
+  },
+};
+
+/**
+ * DevastatingRefrain (Exorcist)
+ * Ranged 1x Blast damage
+ * Variables: minDmg, maxDmg, chance
+ * Constants: nrOfHits: 1, damageProfile: Blast
+ */
+export const DevastatingRefrainHandler: AbilityHandler = {
+  abilityId: 'DevastatingRefrain',
+  abilityName: 'Devastating Refrain',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('DevastatingRefrain');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'DevastatingRefrain',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,
+        damageProfile: 'Blast' as DamageType,
+      },
+      attackType: 'ranged',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * VigilanceEternal (Tyrith)
+ * Melee 3x Power damage, range 2, cooldown 2
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Power, nrOfHits: 3, range: 2, cooldownTurns: 2
+ */
+export const VigilanceEternalHandler: AbilityHandler = {
+  abilityId: 'VigilanceEternal',
+  abilityName: 'Vigilance Eternal',
+  category: 'damage',
+  cooldown: 2,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('VigilanceEternal');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 3;
+
+    return {
+      abilityId: 'VigilanceEternal',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Power' as DamageType,
+      },
+      attackType: 'melee',
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * SupremeCommander (Creed)
+ * Summons 2 Guardsmen and potentially Kell
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: nrOfSummons: 2, unitId: astraSmnGuardsman
+ */
+export const SupremeCommanderHandler: AbilityHandler = {
+  abilityId: 'SupremeCommander',
+  abilityName: 'Supreme Commander',
+  category: 'summon',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SupremeCommander');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+
+    return {
+      abilityId: 'SupremeCommander',
+      abilityName,
+      category: 'summon',
+      summonResult: {
+        unitId: 'astraSmnGuardsman',
+        hp: summonHp,
+        damage: summonDmg,
+        armor: summonArmor,
+        count: 2,
+      },
+      message: `${abilityName}: Summons 2 Guardsmen (HP: ${summonHp}, Dmg: ${summonDmg})`,
+    };
+  },
+};
+
+/**
+ * LeadingTheCharge (Dreir)
+ * 3x Power damage + summons Death Riders
+ * Variables: minDmg, maxDmg, nrOfSummons, summonHp, summonDmg, summonArmor, extraPierceRatio
+ * Constants: damageProfile: Power, range: 4, nrOfHits: 3
+ */
+export const LeadingTheChargeHandler: AbilityHandler = {
+  abilityId: 'LeadingTheCharge',
+  abilityName: 'Leading the Charge',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('LeadingTheCharge');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 3;
+    const nrOfSummons = values.nrOfSummons as number || 2;
+    const extraPierceRatio = values.extraPierceRatio as number || 5;
+
+    return {
+      abilityId: 'LeadingTheCharge',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Power' as DamageType,
+      },
+      attackType: 'melee',
+      message: `${abilityName}: Summons ${nrOfSummons} Death Riders, AM allies +${extraPierceRatio}% pierce`,
+    };
+  },
+};
+
+/**
+ * FragBomb (Kut Skoden)
+ * 6x Blast to target + 3x Blast to adjacent
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Blast, nrOfHits: 6, nrOfHits_2: 3
+ */
+export const FragBombHandler: AbilityHandler = {
+  abilityId: 'FragBomb',
+  abilityName: 'Frag Bomb',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('FragBomb');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const targetHits = values.nrOfHits as number || 6;
+    const adjacentHits = values.nrOfHits_2 as number || 3;
+
+    return {
+      abilityId: 'FragBomb',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: targetHits,
+        damageProfile: 'Blast' as DamageType,
+      },
+      attackType: 'melee',
+      message: `${abilityName}: ${targetHits}x Blast to target, ${adjacentHits}x Blast to adjacent`,
+    };
+  },
+};
+
+/**
+ * MalleusRocketLauncher (Malleus)
+ * Ranged Blast damage with multiple projectiles
+ * Variables: minDmg, maxDmg, extraDmg
+ * Constants: nrOfProjectiles: 3, damageProfile: Blast, nrOfHits: 1, range: 2
+ */
+export const MalleusRocketLauncherHandler: AbilityHandler = {
+  abilityId: 'MalleusRocketLauncher',
+  abilityName: 'Malleus Rocket Barrage',
+  category: 'damage',
+  cooldown: 1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('MalleusRocketLauncher');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraDmg = values.extraDmg as number || 0;
+
+    return {
+      abilityId: 'MalleusRocketLauncher',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,
+        damageProfile: 'Blast' as DamageType,
+      },
+      attackType: 'ranged',
+      message: `${abilityName}: 3 projectiles, +${extraDmg} vs BigTarget`,
+    };
+  },
+};
+
+/**
+ * ForwardSpotter (Malleus)
+ * Summons a Guardsman
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: nrOfSummons: 1, unitId: astraSmnGuardsman, initialCooldownTurns: 2
+ */
+export const ForwardSpotterHandler: AbilityHandler = {
+  abilityId: 'ForwardSpotter',
+  abilityName: 'Forward Spotter',
+  category: 'summon',
+  cooldown: 2,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('ForwardSpotter');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+
+    return {
+      abilityId: 'ForwardSpotter',
+      abilityName,
+      category: 'summon',
+      summonResult: {
+        unitId: 'astraSmnGuardsman',
+        hp: summonHp,
+        damage: summonDmg,
+        armor: summonArmor,
+        count: 1,
+      },
+      message: `${abilityName}: Summons Guardsman (HP: ${summonHp}, Dmg: ${summonDmg})`,
+    };
+  },
+};
+
+/**
+ * PsychicMaelstrom (Sibyll)
+ * 1x Psychic damage with chance to hit additional enemies
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Psychic, nrOfHits: 1, range: 2, chance: 75/50/25/10
+ */
+export const PsychicMaelstromHandler: AbilityHandler = {
+  abilityId: 'PsychicMaelstrom',
+  abilityName: 'Psychic Maelstrom',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('PsychicMaelstrom');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const chance = values.chance as number || 75;
+
+    return {
+      abilityId: 'PsychicMaelstrom',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,
+        damageProfile: 'Psychic' as DamageType,
+      },
+      attackType: 'ranged',
+      message: `${abilityName}: ${chance}% to chain to adjacent enemies`,
+    };
+  },
+};
+
+/**
+ * BasiliskBarrage (Thaddeus)
+ * 2x Blast damage with multiple projectiles
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Blast, nrOfHits: 2, nrOfProjectiles: 5
+ */
+export const BasiliskBarrageHandler: AbilityHandler = {
+  abilityId: 'BasiliskBarrage',
+  abilityName: 'Basilisk Barrage',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('BasiliskBarrage');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 2;
+
+    return {
+      abilityId: 'BasiliskBarrage',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Blast' as DamageType,
+      },
+      attackType: 'ranged',
+      message: `${abilityName}: 5 projectiles, 2x Blast each`,
+    };
+  },
+};
+
+/**
+ * SendInTheNextWave (Yarrick)
+ * Summons 2 Guardsmen
+ * Variables: summonHp, summonDmg, summonArmor, maxSummons
+ * Constants: nrOfSummons: 2, unitId: astraSmnGuardsman
+ */
+export const SendInTheNextWaveHandler: AbilityHandler = {
+  abilityId: 'SendInTheNextWave',
+  abilityName: 'Send In The Next Wave',
+  category: 'summon',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SendInTheNextWave');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+    const maxSummons = values.maxSummons as number || 4;
+
+    return {
+      abilityId: 'SendInTheNextWave',
+      abilityName,
+      category: 'summon',
+      summonResult: {
+        unitId: 'astraSmnGuardsman',
+        hp: summonHp,
+        damage: summonDmg,
+        armor: summonArmor,
+        count: 2,
+      },
+      message: `${abilityName}: Summons 2 Guardsmen (max ${maxSummons}, HP: ${summonHp}, Dmg: ${summonDmg})`,
+    };
+  },
+};
+
+/**
+ * SeekerMissileFrequencyLock (Sho'syl)
+ * 1x Heavy Round damage, long range
+ * Variables: minDmg, maxDmg
+ * Constants: range: 5, nrOfHits: 1, damageProfile: HeavyRound
+ */
+export const SeekerMissileFrequencyLockHandler: AbilityHandler = {
+  abilityId: 'SeekerMissileFrequencyLock',
+  abilityName: 'Seeker Missile Frequency Lock',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SeekerMissileFrequencyLock');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'SeekerMissileFrequencyLock',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,
+        damageProfile: 'Heavy' as DamageType,
+      },
+      attackType: 'ranged',
+      message: `${abilityName}: Range 5`,
+    };
+  },
+};
+
+/**
+ * MV71SniperDroneSquad (Sho'syl)
+ * Summons Sniper Drones
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: unitId: tauSmnDroneSniper, maxSummons: 3
+ */
+export const MV71SniperDroneSquadHandler: AbilityHandler = {
+  abilityId: 'MV71SniperDroneSquad',
+  abilityName: 'MV71 Sniper Drone Squad',
+  category: 'summon',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('MV71SniperDroneSquad');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+
+    return {
+      abilityId: 'MV71SniperDroneSquad',
+      abilityName,
+      category: 'summon',
+      summonResult: {
+        unitId: 'tauSmnDroneSniper',
+        hp: summonHp,
+        damage: summonDmg,
+        armor: summonArmor,
+        count: 1,
+      },
+      message: `${abilityName}: Summons Sniper Drone (max 3, HP: ${summonHp}, Dmg: ${summonDmg})`,
+    };
+  },
+};
+
+/**
+ * ExemplarOfTheKauyon (Shadowsun)
+ * 2x Blast damage + summons Command Link drone
+ * Variables: dmg, summonHp, summonDmg, summonArmor
+ * Constants: unitId: tauSmnDroneCommandLink, damageProfile: Blast, nrOfHits: 2
+ */
+export const ExemplarOfTheKauyonHandler: AbilityHandler = {
+  abilityId: 'ExemplarOfTheKauyon',
+  abilityName: 'Exemplar of the Kauyon',
+  category: 'damage',
+  cooldown: 1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('ExemplarOfTheKauyon');
+    const dmg = values.dmg as number || 0;
+    const avgDmg = dmg;
+    const hits = values.nrOfHits as number || 2;
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+
+    return {
+      abilityId: 'ExemplarOfTheKauyon',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: dmg,
+        maxDamage: dmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Blast' as DamageType,
+      },
+      attackType: 'ranged',
+      message: `${abilityName}: Summons Command Link Drone (HP: ${summonHp}, Dmg: ${summonDmg})`,
+    };
+  },
+};
+
+/**
+ * HeavyRailRifle (Tson'ji)
+ * 2x Piercing damage with chance to hit again
+ * Variables: minDmg, maxDmg, chance
+ * Constants: damageProfile: Piercing, nrOfHits: 2
+ */
+export const HeavyRailRifleHandler: AbilityHandler = {
+  abilityId: 'HeavyRailRifle',
+  abilityName: 'Heavy Rail Rifle',
+  category: 'damage',
+  cooldown: 1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('HeavyRailRifle');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 2;
+    const chance = values.chance as number || 25;
+
+    return {
+      abilityId: 'HeavyRailRifle',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Piercing' as DamageType,
+      },
+      attackType: 'ranged',
+      message: `${abilityName}: ${chance}% to repeat on kill`,
+    };
+  },
+};
+
+/**
+ * TwinSmartMissileSystem (Tson'ji)
+ * 3x Blast damage to enemies with Markerlight
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Blast, nrOfHits: 3
+ */
+export const TwinSmartMissileSystemHandler: AbilityHandler = {
+  abilityId: 'TwinSmartMissileSystem',
+  abilityName: 'Twin Smart Missile System',
+  category: 'damage',
+  cooldown: 0,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('TwinSmartMissileSystem');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 3;
+
+    return {
+      abilityId: 'TwinSmartMissileSystem',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Blast' as DamageType,
+      },
+      attackType: 'ranged',
+      message: `${abilityName}: Hits enemies with Markerlight (no crit/modifiers)`,
+    };
+  },
+};
+
+/**
+ * Loki_SwoopingHawk (Aethana)
+ * 1x Piercing melee damage, varies by range to target
+ * Variables: dmg (comma-separated for range 1,2,3)
+ * Constants: damageProfile: Piercing, nrOfHits: 1
+ */
+export const LokiSwoopingHawkHandler: AbilityHandler = {
+  abilityId: 'Loki_SwoopingHawk',
+  abilityName: 'Swooping Hawk',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('Loki_SwoopingHawk');
+    // dmg is comma-separated: "36,28,20" for range 1,2,3 - use range 1 (max damage)
+    const dmgValue = values.dmg;
+    const dmgStr = typeof dmgValue === 'string' ? dmgValue : String(dmgValue || '0,0,0');
+    const dmgValues = dmgStr.split(',').map(Number);
+    const maxDmg = dmgValues[0] || 0;  // Range 1 (highest)
+    const minDmg = dmgValues[2] || 0;  // Range 3 (lowest)
+    const avgDmg = Math.round((maxDmg + minDmg) / 2);
+
+    return {
+      abilityId: 'Loki_SwoopingHawk',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,
+        damageProfile: 'Piercing' as DamageType,
+      },
+      attackType: 'melee',
+      message: `${abilityName}: Damage varies by range (${maxDmg}/${dmgValues[1]}/${minDmg})`,
+    };
+  },
+};
+
+/**
+ * FireAndReposition (Calandis)
+ * Movement ability with damage reduction buff, no direct damage
+ * Variables: dmgReduction
+ */
+export const FireAndRepositionHandler: AbilityHandler = {
+  abilityId: 'FireAndReposition',
+  abilityName: 'Fire And Reposition',
+  category: 'buff',
+  cooldown: -1,
+  endsTurn: false,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('FireAndReposition');
+    const dmgReduction = values.dmgReduction as number || 0;
+
+    return {
+      abilityId: 'FireAndReposition',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {
+          // Damage reduction is defensive and not directly modeled in calculator
+        },
+        duration: 1,
+      },
+      message: `${abilityName}: Move, attack, move again. -${dmgReduction} ranged damage next enemy turn`,
+    };
+  },
+};
+
+/**
+ * SilentDeath (Jain Zar)
+ * 3x Piercing to target and up to 3 adjacent enemies
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Piercing, nrOfHits: 3, nrOfTargets: 3
+ */
+export const SilentDeathHandler: AbilityHandler = {
+  abilityId: 'SilentDeath',
+  abilityName: 'Silent Death',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SilentDeath');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 3;
+    const nrOfTargets = values.nrOfTargets as number || 3;
+
+    return {
+      abilityId: 'SilentDeath',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Piercing' as DamageType,
+      },
+      attackType: 'melee',
+      message: `${abilityName}: Hits up to ${nrOfTargets + 1} adjacent enemies`,
+    };
+  },
+};
+
+/**
+ * HarvesterOfSouls (Maugan Ra)
+ * 2x Heavy ranged (range 3), hits target and adjacent enemies, +1 hit if didn't move
+ * Variables: minDmg, maxDmg
+ * Constants: nrOfHits: 2, range: 3, extraHit: 1
+ */
+export const HarvesterOfSoulsHandler: AbilityHandler = {
+  abilityId: 'HarvesterOfSouls',
+  abilityName: 'Harvester Of Souls',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('HarvesterOfSouls');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 2;
+
+    return {
+      abilityId: 'HarvesterOfSouls',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Heavy' as DamageType,
+      },
+      attackType: 'ranged',
+      message: `${abilityName}: Range 3, hits adjacent enemies. +1 hit if not moved`,
+    };
+  },
+};
+
+/**
+ * ScarabHive (Aleph-Null)
+ * Summons 2 Scarab Swarms that attack with Piercing
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: unitId: necroSmnSwarm
+ */
+export const ScarabHiveHandler: AbilityHandler = {
+  abilityId: 'ScarabHive',
+  abilityName: 'Scarab Hive',
+  category: 'summon',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('ScarabHive');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+
+    return {
+      abilityId: 'ScarabHive',
+      abilityName,
+      category: 'summon',
+      summonResult: {
+        unitId: 'necroSmnSwarm',
+        hp: summonHp,
+        damage: summonDmg,
+        armor: summonArmor,
+        count: 2,
+      },
+      message: `${abilityName}: Summons 2 Scarab Swarms (HP: ${summonHp}, Dmg: ${summonDmg})`,
+    };
+  },
+};
+
+/**
+ * ResurrectionOrb (Anuphet)
+ * Summons Necron Warriors
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: unitId: necroSmnWarrior
+ */
+export const ResurrectionOrbHandler: AbilityHandler = {
+  abilityId: 'ResurrectionOrb',
+  abilityName: 'Resurrection Orb',
+  category: 'summon',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('ResurrectionOrb');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+
+    return {
+      abilityId: 'ResurrectionOrb',
+      abilityName,
+      category: 'summon',
+      summonResult: {
+        unitId: 'necroSmnWarrior',
+        hp: summonHp,
+        damage: summonDmg,
+        armor: summonArmor,
+        count: 1,
+      },
+      message: `${abilityName}: Resurrects Necron Warrior (HP: ${summonHp}, Dmg: ${summonDmg})`,
+    };
+  },
+};
+
+/**
+ * MultiThreatEliminator (Imospekh)
+ * 6x Gauss ranged, +1 hit per kill, chains to adjacent enemies
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Gauss, extraHit: 1, range: 2
+ */
+export const MultiThreatEliminatorHandler: AbilityHandler = {
+  abilityId: 'MultiThreatEliminator',
+  abilityName: 'Multi-Threat Eliminator',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('MultiThreatEliminator');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraHit = values.extraHit as number || 1;
+
+    return {
+      abilityId: 'MultiThreatEliminator',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 6,
+        damageProfile: 'Gauss' as DamageType,
+      },
+      attackType: 'ranged',
+      message: `${abilityName}: Range 2, +${extraHit} hit per kill, chains to adjacent`,
+    };
+  },
+};
+
+/**
+ * AdaptiveStrategy (Makhotep)
+ * Triggers RelentlessMarch for adjacent summons, lets them attack
+ * Variables: minDmg, maxDmg (damage per hit when summons attack)
+ */
+export const AdaptiveStrategyHandler: AbilityHandler = {
+  abilityId: 'AdaptiveStrategy',
+  abilityName: 'Adaptive Strategy',
+  category: 'buff',
+  cooldown: 1,
+  endsTurn: true,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('AdaptiveStrategy');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+
+    return {
+      abilityId: 'AdaptiveStrategy',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {},
+        duration: 1,
+      },
+      message: `${abilityName}: Adjacent summons attack (${minDmg}-${maxDmg} per hit) + RelentlessMarch`,
+    };
+  },
+};
+
+/**
+ * HarbingerOfDestruction (Thutmose)
+ * 1x DirectDamage ranged, hits target + up to 2 random enemies
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: DirectDamage, nrOfHits: 1, range: 2
+ * Note: Ignores bonuses/modifiers, cannot crit
+ */
+export const HarbingerOfDestructionHandler: AbilityHandler = {
+  abilityId: 'HarbingerOfDestruction',
+  abilityName: 'Harbinger of Destruction',
+  category: 'damage',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('HarbingerOfDestruction');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    return {
+      abilityId: 'HarbingerOfDestruction',
+      abilityName,
+      category: 'damage',
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits: 1,
+        damageProfile: 'DirectDamage' as DamageType,
+      },
+      attackType: 'ranged',
+      rawDamage: true,  // Ignores bonuses/modifiers, cannot crit
+      message: `${abilityName}: Range 2, hits up to 3 enemies (raw damage, no crit)`,
+    };
+  },
+};
+
+// ============= TYRANIDS =============
+
+/**
+ * BioMinefield (Biovore)
+ * Summons 3 Spore Mines, later explode for Bio damage
+ */
+export const BioMinefieldHandler: AbilityHandler = {
+  abilityId: 'BioMinefield',
+  abilityName: 'Bio-Minefield',
+  category: 'summon',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('BioMinefield');
+    const summonHp = values.summonHp as number || 0;
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    return {
+      abilityId: 'BioMinefield',
+      abilityName,
+      category: 'summon',
+      summonResult: { unitId: 'tyranSmnSporeMine', hp: summonHp, damage: 0, armor: 0, count: 3 },
+      message: `${abilityName}: 3 Spore Mines (explode: ${minDmg}-${maxDmg} Bio)`,
+    };
+  },
+};
+
+/**
+ * SporeMineLauncher (Biovore)
+ * Launches Spore Mines at target
+ */
+export const SporeMineLauncherHandler: AbilityHandler = {
+  abilityId: 'SporeMineLauncher',
+  abilityName: 'Spore Mine Launcher',
+  category: 'summon',
+  cooldown: 0,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SporeMineLauncher');
+    const summonHp = values.summonHp as number || 0;
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    return {
+      abilityId: 'SporeMineLauncher',
+      abilityName,
+      category: 'summon',
+      summonResult: { unitId: 'tyranSmnSporeMine', hp: summonHp, damage: 0, armor: 0, count: 1 },
+      message: `${abilityName}: Launch Spore Mine (explode: ${minDmg}-${maxDmg} Bio)`,
+    };
+  },
+};
+
+/**
+ * FearOfTheUnseen (Deathleaper)
+ * 3x DirectDamage ranged
+ */
+export const FearOfTheUnseenHandler: AbilityHandler = {
+  abilityId: 'FearOfTheUnseen',
+  abilityName: 'Fear of the Unseen',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('FearOfTheUnseen');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'FearOfTheUnseen',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'DirectDamage' as DamageType },
+      attackType: 'ranged',
+      rawDamage: true,
+      message: `${abilityName}: Range 2 (raw damage, no crit)`,
+    };
+  },
+};
+
+/**
+ * SpiritLeech (Neurothrope)
+ * 1x Psychic ranged + heal
+ */
+export const SpiritLeechHandler: AbilityHandler = {
+  abilityId: 'SpiritLeech',
+  abilityName: 'Spirit Leech',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SpiritLeech');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hpToHealPct = values.hpToHealPct as number || 40;
+    return {
+      abilityId: 'SpiritLeech',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'Psychic' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: Range 3, heals ${hpToHealPct}% of damage dealt`,
+    };
+  },
+};
+
+/**
+ * ItItches (Parasite of Mortrex)
+ * Summons Ripper Swarm
+ */
+export const ItItchesHandler: AbilityHandler = {
+  abilityId: 'ItItches',
+  abilityName: 'It Itches...',
+  category: 'summon',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('ItItches');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+    return {
+      abilityId: 'ItItches',
+      abilityName,
+      category: 'summon',
+      summonResult: { unitId: 'tyranSmnRipperSwarm', hp: summonHp, damage: summonDmg, armor: summonArmor, count: 1 },
+      message: `${abilityName}: Summons Ripper Swarm`,
+    };
+  },
+};
+
+/**
+ * CrushingClaws (Tyrant Guard)
+ * 2x Piercing + 2x Physical melee
+ */
+export const CrushingClawsHandler: AbilityHandler = {
+  abilityId: 'CrushingClaws',
+  abilityName: 'Crushing Claws',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('CrushingClaws');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'CrushingClaws',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 2, damageProfile: 'Piercing' as DamageType },
+      attackType: 'melee',
+      message: `${abilityName}: 2x Piercing + 2x Physical`,
+    };
+  },
+};
+
+/**
+ * AlphaWarrior (Winged Prime)
+ * Summons Tyranid Warrior
+ */
+export const AlphaWarriorHandler: AbilityHandler = {
+  abilityId: 'AlphaWarrior',
+  abilityName: 'Alpha Warrior',
+  category: 'summon',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('AlphaWarrior');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+    return {
+      abilityId: 'AlphaWarrior',
+      abilityName,
+      category: 'summon',
+      summonResult: { unitId: 'tyranSmnWarrior', hp: summonHp, damage: summonDmg, armor: summonArmor, count: 1 },
+      message: `${abilityName}: Summons Tyranid Warrior`,
+    };
+  },
+};
+
+// ============= ORKS =============
+
+/**
+ * GrotTank (Gibbascrapz)
+ * Summons a Grot Tank with stats scaling with rounds
+ * Variables: summonHp, summonDmg, summonArmor, extraHp
+ * Constants: unitId: orksGrotTank
+ */
+export const GrotTankHandler: AbilityHandler = {
+  abilityId: 'GrotTank',
+  abilityName: 'Grot Tank',
+  category: 'summon',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('GrotTank');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+    const extraHp = values.extraHp as number || 0;
+    const currentTurn = context.currentTurn || 1;
+    const totalHp = summonHp + (extraHp * currentTurn);
+    return {
+      abilityId: 'GrotTank',
+      abilityName,
+      category: 'summon',
+      summonResult: { unitId: 'orksGrotTank', hp: totalHp, damage: summonDmg, armor: summonArmor, count: 1 },
+      message: `${abilityName}: Grot Tank (HP: ${totalHp} [+${extraHp}/turn], Dmg: ${summonDmg}, Armor: ${summonArmor})`,
+    };
+  },
+};
+
+/**
+ * SquigLaunchas (Rukkatrukk)
+ * 3x Physical damage, can summon Large Squig if conditions met
+ * Variables: minDmg, maxDmg, summonHp, summonDmg, summonArmor
+ * Constants: damageProfile: Physical, nrOfHits: 3, unitId: orksSmnSquig
+ * Note: Raw damage, no crit
+ */
+export const SquigLaunchasHandler: AbilityHandler = {
+  abilityId: 'SquigLaunchas',
+  abilityName: 'Squig Launchas',
+  category: 'damage',
+  cooldown: 1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SquigLaunchas');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    return {
+      abilityId: 'SquigLaunchas',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Physical' as DamageType },
+      attackType: 'ranged',
+      rawDamage: true,
+      message: `${abilityName}: 3x Physical (raw, no crit). May summon Large Squig (HP: ${summonHp}, Dmg: ${summonDmg})`,
+    };
+  },
+};
+
+/**
+ * SquigMine (Rukkatrukk)
+ * Creates trap mines that deal 3x Blast damage
+ * Variables: minDmg, maxDmg, nrOfTiles
+ * Constants: damageProfile: Blast, nrOfHits: 3, range: 2
+ * Note: Raw damage, no crit
+ */
+export const SquigMineHandler: AbilityHandler = {
+  abilityId: 'SquigMine',
+  abilityName: 'Squig Mine',
+  category: 'damage',
+  cooldown: 1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SquigMine');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const nrOfTiles = values.nrOfTiles as number || 2;
+    return {
+      abilityId: 'SquigMine',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Blast' as DamageType },
+      attackType: 'ranged',
+      rawDamage: true,
+      message: `${abilityName}: Marks ${nrOfTiles + 1} hexes, 3x Blast on trigger (raw, no crit)`,
+    };
+  },
+};
+
+/**
+ * DakkaDakkaDakka (Snappawrecka)
+ * 6x+ Projectile ranged, gains extra hits per repair (max 16)
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Projectile, nrOfHits: 6, extraHits: 2, maxNrOfHits: 16, healthPct: 15
+ * Note: Self-damages 15% HP
+ */
+export const DakkaDakkaDakkaHandler: AbilityHandler = {
+  abilityId: 'DakkaDakkaDakka',
+  abilityName: 'Dakka! Dakka! Dakka!',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('DakkaDakkaDakka');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'DakkaDakkaDakka',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 6, damageProfile: 'Projectile' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 6x Projectile (+2 per repair, max 16). Costs 15% HP. Overflow hits random enemies`,
+    };
+  },
+};
+
+/**
+ * GetEmRuntz (Snotflogga)
+ * Summons Grots adjacent to enemies
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: unitId: orksGrot
+ */
+export const GetEmRuntzHandler: AbilityHandler = {
+  abilityId: 'GetEmRuntz',
+  abilityName: "Get 'Em Runtz",
+  category: 'summon',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('GetEmRuntz');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    return {
+      abilityId: 'GetEmRuntz',
+      abilityName,
+      category: 'summon',
+      summonResult: { unitId: 'orksGrot', hp: summonHp, damage: summonDmg, armor: 0, count: 1 },
+      message: `${abilityName}: Summons Grots near enemies (HP: ${summonHp}, Dmg: ${summonDmg}). Grots immediately attack, apply Taunt`,
+    };
+  },
+};
+
+/**
+ * UnstoppableMomentumReworked (Tanksmasha)
+ * Charge attack: 1x Direct damage + extraDmg per hex traversed
+ * Variables: minDmg, maxDmg, extraDmg
+ * Constants: damageProfile: DirectDamage, nrOfHits: 1, initialCooldownTurns: 1
+ */
+export const UnstoppableMomentumReworkedHandler: AbilityHandler = {
+  abilityId: 'UnstoppableMomentumReworked',
+  abilityName: 'Unstoppable Momentum',
+  category: 'damage',
+  cooldown: 1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('UnstoppableMomentumReworked');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraDmg = values.extraDmg as number || 0;
+    return {
+      abilityId: 'UnstoppableMomentumReworked',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'DirectDamage' as DamageType },
+      attackType: 'melee',
+      message: `${abilityName}: Charge in line, 1x Direct (+${extraDmg}/hex). Pushes, Suppresses (Stuns BigTarget)`,
+    };
+  },
+};
+
+// ============= BLACK LEGION =============
+
+/**
+ * BringerOfDespair (Angrax)
+ * 4x Power melee to target + 4x Power to random adjacent enemy
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Power, nrOfHits: 4, nrOfHits_2: 4
+ */
+export const BringerOfDespairHandler: AbilityHandler = {
+  abilityId: 'BringerOfDespair',
+  abilityName: 'Bringer of Despair',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('BringerOfDespair');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'BringerOfDespair',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 4, damageProfile: 'Power' as DamageType },
+      attackType: 'melee',
+      message: `${abilityName}: 4x Power + 4x Power to adjacent enemy. Double Battle Fatigue`,
+    };
+  },
+};
+
+/**
+ * Incursion (Archimatos)
+ * Summons Bloodletters near target enemy
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: range: 2, unitId: blackSmnBloodletter, maxSummons: 6
+ */
+export const IncursionHandler: AbilityHandler = {
+  abilityId: 'Incursion',
+  abilityName: 'Daemonic Incursion',
+  category: 'summon',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('Incursion');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    return {
+      abilityId: 'Incursion',
+      abilityName,
+      category: 'summon',
+      summonResult: { unitId: 'blackSmnBloodletter', hp: summonHp, damage: summonDmg, armor: 0, count: 1 },
+      message: `${abilityName}: Summons Bloodletters (max 6, HP: ${summonHp}). Immediate attack`,
+    };
+  },
+};
+
+/**
+ * HadesAutocannons (Forgefiend)
+ * 6x Flame ranged vs summons, extra crit damage
+ * Variables: minDmg, maxDmg, extraCritDmg
+ * Constants: damageProfile: Flame, nrOfHits: 6, munitionsCost: 1
+ */
+export const HadesAutocannonsHandler: AbilityHandler = {
+  abilityId: 'HadesAutocannons',
+  abilityName: 'Hades Autocannons',
+  category: 'damage',
+  cooldown: 0,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('HadesAutocannons');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraCritDmg = values.extraCritDmg as number || 0;
+    return {
+      abilityId: 'HadesAutocannons',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 6, damageProfile: 'Flame' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 6x Flame vs summons (+${extraCritDmg} Crit Dmg). Costs 1 munition`,
+    };
+  },
+};
+
+/**
+ * DaemonicOrdnance (Forgefiend)
+ * 3x Flame ranged, AoE
+ * Variables: minDmg, maxDmg, extraCritDmg
+ * Constants: damageProfile: Flame, nrOfHits: 3, range: 2
+ */
+export const DaemonicOrdnanceHandler: AbilityHandler = {
+  abilityId: 'DaemonicOrdnance',
+  abilityName: 'Daemonic Ordnance',
+  category: 'damage',
+  cooldown: 0,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('DaemonicOrdnance');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraCritDmg = values.extraCritDmg as number || 0;
+    return {
+      abilityId: 'DaemonicOrdnance',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Flame' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 3x Flame AoE (+${extraCritDmg} Crit Dmg). Costs 1 munition`,
+    };
+  },
+};
+
+/**
+ * HeraldOfTheApocalypse (Haarken)
+ * 2x Piercing melee, also hits enemy directly behind target
+ * Variables: minDmg, maxDmg, extraDmg
+ * Constants: damageProfile: Piercing, nrOfHits: 2, range: 2 (for Battle Fatigue)
+ */
+export const HeraldOfTheApocalypseHandler: AbilityHandler = {
+  abilityId: 'HeraldOfTheApocalypse',
+  abilityName: 'Herald of the Apocalypse',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('HeraldOfTheApocalypse');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraDmg = values.extraDmg as number || 0;
+    return {
+      abilityId: 'HeraldOfTheApocalypse',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 2, damageProfile: 'Piercing' as DamageType },
+      attackType: 'melee',
+      message: `${abilityName}: 2x Piercing + enemy behind. +${extraDmg} to next attack on target. Battle Fatigue`,
+    };
+  },
+};
+
+/**
+ * FrenziedFiring (Volk)
+ * 1x+ Heavy ranged, extra hits for adjacent free hexes (max 10)
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: HeavyRound, nrOfHits: 1, maxNrOfHits: 10, range: 3
+ */
+export const FrenziedFiringHandler: AbilityHandler = {
+  abilityId: 'FrenziedFiring',
+  abilityName: 'Frenzied Firing',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('FrenziedFiring');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'FrenziedFiring',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'Heavy' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 1x Heavy + adjacent enemies. +1 hit per free hex (max 10). FleshmetalGuns bonus`,
+    };
+  },
+};
+
+// ============= WORLD EATERS =============
+
+/**
+ * OverwhelmingWrath (Azkor)
+ * 2x Eviscerate melee to all adjacent, Taunts, reduces ranged damage
+ * Variables: minDmg, maxDmg, dmgReductionPct
+ * Constants: damageProfile: Eviscerate, nrOfHits: 2
+ */
+export const OverwhelmingWrathHandler: AbilityHandler = {
+  abilityId: 'OverwhelmingWrath',
+  abilityName: 'Overwhelming Wrath',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('OverwhelmingWrath');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const dmgReductionPct = values.dmgReductionPct as number || 24;
+    return {
+      abilityId: 'OverwhelmingWrath',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 2, damageProfile: 'Eviscerate' as DamageType },
+      attackType: 'melee',
+      message: `${abilityName}: Taunts all adjacent, -${dmgReductionPct}% ranged dmg taken. 2x Eviscerate next turn`,
+    };
+  },
+};
+
+/**
+ * JakhalStimms (Macer)
+ * 4x Physical melee to target + adjacent enemies, doesn't end turn
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Physical, nrOfHits: 4, hpPct: 25
+ */
+export const JakhalStimmsHandler: AbilityHandler = {
+  abilityId: 'JakhalStimms',
+  abilityName: 'Jakhal Stimms',
+  category: 'damage',
+  cooldown: -1,
+  endsTurn: false,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('JakhalStimms');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'JakhalStimms',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 4, damageProfile: 'Physical' as DamageType },
+      attackType: 'melee',
+      message: `${abilityName}: 4x Physical to target + shared adjacent. Costs 25% HP. No turn end`,
+    };
+  },
+};
+
+/**
+ * MurderousSwing (Tarvakh)
+ * 1x Piercing melee to all adjacent, +extraDmg if single target
+ * Variables: minDmg, maxDmg, extraDmg
+ * Constants: damageProfile: Piercing, nrOfHits: 1
+ */
+export const MurderousSwingHandler: AbilityHandler = {
+  abilityId: 'MurderousSwing',
+  abilityName: 'Murderous Swing',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('MurderousSwing');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraDmg = values.extraDmg as number || 0;
+    return {
+      abilityId: 'MurderousSwing',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'Piercing' as DamageType },
+      attackType: 'melee',
+      message: `${abilityName}: 1x Piercing to all adjacent. +${extraDmg} Dmg if single target`,
+    };
+  },
+};
+
+/**
+ * BloodyFury (Wrask)
+ * 1x+ Chain melee, +1 hit per time attacked (max 8)
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Chain, nrOfHits: 1, extraHit: 1, maxNrOfHits: 8
+ */
+export const BloodyFuryHandler: AbilityHandler = {
+  abilityId: 'BloodyFury',
+  abilityName: 'Bloody Fury',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('BloodyFury');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'BloodyFury',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'Chain' as DamageType },
+      attackType: 'melee',
+      message: `${abilityName}: 1x Chain (+1 hit per attack taken, max 8). Overflow to adjacent enemies`,
+    };
+  },
+};
+
+// =====================
+// DEATHGUARD ABILITIES
+// =====================
+
+/**
+ * Poxwalkers (Corrodius)
+ * Summons Poxwalkers in 15-25% of free hexes within Contagion aura
+ * Variables: summonHp, summonDmg, chance, chance_2
+ * Constants: unitId: deathPoxwalker
+ */
+export const PoxwalkersHandler: AbilityHandler = {
+  abilityId: 'Poxwalkers',
+  abilityName: 'Poxwalkers',
+  category: 'summon',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('Poxwalkers');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const chance = values.chance as number || 15;
+    const chance2 = values.chance_2 as number || 25;
+    return {
+      abilityId: 'Poxwalkers',
+      abilityName,
+      category: 'summon',
+      summonResult: { unitId: 'deathPoxwalker', hp: summonHp, damage: summonDmg, armor: 0, count: 1 },
+      message: `${abilityName}: Summons Poxwalkers in ${chance}-${chance2}% of free hexes in Contagion aura (HP: ${summonHp}, Dmg: ${summonDmg}). Attack immediately.`,
+    };
+  },
+};
+
+/**
+ * FlailSwing (Maladus)
+ * 3x Power damage, triggers Haze of Corruption on kill, always overkills
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Power, nrOfHits: 3
+ */
+export const FlailSwingHandler: AbilityHandler = {
+  abilityId: 'FlailSwing',
+  abilityName: 'Flail Swing',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('FlailSwing');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'FlailSwing',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Power' as DamageType },
+      attackType: 'melee',
+      message: `${abilityName}: 3x Power. Triggers Haze of Corruption on kill. Always overkills`,
+    };
+  },
+};
+
+/**
+ * RevitalizingMalignancy (Nauseous)
+ * Heals self and adjacent allies. Extra healing for Chaos. No healing for Imperial.
+ * Variables: hpToHeal, hpToHeal_2
+ */
+export const RevitalizingMalignancyHandler: AbilityHandler = {
+  abilityId: 'RevitalizingMalignancy',
+  abilityName: 'Revitalising Malignancy',
+  category: 'buff',
+  cooldown: -1,
+  endsTurn: true,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('RevitalizingMalignancy');
+    const hpToHeal = values.hpToHeal as number || 0;
+    const hpToHeal2 = values.hpToHeal_2 as number || 0;
+    return {
+      abilityId: 'RevitalizingMalignancy',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {},
+        duration: 0,
+      },
+      message: `${abilityName}: Heals ${hpToHeal} HP (Chaos: +${hpToHeal2} extra). No heal for Imperial`,
+    };
+  },
+};
+
+/**
+ * FoulInfusion (Pestillian)
+ * Grants 1x Toxic hit to melee attacks for self and Chaos allies in Contagion.
+ * Then performs melee attack against random adjacent enemy.
+ * Variables: dmg
+ * Constants: damageProfile: Toxic, nrOfHits: 1
+ */
+export const FoulInfusionHandler: AbilityHandler = {
+  abilityId: 'FoulInfusion',
+  abilityName: 'Foul Infusion',
+  category: 'buff',
+  cooldown: -1,
+  endsTurn: true,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('FoulInfusion');
+    const dmg = values.dmg as number || 0;
+    return {
+      abilityId: 'FoulInfusion',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {},
+        duration: 2, // This round and next
+      },
+      message: `${abilityName}: Chaos allies in Contagion get +1x ${dmg} Toxic on melee (2 rounds). Then melee random adjacent`,
+    };
+  },
+};
+
+/**
+ * EntropyCannons (Plagueburst Crawler)
+ * 2x Energy damage to target with reduced armor or in Contagion.
+ * Raw damage (no crit, no modifiers). Costs 1 munition.
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Energy, nrOfHits: 2, munitionsCost: 1
+ */
+export const EntropyCannsHandler: AbilityHandler = {
+  abilityId: 'EntropyCannons',
+  abilityName: 'Entropy Cannons',
+  category: 'damage',
+  cooldown: 0, // No cooldown, but costs munitions
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('EntropyCannons');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'EntropyCannons',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 2, damageProfile: 'Energy' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 2x Energy (raw, no crit). Target must have reduced Armor or be in Contagion. Costs 1 munition`,
+    };
+  },
+};
+
+/**
+ * PlagueburstMortar (Plagueburst Crawler)
+ * 3x Toxic AoE damage to enemies in target hex + adjacent in Contagion/reduced armor.
+ * Raw damage (no crit, no modifiers). Adds Contamination tiles.
+ * Variables: minDmg, maxDmg, nrOfTiles
+ * Constants: damageProfile: Toxic, nrOfHits: 3, initialCooldownTurns: 1
+ */
+export const PlagueburstMortarHandler: AbilityHandler = {
+  abilityId: 'PlagueburstMortar',
+  abilityName: 'Plagueburst Mortar',
+  category: 'damage',
+  cooldown: 0, // Note: has initial cooldown of 1 turn
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('PlagueburstMortar');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const nrOfTiles = values.nrOfTiles as number || 3;
+    return {
+      abilityId: 'PlagueburstMortar',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Toxic' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 3x Toxic AoE (raw, no crit). Adds ${nrOfTiles} Contamination tiles. Suppresses. Initial CD: 1`,
+    };
+  },
+};
+
+/**
+ * PlagueWind (Typhus)
+ * 1x Psychic to target, then cascades to adjacent enemies (3 tiers).
+ * Raw damage (no crit, no modifiers).
+ * Variables: minDmg, maxDmg, minDmg_2, maxDmg_2, minDmg_3, maxDmg_3
+ * Constants: damageProfile: Psychic, nrOfHits: 1, range: 2
+ */
+export const PlagueWindHandler: AbilityHandler = {
+  abilityId: 'PlagueWind',
+  abilityName: 'Plague Wind',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('PlagueWind');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const minDmg2 = values.minDmg_2 as number || 0;
+    const maxDmg2 = values.maxDmg_2 as number || 0;
+    const minDmg3 = values.minDmg_3 as number || 0;
+    const maxDmg3 = values.maxDmg_3 as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const avgDmg2 = Math.round((minDmg2 + maxDmg2) / 2);
+    const avgDmg3 = Math.round((minDmg3 + maxDmg3) / 2);
+    // Primary target damage + cascade tiers
+    const damageComponents: DamageComponent[] = [
+      { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'Psychic' as DamageType },
+      { minDamage: minDmg2, maxDamage: maxDmg2, averageDamage: avgDmg2, hits: 1, damageProfile: 'Psychic' as DamageType },
+      { minDamage: minDmg3, maxDamage: maxDmg3, averageDamage: avgDmg3, hits: 1, damageProfile: 'Psychic' as DamageType },
+    ];
+    return {
+      abilityId: 'PlagueWind',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'Psychic' as DamageType },
+      damageComponents,
+      attackType: 'ranged',
+      message: `${abilityName}: 1x Psychic (raw). Cascades: adj ${minDmg2}-${maxDmg2}, then ${minDmg3}-${maxDmg3}`,
+    };
+  },
+};
+
+// ======================
+// THOUSANDSONS ABILITIES
+// ======================
+
+/**
+ * MasterOfTheTutelaries (Abraxas)
+ * Summons Pink Horror. During turn, Psychic damage triggers Screamer summons.
+ * Variables: summonHp, summonDmg, summonHp_2, summonDmg_2
+ * Constants: unitId: thousSmnPinkHorror, unitId_2: thousSmnScreamer
+ */
+export const MasterOfTheTutelariesHandler: AbilityHandler = {
+  abilityId: 'MasterOfTheTutelaries',
+  abilityName: 'Malefic Maelstrom',
+  category: 'summon',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('MasterOfTheTutelaries');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonHp2 = values.summonHp_2 as number || 0;
+    const summonDmg2 = values.summonDmg_2 as number || 0;
+    return {
+      abilityId: 'MasterOfTheTutelaries',
+      abilityName,
+      category: 'summon',
+      summonResult: { unitId: 'thousSmnPinkHorror', hp: summonHp, damage: summonDmg, armor: 0, count: 1 },
+      message: `${abilityName}: Pink Horror (HP: ${summonHp}, Dmg: ${summonDmg}). Psychic dmg this turn summons Screamers (HP: ${summonHp2}, Dmg: ${summonDmg2})`,
+    };
+  },
+};
+
+/**
+ * Doombolt (Ahriman)
+ * 3x Psychic split between all enemies in range 2. +1 hit per Fire hex (max 9).
+ * Resets on ranged kill after use.
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Psychic, nrOfHits: 3, range: 2
+ */
+export const DoomboltHandler: AbilityHandler = {
+  abilityId: 'Doombolt',
+  abilityName: 'Doombolt',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('Doombolt');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'Doombolt',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Psychic' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 3x Psychic split to all enemies in range 2. +1 hit per Fire hex (max 9). Resets on ranged kill`,
+    };
+  },
+};
+
+/**
+ * AttemptedPossession (Thaumachus)
+ * Possess enemy and its summons, they attack closest enemy.
+ * Variables: dmgPct, maxDmg, extraDmg
+ * Constants: range: 2
+ */
+export const AttemptedPossessionHandler: AbilityHandler = {
+  abilityId: 'AttemptedPossession',
+  abilityName: 'Attempted Possession',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('AttemptedPossession');
+    const dmgPct = values.dmgPct as number || 80;
+    const maxDmg = values.maxDmg as number || 0;
+    return {
+      abilityId: 'AttemptedPossession',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: 0, maxDamage: maxDmg, averageDamage: Math.round(maxDmg / 2), hits: 1, damageProfile: 'Physical' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: Possess enemy + summons. They attack at ${dmgPct}% dmg (max ${maxDmg}/hit)`,
+    };
+  },
+};
+
+/**
+ * HellfyreMissileRack (Toth)
+ * 1x Heavy to target + 1x Heavy to each enemy that took Psychic damage this turn.
+ * Raw damage (no crit, no modifiers).
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: HeavyRound, range: 3, nrOfHits: 1
+ */
+export const HellfyreMissileRackHandler: AbilityHandler = {
+  abilityId: 'HellfyreMissileRack',
+  abilityName: 'Hellfyre Missile Rack',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('HellfyreMissileRack');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'HellfyreMissileRack',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'HeavyRound' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 1x Heavy (raw). Also hits each enemy that took Psychic dmg this turn`,
+    };
+  },
+};
+
+/**
+ * SorcerousFacade (Yazaghor)
+ * Buff self and target Psyker with +1x Psychic hit on normal attacks.
+ * Then attack closest enemy and swap positions with target.
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Psychic, nrOfHits: 1
+ */
+export const SorcerousFacadeHandler: AbilityHandler = {
+  abilityId: 'SorcerousFacade',
+  abilityName: 'Sorcerous Facade',
+  category: 'buff',
+  cooldown: -1,
+  endsTurn: true,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SorcerousFacade');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    return {
+      abilityId: 'SorcerousFacade',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {},
+        duration: 1,
+      },
+      message: `${abilityName}: Self + target Psyker get +1x ${minDmg}-${maxDmg} Psychic on attacks. Swap positions after attack`,
+    };
+  },
+};
+
+/**
+ * AetherStride (Z'Kar)
+ * Summons Z'Kar as stationary unit. If adjacent to Psyker, attacks immediately.
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: unitId: thousSmnDaemonPrince, initialCooldownTurns: 1, munitionsCost: 1
+ */
+export const AetherStrideHandler: AbilityHandler = {
+  abilityId: 'AetherStride',
+  abilityName: 'Aether Stride',
+  category: 'summon',
+  cooldown: 0, // No cooldown but costs munitions
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('AetherStride');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+    return {
+      abilityId: 'AetherStride',
+      abilityName,
+      category: 'summon',
+      summonResult: { unitId: 'thousSmnDaemonPrince', hp: summonHp, damage: summonDmg, armor: summonArmor, count: 1 },
+      message: `${abilityName}: Z'Kar (HP: ${summonHp}, Dmg: ${summonDmg}, Armor: ${summonArmor}). Attacks if adj to Psyker. Costs 1 munition`,
+    };
+  },
+};
+
+/**
+ * InfernalCannon (Z'Kar)
+ * 3x Flame to all enemies on Fire or hit by Psychic this turn.
+ * Raw damage (no crit, no modifiers). Adds Fire to target hex.
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Flame, nrOfHits: 3, initialCooldownTurns: 1
+ */
+export const InfernalCannonHandler: AbilityHandler = {
+  abilityId: 'InfernalCannon',
+  abilityName: 'Infernal Cannon',
+  category: 'damage',
+  cooldown: 0, // Note: has initial cooldown of 1 turn
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('InfernalCannon');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'InfernalCannon',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Flame' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 3x Flame (raw) to enemies on Fire or hit by Psychic. Adds Fire. Initial CD: 1`,
+    };
+  },
+};
+
+// =========================
+// EMPERORSCHILDREN ABILITIES
+// =========================
+
+/**
+ * DoomSiren (Adamatar)
+ * 3x Direct to adjacent + up to 2 enemies adjacent to target.
+ * Grants +1 hit per enemy Overkilled for rest of battle.
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: DirectDamage, nrOfHits: 3, nrOfUnits: 2, extraHit: 1
+ */
+export const DoomSirenHandler: AbilityHandler = {
+  abilityId: 'DoomSiren',
+  abilityName: 'Doom Siren',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('DoomSiren');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'DoomSiren',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'DirectDamage' as DamageType },
+      attackType: 'melee',
+      message: `${abilityName}: 3x Direct to adj + up to 2 more enemies adj to target. +1 hit per overkill for battle`,
+    };
+  },
+};
+
+/**
+ * DaemonicPatrons (Hascule)
+ * Taunts adj enemy. Gets +dmg/-dmgPct% per Taunted enemy while watched.
+ * Can reuse if kills Taunted enemy, else loses HP.
+ * Variables: extraDmg, dmgReductionPct, hpPct
+ * Constants: nrOfRounds: 1
+ */
+export const DaemonicPatronsHandler: AbilityHandler = {
+  abilityId: 'DaemonicPatrons',
+  abilityName: 'Daemonic Patrons',
+  category: 'buff',
+  cooldown: 0, // Reusable if kills Taunted enemy
+  endsTurn: false,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('DaemonicPatrons');
+    const extraDmg = values.extraDmg as number || 0;
+    const dmgReductionPct = values.dmgReductionPct as number || 20;
+    const hpPct = values.hpPct as number || 50;
+    return {
+      abilityId: 'DaemonicPatrons',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {},
+        duration: 1,
+      },
+      message: `${abilityName}: Taunt adj enemy. +${extraDmg} dmg, -${dmgReductionPct}% taken per Taunted. Reuse on Taunted kill, else -${hpPct}% HP`,
+    };
+  },
+};
+
+/**
+ * LashOfTorment (Lucius)
+ * 6x Eviscerate to enemy in range 2. Pulls target 1 hex, taunts if adjacent.
+ * Variables: minDmg, maxDmg, nrOfRounds
+ * Constants: damageProfile: Eviscerate, nrOfHits: 6, range: 2
+ */
+export const LashOfTormentHandler: AbilityHandler = {
+  abilityId: 'LashOfTorment',
+  abilityName: 'Lash of Torment',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('LashOfTorment');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const nrOfRounds = values.nrOfRounds as number || 1;
+    return {
+      abilityId: 'LashOfTorment',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 6, damageProfile: 'Eviscerate' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 6x Eviscerate (range 2). Pulls target 1 hex toward Lucius, Taunts ${nrOfRounds} round if adj`,
+    };
+  },
+};
+
+/**
+ * ExcruciatingFrequencies (Shiron)
+ * 1x Blast to all enemies in 3 hex line. +extraCritChance% per unit on affected hexes. Suppresses.
+ * Variables: minDmg, maxDmg, extraCritChance
+ * Constants: damageProfile: Blast, nrOfHits: 1, nrOfTiles: 3
+ */
+export const ExcruciatingFrequenciesHandler: AbilityHandler = {
+  abilityId: 'ExcruciatingFrequencies',
+  abilityName: 'Excruciating Frequencies',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('ExcruciatingFrequencies');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraCritChance = values.extraCritChance as number || 20;
+    return {
+      abilityId: 'ExcruciatingFrequencies',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'Blast' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 1x Blast to 3 hex line. +${extraCritChance}% crit per unit in line. Suppresses`,
+    };
+  },
+};
+
+// ==================== Genestealers ====================
+
+/**
+ * CultDemagogue (Isaak)
+ * Targets enemy within range, places decoys, summons Neophyte Hybrids on half of decoys
+ * Variables: nrOfSummons (decoys), summonHp_2, summonDmg_2, summonArmor_2
+ * Constants: unitId_2 = "genesSmnNeophyte", range, range_2, unitId = "genesSmnDecoy"
+ */
+export const CultDemagogueHandler: AbilityHandler = {
+  abilityId: 'CultDemagogue',
+  abilityName: 'Cult Demagogue',
+  category: 'summon',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('CultDemagogue');
+    const nrOfSummons = values.nrOfSummons as number || 4;
+    return {
+      abilityId: 'CultDemagogue',
+      abilityName,
+      category: 'summon',
+      summonResult: {
+        unitId: 'genesSmnNeophyte',
+        hp: values.summonHp_2 as number || 0,
+        damage: values.summonDmg_2 as number || 0,
+        armor: values.summonArmor_2 as number || 0,
+        count: Math.ceil(nrOfSummons / 2), // Half of decoys become summons
+      },
+      message: `${abilityName}: Places up to ${nrOfSummons} decoys within 2 hexes of target, then summons Neophyte Hybrids on half of them`,
+    };
+  },
+};
+
+/**
+ * HeroicFusillade (Judh)
+ * Targets enemy, moves to free surrounding hex, deals 6x Projectile to target and surrounding enemies
+ * Variables: minDmg, maxDmg, extraCritDmg
+ * Constants: damageProfile = "Projectile", range = "2", nrOfHits = "6"
+ */
+export const HeroicFusilladeHandler: AbilityHandler = {
+  abilityId: 'HeroicFusillade',
+  abilityName: 'Heroic Fusillade',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('HeroicFusillade');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraCritDmg = values.extraCritDmg as number || 0;
+    return {
+      abilityId: 'HeroicFusillade',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 6, damageProfile: 'Projectile' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 6x Projectile to target + surrounding enemies. +${extraCritDmg} crit dmg per free hex around target`,
+    };
+  },
+};
+
+/**
+ * MightFromBelow (The Patermine)
+ * Deals 5x Psychic damage to adjacent enemy, summons Purestrain Genestealers on adjacent decoys
+ * Variables: minDmg, maxDmg, summonHp, summonDmg, summonArmor
+ * Constants: damageProfile = "Psychic", nrOfHits = "5", unitId = "genesSmnGenestealer"
+ */
+export const MightFromBelowHandler: AbilityHandler = {
+  abilityId: 'MightFromBelow',
+  abilityName: 'Might From Below',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('MightFromBelow');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'MightFromBelow',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 5, damageProfile: 'Psychic' as DamageType },
+      attackType: 'melee',
+      // Also summons Purestrain Genestealers - tracked separately
+      summonResult: {
+        unitId: 'genesSmnGenestealer',
+        hp: values.summonHp as number || 0,
+        damage: values.summonDmg as number || 0,
+        armor: values.summonArmor as number || 0,
+      },
+      message: `${abilityName}: 5x Psychic (melee, ignores modifiers). Summons Genestealers on adjacent decoys`,
+    };
+  },
+};
+
+/**
+ * MindControl (Xybia)
+ * Debuff: Target deals less damage, takes more damage, gets taunted
+ * Variables: dmgReduction, extraDmgPct
+ * Constants: range = "3"
+ */
+export const MindControlHandler: AbilityHandler = {
+  abilityId: 'MindControl',
+  abilityName: 'Mind Control',
+  category: 'buff',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('MindControl');
+    const dmgReduction = values.dmgReduction as number || 0;
+    const extraDmgPct = values.extraDmgPct as number || 10;
+    return {
+      abilityId: 'MindControl',
+      abilityName,
+      category: 'buff',
+      buffResult: {
+        effect: {
+          // This is a debuff on enemy - tracking as informational
+        },
+        duration: 2, // This round and next
+      },
+      message: `${abilityName}: Target (within 3, adj to friendly) deals -${dmgReduction} dmg, takes +${extraDmgPct}% dmg, Taunted for 2 rounds`,
+    };
+  },
+};
+
+// ==================== LeaguesOfVotann ====================
+
+/**
+ * AncestralFortune (Uthar)
+ * Deals 3x Plasma damage, grants crit chance and block chance bonuses
+ * Variables: extraCritChance, extraBlockChance, minDmg, maxDmg, nrOfAttacks (6)
+ * Constants: nrOfHits: 3, damageProfile: Plasma
+ */
+export const AncestralFortuneHandler: AbilityHandler = {
+  abilityId: 'AncestralFortune',
+  abilityName: 'Ancestral Fortune',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('AncestralFortune');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraCritChance = values.extraCritChance as number || 15;
+    const extraBlockChance = values.extraBlockChance as number || 15;
+    const nrOfAttacks = values.nrOfAttacks as number || 6;
+    return {
+      abilityId: 'AncestralFortune',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Plasma' as DamageType },
+      attackType: 'melee',
+      message: `${abilityName}: 3x Plasma (melee). Grants +${extraCritChance}% crit, +${extraBlockChance}% block for ${nrOfAttacks} attacks`,
+    };
+  },
+};
+
+/**
+ * GravitonRifle (Vynn)
+ * Deals 3x Physical damage with extra pierce ratio, suppresses target for 1 round
+ * Variables: minDmg, maxDmg, extraPierceRatio
+ * Constants: nrOfHits: 3, damageProfile: Physical, range: 2, nrOfRounds: 1
+ */
+export const GravitonRifleHandler: AbilityHandler = {
+  abilityId: 'GravitonRifle',
+  abilityName: 'Graviton Rifle',
+  category: 'damage',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('GravitonRifle');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const extraPierceRatio = values.extraPierceRatio as number || 40;
+    return {
+      abilityId: 'GravitonRifle',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Physical' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 3x Physical (range 2). +${extraPierceRatio}% pierce. Suppresses 1 round`,
+    };
+  },
+};
+
+// ==================== AdeptusMechanicus ====================
+
+/**
+ * SentinelDirectives (Sy-gex)
+ * Deals 1x Physical damage, suppresses, doesn't end turn, can't be used with adjacent enemies
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Physical, nrOfHits: 1, range: 3
+ */
+export const SentinelDirectivesHandler: AbilityHandler = {
+  abilityId: 'SentinelDirectives',
+  abilityName: 'Sentinel Directives',
+  category: 'damage',
+  cooldown: -1,
+  endsTurn: false, // Doesn't end turn
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('SentinelDirectives');
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    return {
+      abilityId: 'SentinelDirectives',
+      abilityName,
+      category: 'damage',
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'Physical' as DamageType },
+      attackType: 'ranged',
+      message: `${abilityName}: 1x Physical (range 3). Suppresses. Doesn't end turn. Can't use if enemies adjacent`,
+    };
+  },
+};
+
 // Export all active handlers
 export const activeHandlers: AbilityHandler[] = [
   WarHowlHandler,
@@ -980,6 +4135,13 @@ export const activeHandlers: AbilityHandler[] = [
   ExecutionerHandler,
   GauntletsOfUltramarHandler,
   DeathFromAboveHandler,
+  MortisRoundHandler,
+  MacroPlasmaIncineratorHandler,
+  DutyEternalHandler,
+  StormOfWrathHandler,
+  TacticalPrecisionHandler,
+  BlackRageHandler,
+  HammerOfWrathHandler,
   AberrantHypermorphHandler,
   MartialInspirationHandler,
   KillMaimBurnHandler,
@@ -1000,4 +4162,99 @@ export const activeHandlers: AbilityHandler[] = [
   RadBombardmentHandler,
   EarlyWarningOverrideHandler,
   DoctrinaImperativesHandler,
+  FoehammerHandler,
+  StormcallerHandler,
+  GrapnelLauncherHandler,
+  GreatFrostAxeHandler,
+  DarkTalonStrikeHandler,
+  SuperchargeHandler,
+  PlasmaCannonHandler,
+  CalibaniteGreatswordHandler,
+  ExemplarOfHateHandler,
+  FragstormGrenadeLauncherHandler,
+  HolyDuelHandler,
+  UnbreakableDutyHandler,
+  VigilanceEternalHandler,
+  ArmoriumCherubHandler,
+  SanctorumMissileHandler,
+  BrazierOfHolyFireHandler,
+  SkyStrikeHandler,
+  ThriceBlessedConflagrationHandler,
+  DevastatingRefrainHandler,
+  SupremeCommanderHandler,
+  LeadingTheChargeHandler,
+  FragBombHandler,
+  MalleusRocketLauncherHandler,
+  ForwardSpotterHandler,
+  PsychicMaelstromHandler,
+  BasiliskBarrageHandler,
+  SendInTheNextWaveHandler,
+  SeekerMissileFrequencyLockHandler,
+  MV71SniperDroneSquadHandler,
+  ExemplarOfTheKauyonHandler,
+  HeavyRailRifleHandler,
+  TwinSmartMissileSystemHandler,
+  LokiSwoopingHawkHandler,
+  FireAndRepositionHandler,
+  SilentDeathHandler,
+  HarvesterOfSoulsHandler,
+  ScarabHiveHandler,
+  ResurrectionOrbHandler,
+  MultiThreatEliminatorHandler,
+  AdaptiveStrategyHandler,
+  HarbingerOfDestructionHandler,
+  BioMinefieldHandler,
+  SporeMineLauncherHandler,
+  FearOfTheUnseenHandler,
+  SpiritLeechHandler,
+  ItItchesHandler,
+  CrushingClawsHandler,
+  AlphaWarriorHandler,
+  GrotTankHandler,
+  SquigLaunchasHandler,
+  SquigMineHandler,
+  DakkaDakkaDakkaHandler,
+  GetEmRuntzHandler,
+  UnstoppableMomentumReworkedHandler,
+  BringerOfDespairHandler,
+  IncursionHandler,
+  HadesAutocannonsHandler,
+  DaemonicOrdnanceHandler,
+  HeraldOfTheApocalypseHandler,
+  FrenziedFiringHandler,
+  OverwhelmingWrathHandler,
+  JakhalStimmsHandler,
+  MurderousSwingHandler,
+  BloodyFuryHandler,
+  // DeathGuard
+  PoxwalkersHandler,
+  FlailSwingHandler,
+  RevitalizingMalignancyHandler,
+  FoulInfusionHandler,
+  EntropyCannsHandler,
+  PlagueburstMortarHandler,
+  PlagueWindHandler,
+  // ThousandSons
+  MasterOfTheTutelariesHandler,
+  DoomboltHandler,
+  AttemptedPossessionHandler,
+  HellfyreMissileRackHandler,
+  SorcerousFacadeHandler,
+  AetherStrideHandler,
+  InfernalCannonHandler,
+  // EmperorsChildren
+  DoomSirenHandler,
+  DaemonicPatronsHandler,
+  LashOfTormentHandler,
+  ExcruciatingFrequenciesHandler,
+  // Genestealers
+  CultDemagogueHandler,
+  HeroicFusilladeHandler,
+  MightFromBelowHandler,
+  MindControlHandler,
+  // LeaguesOfVotann
+  AncestralFortuneHandler,
+  GravitonRifleHandler,
+  // AdeptusMechanicus
+  SentinelDirectivesHandler,
 ];

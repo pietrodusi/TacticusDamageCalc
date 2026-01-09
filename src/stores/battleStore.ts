@@ -4,6 +4,7 @@ import { calculateStats, calculateEquipmentStats, getBossAbilityConstantModifier
 import { DamageCalculator, type AttackerStats, type DefenderStats, type DamageCaps, type BuffSource, evaluateTraitModifiers, type TraitContext } from '../services/damage';
 import { initializeCooldowns, advanceCooldowns, isAbilityReady, useAbility, unuseAbility, resetCooldowns, evaluatePassiveAbilities, combineModifiers, getCharacterAuraBonuses, getAbilityValues, executeActiveAbility, getAbilityNameSync } from '../services/abilities';
 import { getApplicableBuffs, combineBuffEffects, addBuffToPool, getBuffTemplate, expireBuffs } from '../services/buffs';
+import { hasMechanicalTrait } from '../utils/traitUtils';
 
 const MAX_TURNS = 6;
 
@@ -79,8 +80,8 @@ function triggerOptimisedGait(params: OptimisedGaitParams): OptimisedGaitResult 
 
   let prophetCounter = initialProphetCounter;
 
-  // Only triggers for Mechanical attackers
-  const attackerHasMechanical = triggeringAttackerTraits?.includes('Mechanical') ?? false;
+  // Only triggers for Mechanical attackers (Vehicle and LivingMetal also count as Mechanical)
+  const attackerHasMechanical = hasMechanicalTrait(triggeringAttackerTraits);
   if (!attackerHasMechanical) return null;
 
   // Find Exitor-Rho in team (different character from attacker) with OptimizedGait and adjacentToBoss enabled
@@ -2715,6 +2716,105 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       console.log(`Total with Chordclaw: ${totalDamage.toLocaleString()}`);
     }
 
+    // Handle ShockAssault follow-up attacks (Bellator)
+    // When attacker has ShockAssault with toggle enabled, adjacent Inceptor summons attack
+    const shockAssaultEval = passiveResult.evaluations.find(
+      e => e.abilityId === 'ShockAssault' && e.applicable && e.triggerData?.type === 'summonAttack'
+    );
+    if (shockAssaultEval && shockAssaultEval.triggerData) {
+      const currentBattleStateForSA = get().battleState!;
+      const targetSummonId = shockAssaultEval.triggerData.summonId;
+      const shockAssaultExtraDmg = shockAssaultEval.triggerData.extraDmg;
+
+      // Find all matching summons (e.g., Inceptors)
+      const matchingSummons = currentBattleStateForSA.summons.filter(
+        s => s.unitId === targetSummonId
+      );
+
+      if (matchingSummons.length > 0) {
+        console.log('\n--- SHOCK ASSAULT ---');
+        console.log(`Triggered by ${attacker.name}: ${matchingSummons.length} Inceptor(s) attack`);
+
+        for (const inceptorSummon of matchingSummons) {
+          // Each Inceptor attacks with its base stats + extraDmg bonus
+          const summonBaseDamage = inceptorSummon.damage || 0;
+          const summonHits = inceptorSummon.meleeHits || 6;  // Inceptors have 6 hits
+          const summonDamageType = inceptorSummon.meleeDamageType || 'Bolter';
+          const avgSummonDamage = summonBaseDamage + shockAssaultExtraDmg;
+
+          // Simple damage calculation for summon (no crit, respects armor)
+          const perHitBeforeArmor = avgSummonDamage;
+          const effectiveArmorForSummon = Math.max(0, bossArmor);  // Use same bossArmor
+          const afterArmorSummon = Math.max(0, perHitBeforeArmor - effectiveArmorForSummon);
+          const perHitDamageSummon = Math.round(afterArmorSummon * 0.5);  // 50% pierce floor
+          const summonAttackDamage = perHitDamageSummon * summonHits;
+
+          // Prophet of Gork and Mork reduction
+          let saInceptorProphetReduction = 1;
+          if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+            saInceptorProphetReduction = prophetMultiplier;
+            console.log(`[Prophet of Gork and Mork: -${prophetReductionPct}% damage on Inceptor (attack ${prophetAttackCounter + 1})]`);
+          }
+          const adjustedSummonDamage = Math.round(summonAttackDamage * saInceptorProphetReduction);
+          prophetAttackCounter++;
+
+          totalDamage += adjustedSummonDamage;
+
+          console.log(`${inceptorSummon.name}: ${summonHits}x ${perHitDamageSummon} = ${adjustedSummonDamage}`);
+          console.log(`  Base: ${summonBaseDamage} + Shock Assault: +${shockAssaultExtraDmg} = ${avgSummonDamage}`);
+
+          // Build breakdown for Inceptor attack (summons don't crit)
+          const inceptorBreakdown: DamageBreakdown = {
+            damage: adjustedSummonDamage,
+            perHitDamage: perHitDamageSummon,
+            hits: summonHits,
+            baseDamage: summonBaseDamage,
+            flatModifiers: shockAssaultExtraDmg,
+            flatModifierSources: [{ name: 'Shock Assault', damageBonus: shockAssaultExtraDmg }],
+            critBonus: 0,  // Summons don't crit
+            critChanceSources: [],
+            critDamageSources: [],
+            extraHits: 0,
+            extraHitsSources: [],
+            damVarMod: avgSummonDamage,
+            targetArmor: bossArmor,
+            effectiveArmor: effectiveArmorForSummon,
+            afterArmor: afterArmorSummon,
+            pierceRatio: 50,  // Summons use 50% pierce floor
+            effectivePierceRatio: 50,
+            pierceFloor: Math.round(perHitBeforeArmor * 0.5),
+            afterArmorPierce: perHitDamageSummon,
+            globalMultiplier: 1,
+            globalMultiplierSources: [],
+            baseCritChance: 0,
+            baseCritDamage: 0,
+            critChanceBonus: 0,
+            critDmgBonus: 0,
+            critChance: 0,
+            critDamage: 0,
+          };
+
+          // Add Prophet reduction to breakdown if applied
+          if (saInceptorProphetReduction < 1) {
+            inceptorBreakdown.globalMultiplier = saInceptorProphetReduction;
+            inceptorBreakdown.globalMultiplierSources = [
+              { name: 'Prophet of Gork and Mork', damageMultiplier: saInceptorProphetReduction }
+            ];
+          }
+
+          followUpAttackLogs.push({
+            abilityName: `Shock Assault (${inceptorSummon.name})`,
+            damage: adjustedSummonDamage,
+            hits: summonHits,
+            damageType: summonDamageType as DamageType,
+            breakdown: inceptorBreakdown,
+          });
+        }
+
+        console.log(`Total with Shock Assault: ${totalDamage.toLocaleString()}`);
+      }
+    }
+
     console.groupEnd();
 
     // Build damage breakdown for UI with calculation steps
@@ -5050,6 +5150,71 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Evaluate pool buffs for summons (Master Annihilator, etc.)
+    // Create a minimal context for buff evaluation
+    const summonAsAttacker = {
+      id: summon.id,
+      name: summon.name,
+      traits: summon.traits || [],
+      faction: '', // Summons don't have faction
+      alliance: '', // Summons don't have alliance
+      meleeDamageType: summon.meleeDamageType,
+      rangedDamageType: summon.rangedDamageType || summon.meleeDamageType,
+      abilityToggles: toggles,
+      passiveAbilities: [],
+      activeAbilities: [],
+    } as unknown as BattleCharacter;
+
+    const summonBuffContext: BuffEvaluationContext = {
+      attacker: summonAsAttacker,
+      attackType,
+      attackCategory: 'normal',
+      target: battleState.boss,
+      battleState,
+    };
+
+    const applicablePoolBuffs = getApplicableBuffs(battleState.buffPool, summonBuffContext);
+    const poolBuffEffects = combineBuffEffects(applicablePoolBuffs);
+
+    // Track Master Annihilator extra hits separately for damage cap
+    let masterAnnihilatorExtraHits = 0;
+    const maDamageCap = battleState.masterAnnihilatorMaxDmg || 0;
+
+    // Apply pool buff effects
+    if (poolBuffEffects.extraHits) {
+      // Check if this is from Master Annihilator
+      const maBuff = applicablePoolBuffs.find(b => b.buffId === 'master_annihilator');
+      if (maBuff && maBuff.effects.extraHits) {
+        masterAnnihilatorExtraHits = maBuff.effects.extraHits;
+        // Add other extra hits (non-MA) to the regular pool
+        extraHitsFromBuffs += poolBuffEffects.extraHits - masterAnnihilatorExtraHits;
+      } else {
+        extraHitsFromBuffs += poolBuffEffects.extraHits;
+      }
+      // Add buff sources for display (MA will be handled separately with cap info)
+      for (const buff of applicablePoolBuffs) {
+        if (buff.effects.extraHits && buff.buffId !== 'master_annihilator') {
+          buffSources.push({ name: buff.name, extraHits: buff.effects.extraHits });
+        }
+      }
+    }
+    if (poolBuffEffects.baseDamageBonus) {
+      flatDamageBonus += poolBuffEffects.baseDamageBonus;
+      for (const buff of applicablePoolBuffs) {
+        if (buff.effects.baseDamageBonus) {
+          buffSources.push({ name: buff.name, damageBonus: buff.effects.baseDamageBonus });
+        }
+      }
+    }
+    if (poolBuffEffects.baseDamageMultiplier && poolBuffEffects.baseDamageMultiplier !== 1) {
+      damageMultiplier *= poolBuffEffects.baseDamageMultiplier;
+      for (const buff of applicablePoolBuffs) {
+        if (buff.effects.baseDamageMultiplier && buff.effects.baseDamageMultiplier !== 1) {
+          buffSources.push({ name: buff.name, damageMultiplier: buff.effects.baseDamageMultiplier });
+        }
+      }
+    }
+
     // Evaluate trait modifiers for summons (e.g., RapidAssault, BeastSnagga)
     if (summon.traits && summon.traits.length > 0) {
       const traitContext: TraitContext = {
@@ -5081,7 +5246,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Calculate damage with buffs applied
     const baseDamage = summon.damage;
     const effectiveDamage = baseDamage + flatDamageBonus;
-    const effectiveHits = hits + extraHitsFromBuffs;
+    // Include MA extra hits in effective hits for display, but handle damage separately
+    const effectiveHits = hits + extraHitsFromBuffs + masterAnnihilatorExtraHits;
+    const baseHits = hits + extraHitsFromBuffs; // Hits without MA cap
     const pierceRatio = 0.3; // Standard pierce ratio
 
     // Calculate damage per hit: max(baseDamage - armor, baseDamage * pierceRatio)
@@ -5091,7 +5258,28 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Apply damage multiplier
     perHitDamage = Math.round(perHitDamage * damageMultiplier);
-    const totalDamage = perHitDamage * effectiveHits;
+
+    // Calculate total damage: base hits at full damage + MA hits at capped damage
+    let totalDamage = perHitDamage * baseHits;
+    let maCappedPerHit = perHitDamage;
+    let maWasCapped = false;
+
+    if (masterAnnihilatorExtraHits > 0) {
+      // Apply damage cap for MA extra hit
+      if (maDamageCap > 0 && perHitDamage > maDamageCap) {
+        maCappedPerHit = maDamageCap;
+        maWasCapped = true;
+      }
+      const maDamage = maCappedPerHit * masterAnnihilatorExtraHits;
+      totalDamage += maDamage;
+
+      // Add MA buff source with cap info
+      buffSources.push({
+        name: 'Master Annihilator',
+        extraHits: masterAnnihilatorExtraHits,
+        ...(maWasCapped ? { damageBonus: -1 } : {}), // Use damageBonus as flag for "capped"
+      });
+    }
 
     console.group(`=== ${summon.name} (${attackType}) ===`);
     console.log(`Base Damage: ${baseDamage}`);
@@ -5108,26 +5296,86 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     if (extraHitsFromBuffs > 0) {
       console.log(`Extra Hits from Buffs: +${extraHitsFromBuffs}`);
     }
+    if (masterAnnihilatorExtraHits > 0) {
+      console.log(`Master Annihilator: +${masterAnnihilatorExtraHits} hit${maWasCapped ? ` (capped to ${maCappedPerHit})` : ''}`);
+    }
     console.log(`Per Hit: ${perHitDamage} × ${effectiveHits} hits = ${totalDamage}`);
     if (buffSources.length > 0) {
       console.log('Buff Sources:', buffSources);
     }
     console.groupEnd();
 
-    // Update battle state with damage dealt
-    set((state) => ({
-      battleState: state.battleState
-        ? {
-            ...state.battleState,
-            totalDamageDealt: state.battleState.totalDamageDealt + totalDamage,
-            summons: state.battleState.summons.map((s) =>
-              s.id === summonId
-                ? { ...s, totalDamageDealt: s.totalDamageDealt + totalDamage }
-                : s
-            ),
-          }
-        : null,
-    }));
+    // Trigger Optimised Gait if summon has Mechanical trait
+    const followUpAttackLogs: FollowUpAttackLog[] = [];
+    let exitorRhoDamageToAdd = 0;
+    let exitorRhoIdForUpdate: string | null = null;
+
+    // Prophet of Gork and Mork tracking for OG trigger
+    const prophetThreshold = battleState.prophetOfGorkAndMork?.attackThreshold ?? Infinity;
+    const prophetReductionPct = battleState.prophetOfGorkAndMork?.damageReductionPct ?? 0;
+    const prophetMultiplier = prophetReductionPct > 0 ? (100 - prophetReductionPct) / 100 : 1;
+    let prophetAttackCounter = battleState.bossAttacksReceivedThisTurn + 1; // +1 for summon attack
+
+    // Build defenderStats for OG calculation
+    const defenderStats: DefenderStats = {
+      armor: bossArmor,
+      maxHealth: battleState.boss?.health || 0,
+      traits: battleState.boss?.traits || [],
+    };
+
+    const ogResult = triggerOptimisedGait({
+      triggeringAttackerId: summonId,
+      triggeringAttackerName: summon.name,
+      triggeringAttackerTraits: summon.traits,
+      battleState,
+      defenderStats,
+      bossArmor,
+      ignoreCrit: battleState.ignoreCrit,
+      prophetAttackCounter,
+      prophetThreshold,
+      prophetReductionPct,
+      prophetMultiplier,
+    });
+
+    if (ogResult) {
+      totalDamage += ogResult.totalDamage;
+      prophetAttackCounter = ogResult.prophetCounter;
+      followUpAttackLogs.push(...ogResult.followUpLogs);
+      exitorRhoDamageToAdd = ogResult.totalDamage;
+      exitorRhoIdForUpdate = ogResult.exitorRhoId;
+      console.log(`[Optimised Gait triggered by ${summon.name}]: +${ogResult.totalDamage} damage`);
+    }
+
+    // Update battle state with damage dealt (including Exitor-Rho's OG damage if triggered)
+    set((state) => {
+      if (!state.battleState) return { battleState: null };
+
+      // Get summon-only damage (exclude OG damage from summon's tracking)
+      const summonOnlyDamage = totalDamage - exitorRhoDamageToAdd;
+
+      // Update team to add OG damage to Exitor-Rho's tracking
+      const updatedTeam = exitorRhoIdForUpdate
+        ? state.battleState.team.map((c) =>
+            c.id === exitorRhoIdForUpdate
+              ? { ...c, totalDamageDealt: c.totalDamageDealt + exitorRhoDamageToAdd }
+              : c
+          )
+        : state.battleState.team;
+
+      return {
+        battleState: {
+          ...state.battleState,
+          totalDamageDealt: state.battleState.totalDamageDealt + totalDamage,
+          bossAttacksReceivedThisTurn: prophetAttackCounter,
+          team: updatedTeam,
+          summons: state.battleState.summons.map((s) =>
+            s.id === summonId
+              ? { ...s, totalDamageDealt: s.totalDamageDealt + summonOnlyDamage }
+              : s
+          ),
+        },
+      };
+    });
 
     // Build damage breakdown for display
     const damageBreakdown: DamageBreakdown = {
@@ -5169,6 +5417,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       damageType: damageType,
       message: `${summon.name} deals ${totalDamage.toLocaleString()} ${damageType} damage`,
       attackType,
+      followUpAttacks: followUpAttackLogs.length > 0 ? followUpAttackLogs : undefined,
     };
   },
 

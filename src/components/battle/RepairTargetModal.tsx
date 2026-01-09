@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { X, Wrench, Heart, Zap } from 'lucide-react';
 import type { BattleCharacter } from '../../types';
+import { hasMechanicalTrait } from '../../utils/traitUtils';
 
 interface RepairTargetModalProps {
   isOpen: boolean;
@@ -12,9 +13,9 @@ interface RepairTargetModalProps {
   onConfirm: (targetIds: string[]) => void;
 }
 
-// Check if character has Mechanical trait (or LivingMetal which implies Mechanical)
+// Check if character has Mechanical trait (or Vehicle/LivingMetal which imply Mechanical)
 function isMechanical(character: BattleCharacter): boolean {
-  return character.traits.includes('Mechanical') || character.traits.includes('LivingMetal');
+  return hasMechanicalTrait(character.traits);
 }
 
 export function RepairTargetModal({

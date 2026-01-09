@@ -4,7 +4,9 @@
  */
 
 import type { AbilityHandler, ComputedAbilityValues, AbilityContext, PassiveAbilityEvaluation, FollowUpAttack } from '../types';
+import type { DamageType } from '../../../types/character';
 import { getAbilityNameSync } from '../abilityDataLoader';
+import { hasMechanicalTrait } from '../../../utils/traitUtils';
 
 /**
  * SagaOfTheWarriorBorn (Ragnar)
@@ -69,8 +71,9 @@ export const FuryOfTheAncientsHandler: AbilityHandler = {
 };
 
 /**
- * ShockAssault (Various)
- * Grants extra damage on first attack
+ * ShockAssault (Bellator)
+ * When Bellator attacks, adjacent Inceptor summons also attack with +extraDmg bonus.
+ * This is a summon-trigger passive - the trigger logic is in battleStore.ts.
  * Variables: extraDmg
  */
 export const ShockAssaultHandler: AbilityHandler = {
@@ -80,18 +83,26 @@ export const ShockAssaultHandler: AbilityHandler = {
   cooldown: -1,
 
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
-    // First attack of the battle
-    const isFirstAttack = !context.hasActedThisBattle;
+    // This passive doesn't modify Bellator's own attack
+    // Instead, it triggers adjacent Inceptor summons to attack when Bellator attacks
+    // The trigger logic is in battleStore.triggerShockAssault()
+    // We need a toggle to indicate Bellator is adjacent to Inceptor summons
+    const hasAdjacentInceptors = context.abilityToggles['ShockAssault'] ?? false;
 
     return {
       abilityId: 'ShockAssault',
       abilityName: getAbilityNameSync('ShockAssault'),
-      modifiers: isFirstAttack ? {
-        baseDamageBonus: values.extraDmg as number || 0,
-      } : {},
-      applicable: isFirstAttack,
-      reason: isFirstAttack ? 'First attack of battle' : 'Already attacked this battle',
-      requiresToggle: false,
+      modifiers: {}, // No modifier to Bellator's attack
+      applicable: hasAdjacentInceptors,
+      reason: hasAdjacentInceptors ? 'Adjacent Inceptors will attack' : 'No adjacent Inceptors',
+      requiresToggle: true,
+      toggleLabel: 'Adjacent to Inceptors',
+      // Store extraDmg for the trigger logic to use
+      triggerData: {
+        type: 'summonAttack',
+        summonId: 'ultraSmnInceptor',
+        extraDmg: values.extraDmg as number || 0,
+      },
     };
   },
 };
@@ -422,8 +433,8 @@ export const CyclicIonBlasterHandler: AbilityHandler = {
     const extraDmg = values.extraDmg as number || 0;
     const hits = 3;  // From constants.nrOfHits
 
-    // Check if boss has Mechanical trait or Markerlight debuff
-    const hasMechanical = context.bossTraits?.includes('Mechanical') ?? false;
+    // Check if boss has Mechanical trait (Vehicle/LivingMetal count) or Markerlight debuff
+    const hasMechanical = hasMechanicalTrait(context.bossTraits);
     const hasMarkerlight = context.bossDebuffs?.includes('Markerlight') ?? false;
     const hasMarkerlightOrMechanical = hasMechanical || hasMarkerlight;
 
@@ -767,6 +778,2357 @@ export const OptimizedGaitHandler: AbilityHandler = {
   },
 };
 
+/**
+ * FuelledByFury (Titus)
+ * Deals +extraDmg damage with all attacks for each time a friendly character
+ * has used an active ability this battle.
+ * Variables: extraDmg, hp
+ */
+export const FuelledByFuryHandler: AbilityHandler = {
+  abilityId: 'FuelledByFury',
+  abilityName: 'Fuelled by Fury',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    // Get count of active abilities used this battle
+    const abilitiesUsed = context.activeAbilitiesUsedCount || 0;
+    const extraDmgPerAbility = values.extraDmg as number || 0;
+    const totalBonus = abilitiesUsed * extraDmgPerAbility;
+
+    return {
+      abilityId: 'FuelledByFury',
+      abilityName: getAbilityNameSync('FuelledByFury'),
+      modifiers: totalBonus > 0 ? {
+        baseDamageBonus: totalBonus,
+      } : {},
+      applicable: totalBonus > 0,
+      reason: abilitiesUsed > 0
+        ? `+${extraDmgPerAbility} × ${abilitiesUsed} abilities = +${totalBonus} damage`
+        : 'No abilities used yet',
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * VisionsOfHeresy (Lucien)
+ * After normal attack, performs a follow-up 2x Bolter ranged attack.
+ * At or below healthPct%: all attacks have +extraPierceRatio% pierce ratio.
+ * Variables: minDmg, maxDmg, extraPierceRatio, healthPct
+ * Constants: damageProfile: Bolter, nrOfHits: 2, range: 2
+ */
+export const VisionsOfHeresyHandler: AbilityHandler = {
+  abilityId: 'VisionsOfHeresy',
+  abilityName: 'Visions of Heresy',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    // Only applies to normal attacks
+    if (context.attackCategory !== 'normal') {
+      return {
+        abilityId: 'VisionsOfHeresy',
+        abilityName: getAbilityNameSync('VisionsOfHeresy'),
+        modifiers: {},
+        applicable: false,
+        reason: 'Only triggers on normal attacks',
+        requiresToggle: false,
+      };
+    }
+
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 2;
+    const extraPierceRatio = values.extraPierceRatio as number || 0;
+    const healthPct = values.healthPct as number || 50;
+
+    // Check if at or below health threshold for pierce bonus
+    const belowHealthThreshold = context.abilityToggles['VisionsOfHeresy_lowHealth'] ?? false;
+
+    return {
+      abilityId: 'VisionsOfHeresy',
+      abilityName: getAbilityNameSync('VisionsOfHeresy'),
+      modifiers: belowHealthThreshold ? {
+        pierceRatioBonus: extraPierceRatio,
+      } : {},
+      applicable: true,
+      reason: `Follow-up: ${hits}x Bolter (${avgDmg} avg dmg)${belowHealthThreshold ? `, +${extraPierceRatio}% pierce` : ''}`,
+      requiresToggle: true,
+      toggleLabel: `Below ${healthPct}% HP`,
+      followUpAttack: {
+        abilityId: 'VisionsOfHeresy',
+        abilityName: 'Visions of Heresy',
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        hits,
+        damageProfile: 'Bolter',
+        attackCategory: 'special',
+        triggersOnNormalOnly: true,  // Only triggers after normal attacks
+      },
+    };
+  },
+};
+
+/**
+ * LordOfTempests (Njal)
+ * Normal attacks deal +extraDmg damage per Ice hex surrounding Njal (up to 6).
+ * The hex of each enemy hit is covered in Ice at end of attack.
+ * When toggle is enabled, assumes max Ice coverage (6 hexes).
+ * Variables: extraDmg
+ */
+export const LordOfTempestsHandler: AbilityHandler = {
+  abilityId: 'LordOfTempests',
+  abilityName: 'Lord Of Tempests',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    // Only applies to normal attacks (melee or ranged)
+    const isNormalAttack = context.attackCategory === 'normal';
+
+    // Toggle enables max Ice coverage (6 hexes)
+    const hasIceCoverage = context.abilityToggles['LordOfTempests'] ?? false;
+    const iceHexCount = hasIceCoverage ? 6 : 0;
+    const extraDmgPerHex = values.extraDmg as number || 0;
+    const totalBonus = iceHexCount * extraDmgPerHex;
+
+    const applicable = isNormalAttack && hasIceCoverage;
+
+    return {
+      abilityId: 'LordOfTempests',
+      abilityName: getAbilityNameSync('LordOfTempests'),
+      modifiers: applicable ? {
+        baseDamageBonus: totalBonus,
+      } : {},
+      applicable,
+      reason: isNormalAttack
+        ? (hasIceCoverage ? `+${extraDmgPerHex} × ${iceHexCount} Ice hexes = +${totalBonus} damage` : 'No Ice hexes')
+        : 'Only applies to normal attacks',
+      requiresToggle: true,
+      toggleLabel: 'Max Ice Coverage (6 hexes)',
+    };
+  },
+};
+
+/**
+ * HuntersBeyondDeath (Tjark)
+ * Deals +extraDmg damage against Psyker bosses.
+ * Also reduces nearby enemy Psyker damage (defensive, not modeled).
+ * Variables: extraDmg, dmgReduction (defensive)
+ */
+export const HuntersBeyondDeathHandler: AbilityHandler = {
+  abilityId: 'HuntersBeyondDeath',
+  abilityName: 'Hunters Beyond Death',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+
+    // Check if boss has Psyker trait
+    const bossIsPsyker = context.bossTraits?.includes('Psyker') ?? false;
+    const applicable = bossIsPsyker;
+
+    return {
+      abilityId: 'HuntersBeyondDeath',
+      abilityName: getAbilityNameSync('HuntersBeyondDeath'),
+      modifiers: applicable ? {
+        baseDamageBonus: extraDmg,
+      } : {},
+      applicable,
+      reason: bossIsPsyker
+        ? `+${extraDmg} damage vs Psyker`
+        : 'Boss is not a Psyker',
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * SavageKiller (Ulf)
+ * After normal melee attack, performs a 5x Power melee follow-up attack.
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Power, nrOfHits: 5
+ */
+export const SavageKillerHandler: AbilityHandler = {
+  abilityId: 'SavageKiller',
+  abilityName: 'Savage Killer',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    // Only triggers after normal melee attacks
+    const isNormalMelee = context.attackType === 'melee' && context.attackCategory === 'normal';
+    const applicable = isNormalMelee;
+
+    const minDamage = values.minDmg as number || 0;
+    const maxDamage = values.maxDmg as number || 0;
+    const avgDamage = Math.round((minDamage + maxDamage) / 2);
+    const hits = values.nrOfHits as number || 5;
+
+    // Build follow-up attack (special attack)
+    const followUpAttack: FollowUpAttack | undefined = applicable ? {
+      abilityId: 'SavageKiller',
+      abilityName: 'Savage Killer',
+      damageProfile: 'Power',
+      minDamage,
+      maxDamage,
+      hits,
+      attackCategory: 'special',  // This is a SPECIAL attack
+      triggersOnNormalOnly: true,  // Only triggers after normal attacks
+      triggersOnMeleeOnly: true,   // Only triggers after melee attacks
+    } : undefined;
+
+    return {
+      abilityId: 'SavageKiller',
+      abilityName: getAbilityNameSync('SavageKiller'),
+      modifiers: {},  // No modifiers to main attack
+      applicable,
+      reason: applicable
+        ? `Follow-up: ${hits}x ${avgDamage} Power`
+        : 'Only triggers on normal melee attacks',
+      requiresToggle: false,
+      followUpAttack,
+    };
+  },
+};
+
+/**
+ * LionHelm (Azrael)
+ * Aura that grants +extraDmg to adjacent friendly units
+ * Also provides block chance (defensive, not modeled)
+ * Variables: extraDmg, blockDmg, blockChance
+ */
+export const LionHelmHandler: AbilityHandler = {
+  abilityId: 'LionHelm',
+  abilityName: 'Lion Helm',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+
+    // Toggle for whether character is adjacent to Azrael
+    const adjacentToAzrael = context.abilityToggles['LionHelm'] ?? false;
+    const applicable = adjacentToAzrael;
+
+    return {
+      abilityId: 'LionHelm',
+      abilityName: getAbilityNameSync('LionHelm'),
+      modifiers: applicable ? {
+        baseDamageBonus: extraDmg,
+      } : {},
+      applicable,
+      reason: adjacentToAzrael
+        ? `+${extraDmg} damage (adjacent to Azrael)`
+        : 'Not adjacent to Azrael',
+      requiresToggle: true,
+      toggleLabel: 'Adjacent to Azrael',
+    };
+  },
+};
+
+/**
+ * FearedInterrogator (Asmodai)
+ * +extraDmg against suppressed/stunned enemies or enemies adjacent to Dark Angels
+ * +extraHits against Chaos enemies (based on boss grand alliance)
+ * Variables: extraDmg, extraHits
+ */
+export const FearedInterrogatorHandler: AbilityHandler = {
+  abilityId: 'FearedInterrogator',
+  abilityName: 'Feared Interrogator',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const extraHits = values.extraHits as number || 0;
+
+    // Toggle for whether target meets bonus damage condition
+    const targetConditionMet = context.abilityToggles['FearedInterrogator'] ?? false;
+
+    // Check if boss is Chaos (for extra hits)
+    const bossIsChaos = context.bossTraits?.includes('Chaos') ?? false;
+
+    const applicable = targetConditionMet || bossIsChaos;
+
+    return {
+      abilityId: 'FearedInterrogator',
+      abilityName: getAbilityNameSync('FearedInterrogator'),
+      modifiers: {
+        baseDamageBonus: targetConditionMet ? extraDmg : 0,
+        extraHits: bossIsChaos ? extraHits : 0,
+      },
+      applicable,
+      reason: [
+        targetConditionMet ? `+${extraDmg} damage` : null,
+        bossIsChaos ? `+${extraHits} hits vs Chaos` : null,
+      ].filter(Boolean).join(', ') || 'Conditions not met',
+      requiresToggle: true,
+      toggleLabel: 'Target Suppressed/Stunned/adj. to DA',
+    };
+  },
+};
+
+/**
+ * Deathwing (Baraqiel)
+ * Grants +extraDmg damage on all attacks
+ * Also provides damage reduction (defensive, not modeled)
+ * Variables: extraDmg, dmgReduction
+ */
+export const DeathwingHandler: AbilityHandler = {
+  abilityId: 'Deathwing',
+  abilityName: 'Deathwing',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+
+    return {
+      abilityId: 'Deathwing',
+      abilityName: getAbilityNameSync('Deathwing'),
+      modifiers: {
+        baseDamageBonus: extraDmg,
+      },
+      applicable: true,
+      reason: `+${extraDmg} damage`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * EnmityForTheUnworthy (Forcas)
+ * +extraDmgPct% per adjacent unit, +extraDmg per adjacent Dark Angel
+ * Max 6 adjacent units
+ * Variables: extraDmgPct, extraDmg
+ */
+export const EnmityForTheUnworthyHandler: AbilityHandler = {
+  abilityId: 'EnmityForTheUnworthy',
+  abilityName: 'Enmity for the Unworthy',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmgPct = values.extraDmgPct as number || 0;
+    const extraDmg = values.extraDmg as number || 0;
+
+    // Toggle for max adjacent units (assume 6 when enabled)
+    const hasAdjacentUnits = context.abilityToggles['EnmityForTheUnworthy'] ?? false;
+    // Toggle for adjacent Dark Angels (assume 6 when enabled)
+    const hasAdjacentDA = context.abilityToggles['EnmityForTheUnworthy_DA'] ?? false;
+
+    const adjacentCount = hasAdjacentUnits ? 6 : 0;
+    const adjacentDACount = hasAdjacentDA ? 6 : 0;
+
+    const dmgPctBonus = adjacentCount * extraDmgPct;
+    const flatDmgBonus = adjacentDACount * extraDmg;
+
+    const applicable = dmgPctBonus > 0 || flatDmgBonus > 0;
+
+    return {
+      abilityId: 'EnmityForTheUnworthy',
+      abilityName: getAbilityNameSync('EnmityForTheUnworthy'),
+      modifiers: applicable ? {
+        baseDamageMultiplier: dmgPctBonus > 0 ? (100 + dmgPctBonus) / 100 : undefined,
+        baseDamageBonus: flatDmgBonus > 0 ? flatDmgBonus : undefined,
+      } : {},
+      applicable,
+      reason: [
+        dmgPctBonus > 0 ? `+${dmgPctBonus}% dmg (${adjacentCount} adj.)` : null,
+        flatDmgBonus > 0 ? `+${flatDmgBonus} dmg (${adjacentDACount} DA)` : null,
+      ].filter(Boolean).join(', ') || 'No adjacent units',
+      requiresToggle: true,
+      toggleLabel: 'Max Adjacent Units (6)',
+    };
+  },
+};
+
+/**
+ * GrimRetribution (Sarquael)
+ * Overwatch reaction - shoots 1x Plasma when attacked by enemy
+ * Note: Reaction timing during enemy turn is not modeled
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Plasma, nrOfHits: 1
+ */
+export const GrimRetributionHandler: AbilityHandler = {
+  abilityId: 'GrimRetribution',
+  abilityName: 'Grim Retribution',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    // Overwatch reaction is triggered during enemy turn - not directly modeled
+    // Just show the damage info
+    return {
+      abilityId: 'GrimRetribution',
+      abilityName: getAbilityNameSync('GrimRetribution'),
+      modifiers: {},
+      applicable: false,  // Reaction timing not modeled
+      reason: `Overwatch: 1x ${avgDmg} Plasma (enemy turn reaction)`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * Boltstorm (Burchard)
+ * Normal ranged attacks deal additional 3x Bolter damage
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Bolter, nrOfHits: 3
+ */
+export const BoltstormHandler: AbilityHandler = {
+  abilityId: 'Boltstorm',
+  abilityName: 'Boltstorm',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    // Only triggers on normal ranged attacks
+    const isNormalRanged = context.attackType === 'ranged' && context.attackCategory === 'normal';
+    const applicable = isNormalRanged;
+
+    const minDamage = values.minDmg as number || 0;
+    const maxDamage = values.maxDmg as number || 0;
+    const avgDamage = Math.round((minDamage + maxDamage) / 2);
+    const hits = values.nrOfHits as number || 3;
+
+    const followUpAttack: FollowUpAttack | undefined = applicable ? {
+      abilityId: 'Boltstorm',
+      abilityName: 'Boltstorm',
+      damageProfile: 'Bolter',
+      minDamage,
+      maxDamage,
+      hits,
+      attackCategory: 'special',
+      triggersOnNormalOnly: true,
+    } : undefined;
+
+    return {
+      abilityId: 'Boltstorm',
+      abilityName: getAbilityNameSync('Boltstorm'),
+      modifiers: {},
+      applicable,
+      reason: applicable
+        ? `Follow-up: ${hits}x ${avgDamage} Bolter`
+        : 'Only triggers on normal ranged attacks',
+      requiresToggle: false,
+      followUpAttack,
+    };
+  },
+};
+
+/**
+ * MartialSuperiority (Jaeger)
+ * Preemptive strike - deals 2x Power damage before enemy melee attack
+ * Note: Reaction timing during enemy turn is not modeled
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Power, nrOfHits: 2
+ */
+export const MartialSuperiorityHandler: AbilityHandler = {
+  abilityId: 'MartialSuperiority',
+  abilityName: 'Martial Superiority',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    // Preemptive strike during enemy turn - not directly modeled
+    return {
+      abilityId: 'MartialSuperiority',
+      abilityName: getAbilityNameSync('MartialSuperiority'),
+      modifiers: {},
+      applicable: false,  // Reaction timing not modeled
+      reason: `Preemptive: 2x ${avgDmg} Power (enemy turn)`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * AstartesBanner (Thoread)
+ * Aura - allies within 2 hexes get +1 hit on melee attacks, capped at maxDmg per hit
+ * Variables: dmg (unused), maxDmg (cap per hit)
+ * Constants: range: 2, extraHits: 1
+ */
+export const AstartesBannerHandler: AbilityHandler = {
+  abilityId: 'AstartesBanner',
+  abilityName: 'Astartes Banner',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const maxDmgPerHit = values.maxDmg as number || 0;
+
+    // Only applies to melee attacks
+    const isMelee = context.attackType === 'melee';
+    // Toggle for whether character is within 2 hexes of Thoread
+    const adjacentToThoread = context.abilityToggles['AstartesBanner'] ?? false;
+    const applicable = isMelee && adjacentToThoread;
+
+    return {
+      abilityId: 'AstartesBanner',
+      abilityName: getAbilityNameSync('AstartesBanner'),
+      modifiers: applicable ? {
+        extraHits: 1,
+        // Note: The extra hit is capped at maxDmgPerHit per hit
+        // This cap is implemented via finalDamageCap in damage caps system
+      } : {},
+      applicable,
+      reason: applicable
+        ? `+1 hit (capped at ${maxDmgPerHit} dmg)`
+        : (isMelee ? 'Not within 2 hexes of Thoread' : 'Melee attacks only'),
+      requiresToggle: true,
+      toggleLabel: 'Within 2 hexes of Thoread',
+    };
+  },
+};
+
+/**
+ * UnwaveringSentinel (Tyrith)
+ * Reaction - deals 2x Bolter damage when attacked (during enemy turn)
+ * Note: Reaction timing during enemy turn is not directly modeled
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Bolter, nrOfHits: 2, range: 2
+ */
+export const UnwaveringSentinelHandler: AbilityHandler = {
+  abilityId: 'UnwaveringSentinel',
+  abilityName: 'Unwavering Sentinel',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    // Reaction during enemy turn - not directly modeled
+    return {
+      abilityId: 'UnwaveringSentinel',
+      abilityName: getAbilityNameSync('UnwaveringSentinel'),
+      modifiers: {},
+      applicable: false,  // Reaction timing not modeled
+      reason: `Reaction: 2x ${avgDmg} Bolter (enemy turn)`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * FireOfAbsolution (Vindicta)
+ * Ranged attack also deals 3x Flame damage to all units adjacent to the target
+ * Variables: dmg
+ * Constants: chance: 30, damageProfile: Flame, nrOfHits: 3
+ */
+export const FireOfAbsolutionHandler: AbilityHandler = {
+  abilityId: 'FireOfAbsolution',
+  abilityName: 'Fire of Absolution',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const isRanged = context.attackType === 'ranged';
+    const applicable = isRanged;
+    const dmg = values.dmg as number || 0;
+    const hits = values.nrOfHits as number || 3;
+    const chance = values.chance as number || 30;
+
+    // Follow-up AoE damage to adjacent hexes
+    const followUpAttack: FollowUpAttack | undefined = applicable ? {
+      abilityId: 'FireOfAbsolution',
+      abilityName: 'Fire of Absolution',
+      damageProfile: 'Flame',
+      minDamage: dmg,
+      maxDamage: dmg,
+      hits,
+      attackCategory: 'special',
+      triggersOnNormalOnly: false, // Triggers on any ranged attack
+    } : undefined;
+
+    return {
+      abilityId: 'FireOfAbsolution',
+      abilityName: getAbilityNameSync('FireOfAbsolution'),
+      modifiers: {},
+      applicable,
+      reason: applicable ? `Adjacent enemies: ${hits}x ${dmg} Flame (${chance}% Fire)` : 'Only triggers on ranged attacks',
+      requiresToggle: false,
+      followUpAttack,
+    };
+  },
+};
+
+/**
+ * RighteousRepugnance (Morvenn Vahl)
+ * Chance-based 3x Power follow-up attack when dealing melee damage
+ * Variables: minDmg, maxDmg, chance
+ * Constants: damageProfile: Power, nrOfHits: 3
+ */
+export const RighteousRepugnanceHandler: AbilityHandler = {
+  abilityId: 'RighteousRepugnance',
+  abilityName: 'Righteous Repugnance',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const isMelee = context.attackType === 'melee';
+    const applicable = isMelee;
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 3;
+    const chance = values.chance as number || 40;
+
+    // Chance-based follow-up attack
+    const followUpAttack: FollowUpAttack | undefined = applicable ? {
+      abilityId: 'RighteousRepugnance',
+      abilityName: 'Righteous Repugnance',
+      damageProfile: 'Power',
+      minDamage: minDmg,
+      maxDamage: maxDmg,
+      hits,
+      attackCategory: 'special',
+      triggersOnMeleeOnly: true,
+    } : undefined;
+
+    return {
+      abilityId: 'RighteousRepugnance',
+      abilityName: getAbilityNameSync('RighteousRepugnance'),
+      modifiers: {},
+      applicable,
+      reason: applicable ? `${chance}% chance: ${hits}x Power follow-up` : 'Only triggers on melee attacks',
+      requiresToggle: false,
+      followUpAttack,
+    };
+  },
+};
+
+/**
+ * CondemnorStake (Roswitha)
+ * Deals +extraDmg against Psykers
+ * Variables: extraDmg
+ */
+export const CondemnorStakeHandler: AbilityHandler = {
+  abilityId: 'CondemnorStake',
+  abilityName: 'Condemnor Stake',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const targetIsPsyker = context.abilityToggles?.['CondemnorStake'] ?? false;
+
+    return {
+      abilityId: 'CondemnorStake',
+      abilityName: getAbilityNameSync('CondemnorStake'),
+      modifiers: targetIsPsyker ? { baseDamageBonus: extraDmg } : {},
+      applicable: targetIsPsyker,
+      reason: targetIsPsyker ? `+${extraDmg} damage vs Psyker` : 'Target is not a Psyker',
+      requiresToggle: true,
+      toggleLabel: 'Target is Psyker',
+    };
+  },
+};
+
+/**
+ * GeminaeSuperia (Celestine)
+ * When attacked, summons a Geminae Superia - defensive/reaction, not usable in calculator
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: unitId: adeptSmnGeminaeSuperia
+ */
+export const GeminaeSuperiasHandler: AbilityHandler = {
+  abilityId: 'GeminaeSuperia',
+  abilityName: 'Geminae Superia',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const summonDmg = values.summonDmg as number || 0;
+    const summonHp = values.summonHp as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+
+    // Reaction during enemy turn - not directly modeled
+    return {
+      abilityId: 'GeminaeSuperia',
+      abilityName: getAbilityNameSync('GeminaeSuperia'),
+      modifiers: {},
+      applicable: false,  // Reaction timing not modeled
+      reason: `Reaction: Summons Geminae (HP: ${summonHp}, Dmg: ${summonDmg}, Armor: ${summonArmor})`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * SwornProtector (Creed)
+ * When attacked, summons Kell - defensive/reaction, not usable in calculator
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: unitId: astraSmnKell
+ */
+export const SwornProtectorHandler: AbilityHandler = {
+  abilityId: 'SwornProtector',
+  abilityName: 'Sworn Protector',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const summonDmg = values.summonDmg as number || 0;
+    const summonHp = values.summonHp as number || 0;
+
+    // Reaction during enemy turn - not directly modeled
+    return {
+      abilityId: 'SwornProtector',
+      abilityName: getAbilityNameSync('SwornProtector'),
+      modifiers: {},
+      applicable: false,  // Reaction timing not modeled
+      reason: `Reaction: Summons Kell when attacked (HP: ${summonHp}, Dmg: ${summonDmg})`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * ToughToKill (Dreir)
+ * Regenerates health + reduces crit chance/damage against him - defensive, not modeled
+ * Variables: critChanceReduction, critDmgReduction, hpToHeal
+ */
+export const ToughToKillHandler: AbilityHandler = {
+  abilityId: 'ToughToKill',
+  abilityName: 'Tough to Kill',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const critChanceReduction = values.critChanceReduction as number || 25;
+    const critDmgReduction = values.critDmgReduction as number || 0;
+    const hpToHeal = values.hpToHeal as number || 30;
+
+    // Defensive ability - not modeled for attacker damage calculation
+    return {
+      abilityId: 'ToughToKill',
+      abilityName: getAbilityNameSync('ToughToKill'),
+      modifiers: {},
+      applicable: false,  // Defensive ability
+      reason: `Defensive: Regen ${hpToHeal} HP, enemies -${critChanceReduction}% crit, -${critDmgReduction} crit dmg`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * AvalancheOfMuscle (Kut)
+ * +extraDmg when charging
+ * Variables: extraDmg
+ */
+export const AvalancheOfMuscleHandler: AbilityHandler = {
+  abilityId: 'AvalancheOfMuscle',
+  abilityName: 'Avalanche of Muscle',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const isCharging = context.abilityToggles?.['AvalancheOfMuscle'] ?? false;
+
+    return {
+      abilityId: 'AvalancheOfMuscle',
+      abilityName: getAbilityNameSync('AvalancheOfMuscle'),
+      modifiers: isCharging ? { baseDamageBonus: extraDmg } : {},
+      applicable: isCharging,
+      reason: isCharging ? `+${extraDmg} damage (charging)` : 'Not charging',
+      requiresToggle: true,
+      toggleLabel: 'Charging',
+    };
+  },
+};
+
+/**
+ * Nightshroud (Sibyll)
+ * Adjacent allies get Infiltrate and damage reduction - defensive/aura, not modeled
+ * Variables: dmgReduction
+ */
+export const NightshroudHandler: AbilityHandler = {
+  abilityId: 'Nightshroud',
+  abilityName: 'Nightshroud',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const dmgReduction = values.dmgReduction as number || 0;
+
+    // Defensive aura ability - not modeled for attacker damage calculation
+    return {
+      abilityId: 'Nightshroud',
+      abilityName: getAbilityNameSync('Nightshroud'),
+      modifiers: {},
+      applicable: false,  // Defensive ability
+      reason: `Aura: Adjacent allies Infiltrate, -${dmgReduction} damage taken`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * SpotterReworked (Thaddeus)
+ * Allies within range +extraDmg with ranged attacks
+ * Variables: extraDmg, extraDmg_2 (for Heavy Weapon)
+ * Constants: range: 2
+ */
+export const SpotterReworkedHandler: AbilityHandler = {
+  abilityId: 'SpotterReworked',
+  abilityName: 'Spotter',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const extraDmgHeavy = values.extraDmg_2 as number || 0;
+    const isRanged = context.attackType === 'ranged';
+    const withinRange = context.abilityToggles?.['SpotterReworked'] ?? false;
+    const hasHeavyWeapon = context.abilityToggles?.['SpotterReworked_Heavy'] ?? false;
+    const applicable = isRanged && withinRange;
+    const damageBonus = hasHeavyWeapon ? extraDmgHeavy : extraDmg;
+
+    return {
+      abilityId: 'SpotterReworked',
+      abilityName: getAbilityNameSync('SpotterReworked'),
+      modifiers: applicable ? { baseDamageBonus: damageBonus } : {},
+      applicable,
+      reason: applicable
+        ? `+${damageBonus} ranged damage${hasHeavyWeapon ? ' (Heavy Weapon)' : ''}`
+        : (isRanged ? 'Not within range 2 of Thaddeus' : 'Only applies to ranged attacks'),
+      requiresToggle: true,
+      toggleLabel: 'Within 2 hexes of Thaddeus',
+    };
+  },
+};
+
+/**
+ * SummaryExecution (Yarrick)
+ * Units with Battle Fatigue +extraDmg
+ * Variables: extraDmg, extraDmg_2 (after first execution)
+ */
+export const SummaryExecutionHandler: AbilityHandler = {
+  abilityId: 'SummaryExecution',
+  abilityName: 'Summary Execution',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const extraDmg2 = values.extraDmg_2 as number || 0;
+    const hasBattleFatigue = context.abilityToggles?.['SummaryExecution'] ?? false;
+    const executionHappened = context.abilityToggles?.['SummaryExecution_Executed'] ?? false;
+    const totalBonus = hasBattleFatigue ? extraDmg + (executionHappened ? extraDmg2 : 0) : 0;
+
+    return {
+      abilityId: 'SummaryExecution',
+      abilityName: getAbilityNameSync('SummaryExecution'),
+      modifiers: hasBattleFatigue ? { baseDamageBonus: totalBonus } : {},
+      applicable: hasBattleFatigue,
+      reason: hasBattleFatigue
+        ? `+${totalBonus} damage (Battle Fatigue${executionHappened ? ' + Execution' : ''})`
+        : 'Unit does not have Battle Fatigue',
+      requiresToggle: true,
+      toggleLabel: 'Has Battle Fatigue',
+    };
+  },
+};
+
+/**
+ * DefenderOfTheGreaterGood (Shadowsun)
+ * +extraDmg and 25% chance for +1 hit
+ * Variables: extraDmg
+ * Constants: chance: 25, extraHit: 1
+ */
+export const DefenderOfTheGreaterGoodHandler: AbilityHandler = {
+  abilityId: 'DefenderOfTheGreaterGood',
+  abilityName: 'Defender of the Greater Good',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const chance = values.chance as number || 25;
+
+    return {
+      abilityId: 'DefenderOfTheGreaterGood',
+      abilityName: getAbilityNameSync('DefenderOfTheGreaterGood'),
+      modifiers: {
+        baseDamageBonus: extraDmg,
+      },
+      applicable: true,
+      reason: `+${extraDmg} damage, ${chance}% chance for +1 hit`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * PathOfCommand (Aethana)
+ * Aura: +extraDmg to self, +extraDmg_2 to Aeldari within range 2, +extraCritChance
+ * Variables: extraDmg, extraDmg_2, extraCritChance
+ * Constants: range: 2
+ */
+export const PathOfCommandHandler: AbilityHandler = {
+  abilityId: 'PathOfCommand',
+  abilityName: 'Path of Command',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const extraCritChance = values.extraCritChance as number || 0;
+
+    return {
+      abilityId: 'PathOfCommand',
+      abilityName: getAbilityNameSync('PathOfCommand'),
+      modifiers: {
+        baseDamageBonus: extraDmg,
+        critChanceBonus: extraCritChance,
+      },
+      applicable: true,
+      reason: `+${extraDmg} damage, +${extraCritChance}% crit chance (aura buffs Aeldari within range 2)`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * WireweaveNet (Calandis)
+ * Reaction: 2x Piercing when enemy enters adjacency
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Piercing, nrOfHits: 2
+ */
+export const WireweaveNetHandler: AbilityHandler = {
+  abilityId: 'WireweaveNet',
+  abilityName: 'Wireweave Net',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+
+    return {
+      abilityId: 'WireweaveNet',
+      abilityName: getAbilityNameSync('WireweaveNet'),
+      modifiers: {},
+      applicable: false,  // Reaction timing not modeled
+      reason: `Reaction: 2x Piercing (${minDmg}-${maxDmg}) when enemy enters adjacency`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * TerrorsLament (Jain Zar)
+ * Adjacent enemies take -dmgReduction damage and -1 hit
+ * Variables: dmgReduction
+ * Constants: hitsReduction: 1
+ */
+export const TerrorsLamentHandler: AbilityHandler = {
+  abilityId: 'TerrorsLament',
+  abilityName: "Terror's Lament",
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const dmgReduction = values.dmgReduction as number || 0;
+    const hitsReduction = values.hitsReduction as number || 1;
+
+    return {
+      abilityId: 'TerrorsLament',
+      abilityName: getAbilityNameSync('TerrorsLament'),
+      modifiers: {},
+      applicable: false,  // Enemy debuff not modeled
+      reason: `Adjacent enemies: -${dmgReduction} damage, -${hitsReduction} hit`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * InescapableAccuracy (Maugan Ra)
+ * +critChance, +critDmg if didn't move this turn
+ * Variables: extraCritChance, extraCritDmg
+ */
+export const InescapableAccuracyHandler: AbilityHandler = {
+  abilityId: 'InescapableAccuracy',
+  abilityName: 'Inescapable Accuracy',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraCritChance = values.extraCritChance as number || 0;
+    const extraCritDmg = values.extraCritDmg as number || 0;
+    const didNotMove = context.abilityToggles?.['InescapableAccuracy'] ?? false;
+
+    return {
+      abilityId: 'InescapableAccuracy',
+      abilityName: getAbilityNameSync('InescapableAccuracy'),
+      modifiers: didNotMove
+        ? { critChanceBonus: extraCritChance, critDamageBonus: extraCritDmg }
+        : {},
+      applicable: didNotMove,
+      reason: didNotMove
+        ? `+${extraCritChance}% crit chance, +${extraCritDmg} crit damage (did not move)`
+        : 'Moved this turn',
+      requiresToggle: true,
+      toggleLabel: 'Did not move',
+    };
+  },
+};
+
+/**
+ * FabricatorClawArray (Aleph-Null)
+ * After moving, repairs one random adjacent Mechanical unit
+ * Variables: hpToRepair
+ */
+export const FabricatorClawArrayHandler: AbilityHandler = {
+  abilityId: 'FabricatorClawArray',
+  abilityName: 'Fabricator Claw Array',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const hpToRepair = values.hpToRepair as number || 0;
+
+    return {
+      abilityId: 'FabricatorClawArray',
+      abilityName: getAbilityNameSync('FabricatorClawArray'),
+      modifiers: {},
+      applicable: false,  // Repair effect not modeled in damage calc
+      reason: `Repairs adjacent Mechanical unit for ${hpToRepair} HP`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * MartialApotheosis (Anuphet)
+ * Start of turn: 2x Energy to random adjacent enemy
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: Energy, nrOfHits: 2
+ */
+export const MartialApotheosisHandler: AbilityHandler = {
+  abilityId: 'MartialApotheosis',
+  abilityName: 'Martial Apotheosis',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 2;
+
+    return {
+      abilityId: 'MartialApotheosis',
+      abilityName: getAbilityNameSync('MartialApotheosis'),
+      modifiers: {},
+      applicable: false,  // Start-of-turn trigger, not attack modifier
+      reason: `Start of turn: ${hits}x Energy (${minDmg}-${maxDmg}) to adjacent enemy`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * InescapableDeath (Imospekh)
+ * +extraDmg to attacks, adjacent enemies -1 hit
+ * Variables: extraDmg
+ * Constants: hitsReduction: 1
+ */
+export const InescapableDeathHandler: AbilityHandler = {
+  abilityId: 'InescapableDeath',
+  abilityName: 'Inescapable Death',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+
+    return {
+      abilityId: 'InescapableDeath',
+      abilityName: getAbilityNameSync('InescapableDeath'),
+      modifiers: {
+        baseDamageBonus: extraDmg,
+      },
+      applicable: true,
+      reason: `+${extraDmg} damage (adjacent enemies -1 hit)`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * RelentlessMarch (Makhotep)
+ * +1 Movement to adjacent allies, repairs Mechanical units
+ * Variables: hpToRepair
+ */
+export const RelentlessMarchHandler: AbilityHandler = {
+  abilityId: 'RelentlessMarch',
+  abilityName: 'Relentless March',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const hpToRepair = values.hpToRepair as number || 0;
+
+    return {
+      abilityId: 'RelentlessMarch',
+      abilityName: getAbilityNameSync('RelentlessMarch'),
+      modifiers: {},
+      applicable: false,  // Movement/repair effect not modeled
+      reason: `Adjacent allies +1 Movement, Mechanical units +${hpToRepair} HP`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * LivingLightning (Thutmose)
+ * After moving: 1x DirectDamage to random adjacent enemy (raw damage, no crit)
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: DirectDamage, nrOfHits: 1
+ */
+export const LivingLightningHandler: AbilityHandler = {
+  abilityId: 'LivingLightning',
+  abilityName: 'Living Lightning',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hasMoved = context.abilityToggles?.['LivingLightning'] ?? false;
+
+    return {
+      abilityId: 'LivingLightning',
+      abilityName: getAbilityNameSync('LivingLightning'),
+      modifiers: {},
+      applicable: hasMoved,
+      reason: hasMoved
+        ? `1x DirectDamage (${minDmg}-${maxDmg}) to adjacent enemy (raw damage)`
+        : 'Triggers after moving or at end of turn',
+      requiresToggle: true,
+      toggleLabel: 'Has moved',
+      followUpAttack: hasMoved
+        ? {
+            abilityId: 'LivingLightning',
+            abilityName: getAbilityNameSync('LivingLightning'),
+            hits: 1,
+            minDamage: minDmg,
+            maxDamage: maxDmg,
+            damageProfile: 'DirectDamage' as DamageType,
+            attackCategory: 'special',
+          }
+        : undefined,
+    };
+  },
+};
+
+// ============= TYRANIDS =============
+
+/**
+ * FeederTendrils (Deathleaper)
+ * +extraDmg on kill, heals hpToHeal
+ */
+export const FeederTendrilsHandler: AbilityHandler = {
+  abilityId: 'FeederTendrils',
+  abilityName: 'Feeder Tendrils',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const hpToHeal = values.hpToHeal as number || 0;
+    return {
+      abilityId: 'FeederTendrils',
+      abilityName: getAbilityNameSync('FeederTendrils'),
+      modifiers: { baseDamageBonus: extraDmg },
+      applicable: true,
+      reason: `+${extraDmg} damage, heals ${hpToHeal} HP on kill`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * Neuroparasite (Neurothrope)
+ * +extraDmg, stacks up to buffMaxLevel
+ */
+export const NeuroparasiteHandler: AbilityHandler = {
+  abilityId: 'Neuroparasite',
+  abilityName: 'Neuroparasite',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const buffMaxLevel = values.buffMaxLevel as number || 10;
+    return {
+      abilityId: 'Neuroparasite',
+      abilityName: getAbilityNameSync('Neuroparasite'),
+      modifiers: { baseDamageBonus: extraDmg },
+      applicable: true,
+      reason: `+${extraDmg} damage per stack (max ${buffMaxLevel})`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * BarbedOvipositor (Parasite of Mortrex)
+ * Summons Ripper Swarm on kill
+ */
+export const BarbedOvipositorHandler: AbilityHandler = {
+  abilityId: 'BarbedOvipositor',
+  abilityName: 'Barbed Ovipositor',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const summonHp = values.summonHp as number || 0;
+    return {
+      abilityId: 'BarbedOvipositor',
+      abilityName: getAbilityNameSync('BarbedOvipositor'),
+      modifiers: {},
+      applicable: false,  // On-kill trigger not modeled
+      reason: `On kill: Summons Ripper Swarm (HP: ${summonHp})`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * GuardianOrganism (Tyrant Guard)
+ * Reduces damage to adjacent Synapse creatures
+ */
+export const GuardianOrganismHandler: AbilityHandler = {
+  abilityId: 'GuardianOrganism',
+  abilityName: 'Guardian Organism',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const dmgReduction = values.dmgReduction as number || 0;
+    const dmgReductionPct = values.dmgReductionPct as number || 25;
+    return {
+      abilityId: 'GuardianOrganism',
+      abilityName: getAbilityNameSync('GuardianOrganism'),
+      modifiers: {},
+      applicable: false,  // Defensive - protects allies
+      reason: `Adjacent Synapse: -${dmgReduction} / -${dmgReductionPct}% damage`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * SynapticLinchpin (Winged Prime)
+ * Summons Hormagaunts at turn start
+ */
+export const SynapticLinchpinHandler: AbilityHandler = {
+  abilityId: 'SynapticLinchpin',
+  abilityName: 'Synaptic Linchpin',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const summonHp = values.summonHp as number || 0;
+    const maxSummons = values.maxSummons as number || 2;
+    return {
+      abilityId: 'SynapticLinchpin',
+      abilityName: getAbilityNameSync('SynapticLinchpin'),
+      modifiers: {},
+      applicable: false,  // Turn-start summon not modeled
+      reason: `Turn start: Summons Hormagaunt (max ${maxSummons}, HP: ${summonHp})`,
+      requiresToggle: false,
+    };
+  },
+};
+
+// ============= ORKS =============
+
+/**
+ * KustomForceField (Gibbascrapz)
+ * Adjacent units get bonus armor
+ * Variables: extraArmor
+ */
+export const KustomForceFieldHandler: AbilityHandler = {
+  abilityId: 'KustomForceField',
+  abilityName: 'Kustom Force Field',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraArmor = values.extraArmor as number || 0;
+    return {
+      abilityId: 'KustomForceField',
+      abilityName: getAbilityNameSync('KustomForceField'),
+      modifiers: {},
+      applicable: false,  // Defensive aura - benefits allies, not this character's damage
+      reason: `Aura: Adjacent allies get +${extraArmor} Armor`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * PowerTrip (Snappawrecka)
+ * Normal attacks ignore armor, +1 hit when at full health (with armor reduction, self-damage)
+ * Variables: armorIgnored, armorReduction
+ * Constants: extraHit: 1, hpPct: 5
+ */
+export const PowerTripHandler: AbilityHandler = {
+  abilityId: 'PowerTrip',
+  abilityName: 'Power Trip',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const armorIgnored = values.armorIgnored as number || 0;
+    const armorReduction = values.armorReduction as number || 0;
+    const atFullHealth = context.abilityToggles?.['PowerTrip'] ?? false;
+    return {
+      abilityId: 'PowerTrip',
+      abilityName: getAbilityNameSync('PowerTrip'),
+      modifiers: {
+        armorIgnored: armorIgnored,
+        extraHits: atFullHealth ? 1 : 0,
+      },
+      applicable: true,
+      reason: atFullHealth
+        ? `Ignores ${armorIgnored} Armor, +1 hit, -${armorReduction} enemy Armor (costs 5% HP)`
+        : `Ignores ${armorIgnored} Armor`,
+      requiresToggle: true,
+      toggleLabel: 'At full Health',
+    };
+  },
+};
+
+/**
+ * SquigHound (Snotflogga)
+ * Normal attacks deal follow-up 2x Physical, can summon Grot after attack
+ * Variables: minDmg, maxDmg, summonHp, summonDmg
+ * Constants: nrOfHits: 2, damageProfile: Physical, maxSummons: 5
+ */
+export const SquigHoundHandler: AbilityHandler = {
+  abilityId: 'SquigHound',
+  abilityName: 'Squig Hound',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const summonHp = values.summonHp as number || 0;
+    return {
+      abilityId: 'SquigHound',
+      abilityName: getAbilityNameSync('SquigHound'),
+      modifiers: {},
+      applicable: true,
+      reason: `+2x Physical (${minDmg}-${maxDmg}). May summon Grot (max 5, HP: ${summonHp})`,
+      requiresToggle: false,
+      followUpAttack: {
+        abilityId: 'SquigHound',
+        abilityName: getAbilityNameSync('SquigHound'),
+        hits: 2,
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        damageProfile: 'Physical' as DamageType,
+        attackCategory: 'special',
+      },
+    };
+  },
+};
+
+/**
+ * SmashaEad (Tanksmasha)
+ * +extraDmg for normal attacks after moving 2+ hexes, also damage reduction
+ * Variables: extraDmg, dmgReductionPct
+ */
+export const SmashaEadHandler: AbilityHandler = {
+  abilityId: 'SmashaEad',
+  abilityName: "Smasha 'Ead",
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const dmgReductionPct = values.dmgReductionPct as number || 25;
+    const hasMoved2Hexes = context.abilityToggles?.['SmashaEad'] ?? false;
+    return {
+      abilityId: 'SmashaEad',
+      abilityName: getAbilityNameSync('SmashaEad'),
+      modifiers: hasMoved2Hexes ? { baseDamageBonus: extraDmg } : {},
+      applicable: hasMoved2Hexes,
+      reason: hasMoved2Hexes
+        ? `+${extraDmg} Damage for normal attacks, -${dmgReductionPct}% damage taken`
+        : 'Triggers when moving 2+ hexes',
+      requiresToggle: true,
+      toggleLabel: 'Moved 2+ hexes',
+    };
+  },
+};
+
+// ============= BLACK LEGION =============
+
+/**
+ * HatefulAssault (Angrax)
+ * Reaction: attacks enemy that moves away from adjacent hex
+ * Variables: minDmg, maxDmg, extraDmg
+ * Constants: nrOfHits: 2
+ */
+export const HatefulAssaultHandler: AbilityHandler = {
+  abilityId: 'HatefulAssault',
+  abilityName: 'Hateful Assault',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const extraDmg = values.extraDmg as number || 0;
+    return {
+      abilityId: 'HatefulAssault',
+      abilityName: getAbilityNameSync('HatefulAssault'),
+      modifiers: {},
+      applicable: false,  // Reaction ability - not modeled in main damage calc
+      reason: `Reaction: 2x Power (${minDmg}-${maxDmg}) when enemy leaves adjacent. +${extraDmg} to normal attacks`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * Possession (Archimatos)
+ * Summons Bloodletter or Blue Horror when enemy is defeated
+ * Variables: summonHp, summonDmg, summonHp_2, summonDmg_2
+ * Constants: unitId: blackSmnBloodletter, unitId_2: thousSmnBlueHorror
+ */
+export const PossessionHandler: AbilityHandler = {
+  abilityId: 'Possession',
+  abilityName: 'Possession',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const summonHp = values.summonHp as number || 0;
+    const summonHp2 = values.summonHp_2 as number || 0;
+    return {
+      abilityId: 'Possession',
+      abilityName: getAbilityNameSync('Possession'),
+      modifiers: {},
+      applicable: false,  // On-kill trigger not modeled
+      reason: `On kill: Summons Bloodletter (HP: ${summonHp}) or Blue Horror (HP: ${summonHp2})`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * HeadClaimer (Haarken)
+ * +extraDmg per enemy killed, +extraHit per Character killed
+ * Variables: extraDmg
+ * Constants: extraHit: 1
+ */
+export const HeadClaimerHandler: AbilityHandler = {
+  abilityId: 'HeadClaimer',
+  abilityName: 'Head-Claimer',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const killCount = context.abilityToggles?.['HeadClaimer_Kills'] ? 1 : 0;
+    const charKillCount = context.abilityToggles?.['HeadClaimer'] ? 1 : 0;
+    return {
+      abilityId: 'HeadClaimer',
+      abilityName: getAbilityNameSync('HeadClaimer'),
+      modifiers: {
+        baseDamageBonus: extraDmg * killCount,
+        extraHits: charKillCount,
+      },
+      applicable: killCount > 0 || charKillCount > 0,
+      reason: charKillCount > 0
+        ? `+${extraDmg * killCount} Dmg (${killCount} kills), +${charKillCount} hit (Character killed)`
+        : killCount > 0
+          ? `+${extraDmg * killCount} Dmg (${killCount} kills)`
+          : `+${extraDmg} per kill, +1 hit per Character kill`,
+      requiresToggle: true,
+      toggleLabel: 'Killed Character',
+    };
+  },
+};
+
+/**
+ * FleshmetalGuns (Volk)
+ * Follow-up attacks after ranged: 2x Melta, 2x Flame, 2x Heavy
+ * Variables: minDmg, maxDmg (Melta), minDmg_2, maxDmg_2 (Flame), minDmg_3, maxDmg_3 (Heavy)
+ */
+export const FleshmetalGunsHandler: AbilityHandler = {
+  abilityId: 'FleshmetalGuns',
+  abilityName: 'Fleshmetal Guns',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const minDmg2 = values.minDmg_2 as number || 0;
+    const maxDmg2 = values.maxDmg_2 as number || 0;
+    const minDmg3 = values.minDmg_3 as number || 0;
+    const maxDmg3 = values.maxDmg_3 as number || 0;
+    return {
+      abilityId: 'FleshmetalGuns',
+      abilityName: getAbilityNameSync('FleshmetalGuns'),
+      modifiers: {},
+      applicable: true,
+      reason: `+2x Melta (${minDmg}-${maxDmg}) +2x Flame (${minDmg2}-${maxDmg2}) +2x Heavy (${minDmg3}-${maxDmg3})`,
+      requiresToggle: false,
+      followUpAttack: {
+        abilityId: 'FleshmetalGuns',
+        abilityName: getAbilityNameSync('FleshmetalGuns'),
+        hits: 2,
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        damageProfile: 'Melta' as DamageType,
+        attackCategory: 'special',
+      },
+    };
+  },
+};
+
+// ============= WORLD EATERS =============
+
+/**
+ * BeaconOfRage (Azkor)
+ * +extraDmg per time attacked (max 8), shares 50% to adjacent Chaos if killed enemy
+ * Variables: extraDmg
+ * Constants: nrOfAttacks: 8
+ */
+export const BeaconOfRageHandler: AbilityHandler = {
+  abilityId: 'BeaconOfRage',
+  abilityName: 'Beacon Of Rage',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const attackCount = context.abilityToggles?.['BeaconOfRage'] ? 1 : 0;
+    return {
+      abilityId: 'BeaconOfRage',
+      abilityName: getAbilityNameSync('BeaconOfRage'),
+      modifiers: { baseDamageBonus: extraDmg * attackCount },
+      applicable: attackCount > 0,
+      reason: attackCount > 0
+        ? `+${extraDmg * attackCount} Dmg (${attackCount} attacks received)`
+        : `+${extraDmg} per attack taken (max 8). 50% to adj Chaos if killed enemy`,
+      requiresToggle: true,
+      toggleLabel: 'Been attacked',
+    };
+  },
+};
+
+/**
+ * Skullsmasher (Macer)
+ * +extraDmg per 10% HP missing, stuns if killed enemy
+ * Variables: extraDmg
+ * Constants: hpPct: 10
+ */
+export const SkullsmasherHandler: AbilityHandler = {
+  abilityId: 'Skullsmasher',
+  abilityName: 'Skullsmasher',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const hpMissing = context.abilityToggles?.['Skullsmasher'] ? 1 : 0;
+    return {
+      abilityId: 'Skullsmasher',
+      abilityName: getAbilityNameSync('Skullsmasher'),
+      modifiers: { baseDamageBonus: extraDmg * hpMissing },
+      applicable: hpMissing > 0,
+      reason: hpMissing > 0
+        ? `+${extraDmg * hpMissing} Dmg (${hpMissing * 10}% HP missing). Stuns if killed enemy`
+        : `+${extraDmg} per 10% HP missing. Stuns if killed enemy`,
+      requiresToggle: true,
+      toggleLabel: 'Missing HP (10%)',
+    };
+  },
+};
+
+/**
+ * TrophyTaker (Tarvakh)
+ * +extraDmg and +extraCritDmg vs targets at/below 50% HP, +extraCritChance per kill
+ * Variables: extraDmg, extraCritDmg, extraCritChance
+ * Constants: hpPct: 50
+ */
+export const TrophyTakerHandler: AbilityHandler = {
+  abilityId: 'TrophyTaker',
+  abilityName: 'Trophy Taker',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const extraCritDmg = values.extraCritDmg as number || 0;
+    const extraCritChance = values.extraCritChance as number || 8;
+    const targetLowHP = context.abilityToggles?.['TrophyTaker'] ?? false;
+    return {
+      abilityId: 'TrophyTaker',
+      abilityName: getAbilityNameSync('TrophyTaker'),
+      modifiers: targetLowHP ? { baseDamageBonus: extraDmg } : {},
+      applicable: targetLowHP,
+      reason: targetLowHP
+        ? `+${extraDmg} Dmg, +${extraCritDmg} Crit Dmg vs low HP. +${extraCritChance}% Crit per kill`
+        : `+${extraDmg} Dmg vs <50% HP targets. +${extraCritChance}% Crit per kill`,
+      requiresToggle: true,
+      toggleLabel: 'Target at/below 50% HP',
+    };
+  },
+};
+
+/**
+ * WrathfulDevotion (Wrask)
+ * Shield on Deep Strike or melee kill for self + adjacent Chaos
+ * Variables: shieldHp
+ */
+export const WrathfulDevotionHandler: AbilityHandler = {
+  abilityId: 'WrathfulDevotion',
+  abilityName: 'Wrathful Devotion',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const shieldHp = values.shieldHp as number || 0;
+    return {
+      abilityId: 'WrathfulDevotion',
+      abilityName: getAbilityNameSync('WrathfulDevotion'),
+      modifiers: {},
+      applicable: false,  // Defensive/trigger - not modeled in damage calc
+      reason: `On Deep Strike or melee kill: ${shieldHp} Shield to self + adj Chaos`,
+      requiresToggle: false,
+    };
+  },
+};
+
+// =====================
+// DEATHGUARD PASSIVES
+// =====================
+
+/**
+ * CursedPlagueBell (Corrodius)
+ * Friendly Chaos units in Contagion get +1 Movement.
+ * Enemy Psykers in Contagion take 1x Psychic self-damage when their attacks deal Psychic damage.
+ * Variables: dmg
+ * Constants: extraMovement: 1, nrOfHits: 1, affectedDamageProfile: Psychic
+ */
+export const CursedPlagueBellHandler: AbilityHandler = {
+  abilityId: 'CursedPlagueBell',
+  abilityName: 'Cursed Plague Bell',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const dmg = values.dmg as number || 0;
+    return {
+      abilityId: 'CursedPlagueBell',
+      abilityName: getAbilityNameSync('CursedPlagueBell'),
+      modifiers: {},
+      applicable: false, // Aura effect - no modifier to Corrodius himself
+      reason: `Aura: Chaos allies in Contagion get +1 Movement. Psykers take 1x ${dmg} Psychic self-damage on Psychic attacks`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * HazeOfCorruption (Maladus)
+ * On kill, leftover damage + 1x Toxic to adjacent enemy. Chains on kill.
+ * Variables: extraDmg
+ * Constants: damageProfile: Toxic, nrOfHits: 1
+ */
+export const HazeOfCorruptionHandler: AbilityHandler = {
+  abilityId: 'HazeOfCorruption',
+  abilityName: 'Haze of Corruption',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    return {
+      abilityId: 'HazeOfCorruption',
+      abilityName: getAbilityNameSync('HazeOfCorruption'),
+      modifiers: {},
+      applicable: false, // Trigger on kill - not a modifier
+      reason: `On kill: leftover damage + 1x ${extraDmg} Toxic to adj enemy. Chains on kill`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * TaintedNarthecium (Nauseous)
+ * 75% chance to revive adjacent Chaos unit with X HP (even if overkilled). Once per turn.
+ * Variables: hp
+ * Constants: chance: 75
+ */
+export const TaintedNartheciumHandler: AbilityHandler = {
+  abilityId: 'TaintedNarthecium',
+  abilityName: 'Tainted Narthecium',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const hp = values.hp as number || 0;
+    return {
+      abilityId: 'TaintedNarthecium',
+      abilityName: getAbilityNameSync('TaintedNarthecium'),
+      modifiers: {},
+      applicable: false, // Defensive/revive - not a damage modifier
+      reason: `75% chance to revive adj Chaos unit with ${hp} HP (ignores overkill). 1/turn`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * ExplosiveMaladies (Pestillian)
+ * Adjacent allies deal +1x Blast on ranged attacks. Chaos also on melee.
+ * Variables: extraDmg
+ * Constants: affectedDamageProfile: Blast, nrOfHits: 1
+ */
+export const ExplosiveMaladiesHandler: AbilityHandler = {
+  abilityId: 'ExplosiveMaladies',
+  abilityName: 'Explosive Maladies',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const adjacentToPestillian = context.abilityToggles?.['ExplosiveMaladies'] ?? false;
+
+    const followUp: FollowUpAttack | undefined = adjacentToPestillian ? {
+      abilityId: 'ExplosiveMaladies',
+      abilityName: getAbilityNameSync('ExplosiveMaladies'),
+      hits: 1,
+      minDamage: extraDmg,
+      maxDamage: extraDmg,
+      damageProfile: 'Blast' as DamageType,
+      attackCategory: 'special',
+    } : undefined;
+
+    return {
+      abilityId: 'ExplosiveMaladies',
+      abilityName: getAbilityNameSync('ExplosiveMaladies'),
+      modifiers: {},
+      applicable: adjacentToPestillian,
+      reason: adjacentToPestillian
+        ? `+1x ${extraDmg} Blast on ranged (Chaos: also melee). Overkills`
+        : `Not adjacent to Pestillian`,
+      requiresToggle: true,
+      toggleLabel: 'Adjacent to Pestillian',
+      followUpAttack: followUp,
+    };
+  },
+};
+
+/**
+ * DestroyerHive (Typhus)
+ * At turn start, deals 1x Direct to random adjacent enemy.
+ * Variables: minDmg, maxDmg
+ * Constants: damageProfile: DirectDamage, nrOfHits: 1
+ */
+export const DestroyerHiveHandler: AbilityHandler = {
+  abilityId: 'DestroyerHive',
+  abilityName: 'Destroyer Hive',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    return {
+      abilityId: 'DestroyerHive',
+      abilityName: getAbilityNameSync('DestroyerHive'),
+      modifiers: {},
+      applicable: false, // Turn start trigger - not a damage modifier
+      reason: `Turn start: 1x ${minDmg}-${maxDmg} Direct to random adj enemy`,
+      requiresToggle: false,
+    };
+  },
+};
+
+// =======================
+// THOUSANDSONS PASSIVES
+// =======================
+
+/**
+ * InfernalPacts (Abraxas)
+ * Adjacent Chaos allies get +1x Psychic on ranged attacks. Daemons also on melee.
+ * Variables: minDmg, maxDmg
+ * Constants: affectedDamageProfile: Psychic, nrOfHits: 1
+ */
+export const InfernalPactsHandler: AbilityHandler = {
+  abilityId: 'InfernalPacts',
+  abilityName: 'Infernal Pacts',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const adjacentToAbraxas = context.abilityToggles?.['InfernalPacts'] ?? false;
+
+    const followUp: FollowUpAttack | undefined = adjacentToAbraxas ? {
+      abilityId: 'InfernalPacts',
+      abilityName: getAbilityNameSync('InfernalPacts'),
+      hits: 1,
+      minDamage: minDmg,
+      maxDamage: maxDmg,
+      damageProfile: 'Psychic' as DamageType,
+      attackCategory: 'special',
+    } : undefined;
+
+    return {
+      abilityId: 'InfernalPacts',
+      abilityName: getAbilityNameSync('InfernalPacts'),
+      modifiers: {},
+      applicable: adjacentToAbraxas,
+      reason: adjacentToAbraxas
+        ? `+1x ${minDmg}-${maxDmg} Psychic on ranged (Daemons: also melee)`
+        : `Not adjacent to Abraxas`,
+      requiresToggle: true,
+      toggleLabel: 'Adjacent to Abraxas',
+      followUpAttack: followUp,
+    };
+  },
+};
+
+/**
+ * PsychicStalk (Ahriman)
+ * Flame/Psychic attacks to enemies on Fire deal +dmgPct%. Chaos allies get +extraDmg.
+ * Ahriman's ranged attacks set target hex on Fire.
+ * Variables: extraDmgPct, maxDmg, extraDmg
+ * Constants: affectedDamageProfile: Flame, affectedDamageProfile_2: Psychic
+ */
+export const PsychicStalkHandler: AbilityHandler = {
+  abilityId: 'PsychicStalk',
+  abilityName: 'Psychic Stalk',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmgPct = values.extraDmgPct as number || 25;
+    const extraDmg = values.extraDmg as number || 0;
+    const targetOnFire = context.abilityToggles?.['PsychicStalk'] ?? false;
+
+    return {
+      abilityId: 'PsychicStalk',
+      abilityName: getAbilityNameSync('PsychicStalk'),
+      modifiers: targetOnFire ? {
+        baseDamageMultiplier: 1 + (extraDmgPct / 100),
+      } : {},
+      applicable: targetOnFire,
+      reason: targetOnFire
+        ? `+${extraDmgPct}% dmg (Flame/Psychic vs Fire). Chaos: +${extraDmg}. Ranged sets target on Fire`
+        : `Target not on Fire. Ranged attacks set target on Fire`,
+      requiresToggle: true,
+      toggleLabel: 'Target on Fire',
+    };
+  },
+};
+
+/**
+ * ArcaneShield (Thaumachus)
+ * After moving, applies shield to closest friendly unit within range 2.
+ * Variables: shieldHp
+ * Constants: range: 2
+ */
+export const ArcaneShieldHandler: AbilityHandler = {
+  abilityId: 'ArcaneShield',
+  abilityName: 'Arcane Shield',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const shieldHp = values.shieldHp as number || 0;
+    return {
+      abilityId: 'ArcaneShield',
+      abilityName: getAbilityNameSync('ArcaneShield'),
+      modifiers: {},
+      applicable: false, // Defensive/trigger - not a damage modifier
+      reason: `After moving: ${shieldHp} Shield to closest ally in range 2 (prefers TS > Chaos > others > self)`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * TimeFlux (Toth)
+ * Regen at turn start. Leaves time ghost when moving. Revives at ghost location on death.
+ * Variables: hpToHeal, hp, maxHpToHeal
+ */
+export const TimeFluxHandler: AbilityHandler = {
+  abilityId: 'TimeFlux',
+  abilityName: 'Time Flux',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const hpToHeal = values.hpToHeal as number || 0;
+    const hp = values.hp as number || 0;
+    const maxHpToHeal = values.maxHpToHeal as number || 0;
+    return {
+      abilityId: 'TimeFlux',
+      abilityName: getAbilityNameSync('TimeFlux'),
+      modifiers: {},
+      applicable: false, // Defensive/regen - not a damage modifier
+      reason: `Turn start: regen ${hpToHeal} HP + last hit dmg (max ${maxHpToHeal}). Time ghost revives with ${hp} HP`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * RealityUnbound (Yazaghor)
+ * +extraMaxDmg per enemy hit by Psychic this turn. If 3+, gains +movement and +range.
+ * Variables: extraMaxDmg
+ * Constants: extraRange: 1, extraMovement: 1
+ */
+export const RealityUnboundHandler: AbilityHandler = {
+  abilityId: 'RealityUnbound',
+  abilityName: 'Reality Unbound',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraMaxDmg = values.extraMaxDmg as number || 0;
+    const enemiesHit = context.abilityToggles?.['RealityUnbound'] ?? false;
+
+    return {
+      abilityId: 'RealityUnbound',
+      abilityName: getAbilityNameSync('RealityUnbound'),
+      modifiers: enemiesHit ? {
+        baseDamageBonus: extraMaxDmg, // Per enemy hit by Psychic
+      } : {},
+      applicable: enemiesHit,
+      reason: enemiesHit
+        ? `+${extraMaxDmg} max dmg per enemy hit by Psychic. If 3+: +1 Move, +1 Range`
+        : `No enemies hit by Psychic this turn`,
+      requiresToggle: true,
+      toggleLabel: 'Enemies hit by Psychic',
+    };
+  },
+};
+
+// ==========================
+// EMPERORSCHILDREN PASSIVES
+// ==========================
+
+/**
+ * ObsessiveAnnunciation (Adamatar)
+ * Enemies adjacent to Adamatar take +extraDmg from ranged attacks.
+ * If overkill this turn, they also take +extraCritDmg from Chaos attacks.
+ * Variables: extraDmg, extraCritDmg
+ */
+export const ObsessiveAnnunciationHandler: AbilityHandler = {
+  abilityId: 'ObsessiveAnnunciation',
+  abilityName: 'Obsessive Annunciation',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const extraCritDmg = values.extraCritDmg as number || 0;
+    const adjacentToAdamatar = context.abilityToggles?.['ObsessiveAnnunciation'] ?? false;
+
+    return {
+      abilityId: 'ObsessiveAnnunciation',
+      abilityName: getAbilityNameSync('ObsessiveAnnunciation'),
+      modifiers: adjacentToAdamatar ? {
+        baseDamageBonus: extraDmg,
+      } : {},
+      applicable: adjacentToAdamatar,
+      reason: adjacentToAdamatar
+        ? `Enemies adj to Adamatar take +${extraDmg} dmg from ranged. If overkill: +${extraCritDmg} crit dmg from Chaos`
+        : `Target not adjacent to Adamatar`,
+      requiresToggle: true,
+      toggleLabel: 'Target adj to Adamatar',
+    };
+  },
+};
+
+/**
+ * EcstaticSlaughter (Hascule)
+ * When Thrilled or adj enemy overkilled, deals 3x Eviscerate to adj enemy. Taunts survivor.
+ * Variables: minDmg, maxDmg, nrOfRounds
+ * Constants: damageProfile: Eviscerate, nrOfHits: 3
+ */
+export const EcstaticSlaughterHandler: AbilityHandler = {
+  abilityId: 'EcstaticSlaughter',
+  abilityName: 'Ecstatic Slaughter',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    return {
+      abilityId: 'EcstaticSlaughter',
+      abilityName: getAbilityNameSync('EcstaticSlaughter'),
+      modifiers: {},
+      applicable: false, // Trigger on Thrilled/overkill - not a modifier
+      reason: `On Thrilled or adj overkill: 3x ${minDmg}-${maxDmg} Eviscerate to adj enemy. Taunts survivor 1 round`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * ArmourOfShriekingSouls (Lucius)
+ * Killer becomes Elated (loses HP/turn). When killer dies, Lucius revives.
+ * Variables: minHp, maxHp, hp
+ */
+export const ArmourOfShriekingSoulsHandler: AbilityHandler = {
+  abilityId: 'ArmourOfShriekingSouls',
+  abilityName: 'Armour of Shrieking Souls',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const minHp = values.minHp as number || 0;
+    const maxHp = values.maxHp as number || 0;
+    const hp = values.hp as number || 0;
+    return {
+      abilityId: 'ArmourOfShriekingSouls',
+      abilityName: getAbilityNameSync('ArmourOfShriekingSouls'),
+      modifiers: {},
+      applicable: false, // Defensive/on-death - not a damage modifier
+      reason: `On death: killer Elated (loses ${minHp}-${maxHp} HP/turn). When killer dies, revive with ${hp} HP`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * TerrifyingCrescendo (Shiron)
+ * Ranged attacks deal +extraDmg per overkill/suppress (max 6 stacks).
+ * Variables: extraDmg, buffMaxLevel
+ */
+export const TerrifyingCrescendoHandler: AbilityHandler = {
+  abilityId: 'TerrifyingCrescendo',
+  abilityName: 'Terrifying Crescendo',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const stacks = context.abilityToggles?.['TerrifyingCrescendo'] ?? false;
+
+    return {
+      abilityId: 'TerrifyingCrescendo',
+      abilityName: getAbilityNameSync('TerrifyingCrescendo'),
+      modifiers: stacks ? {
+        baseDamageBonus: extraDmg, // Per stack - user should track stacks
+      } : {},
+      applicable: stacks,
+      reason: stacks
+        ? `+${extraDmg} dmg per overkill/suppress (max 6). Toggle = has stacks`
+        : `No stacks yet. Gain stacks by overkill/suppress`,
+      requiresToggle: true,
+      toggleLabel: 'Has Crescendo stacks',
+    };
+  },
+};
+
+// ==================== Genestealers ====================
+
+/**
+ * TwistedScience (Hollan)
+ * Units healed by Hollan gain HP and Genestealer Cults units also get +extraDmg
+ * Variables: hp, extraDmg
+ */
+export const TwistedScienceHandler: AbilityHandler = {
+  abilityId: 'TwistedScience',
+  abilityName: 'Twisted Science',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const hp = values.hp as number || 0;
+    const extraDmg = values.extraDmg as number || 0;
+    // Toggle indicates the unit has been affected by Twisted Science buff
+    const isAffected = context.abilityToggles?.['TwistedScience'] ?? false;
+
+    return {
+      abilityId: 'TwistedScience',
+      abilityName: getAbilityNameSync('TwistedScience'),
+      modifiers: isAffected ? {
+        baseDamageBonus: extraDmg, // Only for Genestealer Cults units
+      } : {},
+      applicable: isAffected,
+      reason: isAffected
+        ? `Affected by Twisted Science: +${hp} max HP, +${extraDmg} dmg (GSC only)`
+        : `Heal to apply: +${hp} max HP, +${extraDmg} dmg (GSC only)`,
+      requiresToggle: true,
+      toggleLabel: 'Affected by Twisted Science',
+    };
+  },
+};
+
+/**
+ * DecoysAndMisdirection (Isaak)
+ * Enemies stepping on decoys take Blast damage. Friendlies stepping on decoys deal bonus damage.
+ * Variables: minDmg, maxDmg, extraDmg
+ * Constants: damageProfile = "Blast", range = "2", unitToSpawn = "genesSmnDecoy", nrOfHits = "1"
+ */
+export const DecoysAndMisdirectionHandler: AbilityHandler = {
+  abilityId: 'DecoysAndMisdirection',
+  abilityName: 'Decoys and Misdirection',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const extraDmg = values.extraDmg as number || 0;
+    // Toggle indicates friendly unit moved onto a decoy
+    const onDecoy = context.abilityToggles?.['DecoysAndMisdirection'] ?? false;
+
+    return {
+      abilityId: 'DecoysAndMisdirection',
+      abilityName: getAbilityNameSync('DecoysAndMisdirection'),
+      modifiers: onDecoy ? {
+        baseDamageBonus: extraDmg,
+      } : {},
+      applicable: onDecoy,
+      reason: onDecoy
+        ? `Moved onto decoy: +${extraDmg} dmg this turn (GSC units also place new decoy)`
+        : `Enemies on decoys take 1x ${minDmg}-${maxDmg} Blast. Friendlies get +${extraDmg} dmg`,
+      requiresToggle: true,
+      toggleLabel: 'Moved onto decoy',
+    };
+  },
+};
+
+/**
+ * HypersensoryAbilities (Judh)
+ * First attack each enemy turn: can't fall below hpPct% of current HP, moves to free hex,
+ * places decoy, counter-attacks if within range
+ * Variables: hpPct, minDmg, maxDmg
+ * Constants: damageProfile = "Projectile", range = "2", nrOfHits = "3", unitToSpawn = "genesSmnDecoy"
+ */
+export const HypersensoryAbilitiesHandler: AbilityHandler = {
+  abilityId: 'HypersensoryAbilities',
+  abilityName: 'Hypersensory Abilities',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const hpPct = values.hpPct as number || 30;
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+
+    // This is a defensive/reaction ability - doesn't modify own attacks
+    return {
+      abilityId: 'HypersensoryAbilities',
+      abilityName: getAbilityNameSync('HypersensoryAbilities'),
+      modifiers: {},
+      applicable: false,
+      reason: `First attack/enemy turn: can't drop below ${hpPct}% HP, move + place decoy, counter 3x ${minDmg}-${maxDmg} Projectile (range 2)`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * CosmicHorror (The Patermine)
+ * On defeating enemy: places decoy on that hex, enemies around may be suppressed.
+ * When moving onto decoy: heals for hp.
+ * Variables: chance, hp, extraDmg
+ * Constants: unitToSpawn = "genesSmnDecoy"
+ */
+export const CosmicHorrorHandler: AbilityHandler = {
+  abilityId: 'CosmicHorror',
+  abilityName: 'Cosmic Horror',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const chance = values.chance as number || 40;
+    const hp = values.hp as number || 0;
+    const extraDmg = values.extraDmg as number || 0;
+    // Toggle indicates Patermine defeated an enemy this battle (has stacks for bonus)
+    const hasStacks = context.abilityToggles?.['CosmicHorror'] ?? false;
+
+    return {
+      abilityId: 'CosmicHorror',
+      abilityName: getAbilityNameSync('CosmicHorror'),
+      modifiers: hasStacks ? {
+        baseDamageBonus: extraDmg,
+      } : {},
+      applicable: hasStacks,
+      reason: hasStacks
+        ? `+${extraDmg} dmg. On kill: place decoy, ${chance}% suppress/fatigue nearby. Move to decoy: heal ${hp}`
+        : `On kill: place decoy, ${chance}% suppress/fatigue nearby. Move to decoy: heal ${hp}`,
+      requiresToggle: true,
+      toggleLabel: 'Has Cosmic Horror stacks',
+    };
+  },
+};
+
+/**
+ * SpiritualLeader (Xybia)
+ * After moving, places decoy on empty adjacent hex. If 2+ decoys adjacent, summons Neophyte Hybrid.
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: unitId_2 = "genesSmnDecoy", unitId = "genesSmnNeophyte"
+ */
+export const SpiritualLeaderHandler: AbilityHandler = {
+  abilityId: 'SpiritualLeader',
+  abilityName: 'Spiritual Leader',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+
+    // This is a post-movement passive - doesn't modify attacks directly
+    return {
+      abilityId: 'SpiritualLeader',
+      abilityName: getAbilityNameSync('SpiritualLeader'),
+      modifiers: {},
+      applicable: false,
+      reason: `After moving: place decoy. If 2+ decoys adj: summon Neophyte (HP:${summonHp}, Dmg:${summonDmg}, Armor:${summonArmor})`,
+      requiresToggle: false,
+    };
+  },
+};
+
+// ==================== LeaguesOfVotann ====================
+
+/**
+ * GrimEfficiency (Uthar)
+ * Grants armor and pierce ratio bonuses to units within range
+ * Variables: extraArmor, extraPierceRatio
+ * Constants: range: 2
+ */
+export const GrimEfficiencyHandler: AbilityHandler = {
+  abilityId: 'GrimEfficiency',
+  abilityName: 'Grim Efficiency',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraArmor = values.extraArmor as number || 0;
+    const extraPierceRatio = values.extraPierceRatio as number || 10;
+
+    // This is an aura passive - provides bonuses to nearby units
+    return {
+      abilityId: 'GrimEfficiency',
+      abilityName: getAbilityNameSync('GrimEfficiency'),
+      modifiers: {
+        pierceRatioBonus: extraPierceRatio,
+      },
+      applicable: true,
+      reason: `Aura (range 2): +${extraArmor} armor, +${extraPierceRatio}% pierce ratio`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * EcogSupport (Vynn)
+ * After attacking, summons an E-COG unit adjacent to target
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: maxSummons: 3, unitId: votanSmnEcog
+ */
+export const EcogSupportHandler: AbilityHandler = {
+  abilityId: 'EcogSupport',
+  abilityName: 'E-COG Support',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+
+    // This is a post-attack summon passive
+    return {
+      abilityId: 'EcogSupport',
+      abilityName: getAbilityNameSync('EcogSupport'),
+      modifiers: {},
+      applicable: false,
+      reason: `After attack: summon E-COG adj to target (max 3). HP:${summonHp}, Dmg:${summonDmg}, Armor:${summonArmor}`,
+      requiresToggle: false,
+    };
+  },
+};
+
+// ==================== AdeptusMechanicus ====================
+
+/**
+ * HeavyGravCannon (Sy-gex)
+ * Ranged attacks vs Gravis, Terminator, or Mechanical deal extra damage and pierce ratio
+ * Variables: extraDmg, extraPierceRatio
+ */
+export const HeavyGravCannonHandler: AbilityHandler = {
+  abilityId: 'HeavyGravCannon',
+  abilityName: 'Heavy Grav-Cannon',
+  category: 'passive',
+  cooldown: -1,
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const extraPierceRatio = values.extraPierceRatio as number || 40;
+    // Toggle indicates target is Gravis, Terminator, or Mechanical
+    const validTarget = context.abilityToggles?.['HeavyGravCannon'] ?? false;
+
+    return {
+      abilityId: 'HeavyGravCannon',
+      abilityName: getAbilityNameSync('HeavyGravCannon'),
+      modifiers: validTarget ? {
+        baseDamageBonus: extraDmg,
+        pierceRatioBonus: extraPierceRatio,
+      } : {},
+      applicable: validTarget,
+      reason: validTarget
+        ? `vs Gravis/Terminator/Mechanical: +${extraDmg} dmg, +${extraPierceRatio}% pierce`
+        : `Ranged vs Gravis/Terminator/Mechanical: +${extraDmg} dmg, +${extraPierceRatio}% pierce`,
+      requiresToggle: true,
+      toggleLabel: 'Target is Gravis/Terminator/Mechanical',
+    };
+  },
+};
+
+/**
+ * AggressiveOnslaught (Mataneo)
+ * When charging, Mataneo summons 2 Jump Pack Intercessors that immediately attack his target.
+ * The summons leave the battlefield at the start of Mataneo's next turn.
+ * Variables: summonDmg, summonHp, summonArmor
+ * Constants: nrOfSummons: 2, unitId: bloodSmnIntercessor
+ */
+export const AggressiveOnslaughtHandler: AbilityHandler = {
+  abilityId: 'AggressiveOnslaught',
+  abilityName: 'Aggressive Onslaught',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    // Only triggers when charging (toggle)
+    const isCharging = context.abilityToggles['AggressiveOnslaught'] ?? false;
+    const applicable = isCharging && (context.attackType === 'melee' || context.attackType === 'ranged');
+
+    // Get summon damage values
+    const summonDmg = values.summonDmg as number || 0;
+    // 2 summons × 1 hit each = 2 hits total
+    const nrOfSummons = 2;
+    const totalHits = nrOfSummons * 1;
+
+    // Build follow-up attack representing the summons' immediate attacks
+    const followUpAttack: FollowUpAttack | undefined = applicable ? {
+      abilityId: 'AggressiveOnslaught',
+      abilityName: 'Jump Pack Intercessors',
+      damageProfile: 'Physical',
+      minDamage: summonDmg,
+      maxDamage: summonDmg,
+      hits: totalHits,
+      attackCategory: 'special',  // Summon follow-up attack
+      triggersOnNormalOnly: true,  // Only triggers on normal attacks while charging
+      followUpAttackType: 'melee',  // Summons perform melee attacks
+    } : undefined;
+
+    return {
+      abilityId: 'AggressiveOnslaught',
+      abilityName: getAbilityNameSync('AggressiveOnslaught'),
+      modifiers: {},  // No modifiers to Mataneo's own attack
+      applicable,
+      reason: isCharging
+        ? `Charging: 2x Jump Pack Intercessors attack (${totalHits}x ${summonDmg} Physical)`
+        : 'Requires Charging',
+      requiresToggle: true,
+      toggleLabel: 'Charging',
+      followUpAttack,
+    };
+  },
+};
+
 // Export all passive handlers
 // Note: LegendaryCommander is now handled via the buff pool system (buffRegistry.ts)
 export const passiveHandlers: AbilityHandler[] = [
@@ -786,5 +3148,86 @@ export const passiveHandlers: AbilityHandler[] = [
   StandVigilHandler,
   SereneUnifierHandler,
   OptimizedGaitHandler,
+  FuelledByFuryHandler,
+  VisionsOfHeresyHandler,
+  LordOfTempestsHandler,
+  HuntersBeyondDeathHandler,
+  SavageKillerHandler,
+  LionHelmHandler,
+  FearedInterrogatorHandler,
+  DeathwingHandler,
+  EnmityForTheUnworthyHandler,
+  GrimRetributionHandler,
+  BoltstormHandler,
+  MartialSuperiorityHandler,
+  AstartesBannerHandler,
+  UnwaveringSentinelHandler,
+  FireOfAbsolutionHandler,
+  RighteousRepugnanceHandler,
+  CondemnorStakeHandler,
+  GeminaeSuperiasHandler,
+  SwornProtectorHandler,
+  ToughToKillHandler,
+  AvalancheOfMuscleHandler,
+  NightshroudHandler,
+  SpotterReworkedHandler,
+  SummaryExecutionHandler,
+  DefenderOfTheGreaterGoodHandler,
+  PathOfCommandHandler,
+  WireweaveNetHandler,
+  TerrorsLamentHandler,
+  InescapableAccuracyHandler,
+  FabricatorClawArrayHandler,
+  MartialApotheosisHandler,
+  InescapableDeathHandler,
+  RelentlessMarchHandler,
+  LivingLightningHandler,
+  FeederTendrilsHandler,
+  NeuroparasiteHandler,
+  BarbedOvipositorHandler,
+  GuardianOrganismHandler,
+  SynapticLinchpinHandler,
+  KustomForceFieldHandler,
+  PowerTripHandler,
+  SquigHoundHandler,
+  SmashaEadHandler,
+  HatefulAssaultHandler,
+  PossessionHandler,
+  HeadClaimerHandler,
+  FleshmetalGunsHandler,
+  BeaconOfRageHandler,
+  SkullsmasherHandler,
+  TrophyTakerHandler,
+  WrathfulDevotionHandler,
+  // DeathGuard
+  CursedPlagueBellHandler,
+  HazeOfCorruptionHandler,
+  TaintedNartheciumHandler,
+  ExplosiveMaladiesHandler,
+  DestroyerHiveHandler,
+  // ThousandSons
+  InfernalPactsHandler,
+  PsychicStalkHandler,
+  ArcaneShieldHandler,
+  TimeFluxHandler,
+  RealityUnboundHandler,
+  // EmperorsChildren
+  ObsessiveAnnunciationHandler,
+  EcstaticSlaughterHandler,
+  ArmourOfShriekingSoulsHandler,
+  TerrifyingCrescendoHandler,
+  // Genestealers
+  TwistedScienceHandler,
+  DecoysAndMisdirectionHandler,
+  HypersensoryAbilitiesHandler,
+  CosmicHorrorHandler,
+  SpiritualLeaderHandler,
+  // LeaguesOfVotann
+  GrimEfficiencyHandler,
+  EcogSupportHandler,
+  // AdeptusMechanicus
+  HeavyGravCannonHandler,
+  // Blood Angels
+  AggressiveOnslaughtHandler,
   // LegendaryCommanderHandler, // Removed: now using buff pool for team-wide LC application
 ];

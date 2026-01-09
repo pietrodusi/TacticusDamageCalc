@@ -210,19 +210,18 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer, onExecuteO
 
       {/* Other Actions */}
       <div className={`grid gap-2 ${hasMechanicTrait || hasTheBetrayerAbility || showOverwatchButton ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
-        {/* Move - hidden for now */}
-        {false && (
-          <button
-            onClick={() => !isTurnEnded && !character.hasMoved && onAction('move')}
-            disabled={isTurnEnded || character.hasMoved}
-            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
-              isTurnEnded || character.hasMoved ? disabledClasses : colorClasses.green
-            }`}
-          >
-            <Move size={18} />
-            <span className="text-xs font-medium">Move</span>
-          </button>
-        )}
+        {/* Move */}
+        <button
+          onClick={() => !isTurnEnded && !character.hasMoved && onAction('move')}
+          disabled={isTurnEnded || character.hasMoved}
+          className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+            isTurnEnded || character.hasMoved ? disabledClasses : colorClasses.green
+          }`}
+          title="Mark character as moved (disables HeavyWeapon, CrushingStrike, Emplacement bonuses)"
+        >
+          <Move size={18} />
+          <span className="text-xs font-medium">Move</span>
+        </button>
 
         {/* Repair (only for Mechanic trait) */}
         {hasMechanicTrait && (

@@ -200,6 +200,15 @@ export interface FollowUpAttack {
 }
 
 /**
+ * Trigger data for passives that cause summons to attack
+ */
+export interface SummonTriggerData {
+  type: 'summonAttack';
+  summonId: string;  // ID of the summon that attacks (e.g., 'ultraSmnInceptor')
+  extraDmg: number;  // Bonus damage for the summon's attack
+}
+
+/**
  * Result of passive ability evaluation
  */
 export interface PassiveAbilityEvaluation {
@@ -211,6 +220,7 @@ export interface PassiveAbilityEvaluation {
   requiresToggle: boolean;
   toggleLabel?: string;  // Label for the toggle (e.g., "Killed enemy")
   followUpAttack?: FollowUpAttack;  // Additional attack triggered after main attack
+  triggerData?: SummonTriggerData;  // For passives that trigger summon attacks
 }
 
 /**
