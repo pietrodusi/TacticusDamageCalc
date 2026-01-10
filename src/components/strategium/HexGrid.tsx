@@ -262,11 +262,11 @@ export function HexGrid({
   }, []);
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-gray-950">
+    <div className="w-full h-full overflow-auto bg-gray-950">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        className="max-w-full max-h-full"
+        className="w-full h-auto"
         style={{ cursor: draggingToken ? 'grabbing' : 'default', touchAction: 'none' }}
         onPointerMove={handleSvgPointerMove}
         onPointerUp={(e) => {
