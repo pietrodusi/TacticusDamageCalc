@@ -142,19 +142,20 @@ export const useStrategiumStore = create<StrategiumState & StrategiumActions>()(
     const boss = getBossAtRank(selectedBoss.bossId, selectedBoss.rank, false);
 
     // Initialize boss placement at starting position
+    const startRotation = mapMetadata.bossStartRotation ?? 0;
     const bossPlacement: BossPlacement = {
       bossId: selectedBoss.bossId,
       bossName: boss?.name || 'Boss',
       iconUrl: boss?.iconUrl,
       size: mapMetadata.bossSize,
       positions: {
-        0: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
-        1: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
-        2: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
-        3: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
-        4: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
-        5: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
-        6: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
+        0: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+        1: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+        2: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+        3: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+        4: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+        5: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+        6: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
       },
     };
 
@@ -347,7 +348,8 @@ export const useStrategiumStore = create<StrategiumState & StrategiumActions>()(
 
       const currentPosition = state.bossPlacement.positions[currentTurn];
       const currentRotation = currentPosition?.rotation || 0;
-      const newRotation = (currentRotation + 60) % 360;
+      // Toggle between 60 and 120 degrees only
+      const newRotation = currentRotation === 60 ? 120 : 60;
 
       const newPositions = { ...state.bossPlacement.positions };
       for (let t = currentTurn; t <= MAX_TURNS; t++) {
@@ -417,23 +419,25 @@ export const useStrategiumStore = create<StrategiumState & StrategiumActions>()(
   resetAllPlacements: () => {
     const { selectedMapId, bossPlacement } = get();
     const mapMetadata = selectedMapId ? getMapMetadata(selectedMapId) : null;
+    const startRotation = mapMetadata?.bossStartRotation ?? 0;
 
     set((state) => ({
       characterPlacements: state.characterPlacements.map((p) => ({
         ...p,
-        positions: { 1: null, 2: null, 3: null, 4: null, 5: null, 6: null },
+        positions: { 0: null, 1: null, 2: null, 3: null, 4: null, 5: null, 6: null },
       })),
       summonPlacements: [],
       bossPlacement: bossPlacement && mapMetadata
         ? {
             ...bossPlacement,
             positions: {
-              1: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
-              2: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
-              3: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
-              4: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
-              5: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
-              6: { hexCoord: mapMetadata.bossStartPosition, rotation: 0 },
+              0: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+              1: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+              2: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+              3: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+              4: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+              5: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
+              6: { hexCoord: mapMetadata.bossStartPosition, rotation: startRotation },
             },
           }
         : state.bossPlacement,

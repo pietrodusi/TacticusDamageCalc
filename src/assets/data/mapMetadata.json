@@ -16,7 +16,8 @@
         "rows": 14,
         "cols": 16
       },
-      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossStartPosition": { "q": 2, "r": 3 },
+      "bossStartRotation": 120,
       "bossSize": 3
     },
     "GRTervigon_1b": {
@@ -36,6 +37,7 @@
         "cols": 16
       },
       "bossStartPosition": { "q": 8, "r": 2 },
+      "bossStartRotation": 60,
       "bossSize": 3
     },
     "GRTervigon_2a": {
@@ -55,6 +57,7 @@
         "cols": 16
       },
       "bossStartPosition": { "q": 8, "r": 2 },
+      "bossStartRotation": 60,
       "bossSize": 3
     },
     "GRTervigon_2b": {
@@ -74,6 +77,7 @@
         "cols": 16
       },
       "bossStartPosition": { "q": 8, "r": 2 },
+      "bossStartRotation": 60,
       "bossSize": 3
     },
     "GRTervigon_3": {
@@ -93,6 +97,7 @@
         "cols": 16
       },
       "bossStartPosition": { "q": 8, "r": 2 },
+      "bossStartRotation": 60,
       "bossSize": 3
     },
     "GRTervigon_4a": {
@@ -112,6 +117,7 @@
         "cols": 16
       },
       "bossStartPosition": { "q": 8, "r": 2 },
+      "bossStartRotation": 60,
       "bossSize": 3
     },
     "GRTervigon_4b": {
@@ -131,6 +137,7 @@
         "cols": 16
       },
       "bossStartPosition": { "q": 8, "r": 2 },
+      "bossStartRotation": 60,
       "bossSize": 3
     },
     "GRTervigon_5a": {
@@ -150,6 +157,7 @@
         "cols": 16
       },
       "bossStartPosition": { "q": 8, "r": 2 },
+      "bossStartRotation": 60,
       "bossSize": 3
     },
     "GRTervigon_5b": {
@@ -169,6 +177,7 @@
         "cols": 16
       },
       "bossStartPosition": { "q": 8, "r": 2 },
+      "bossStartRotation": 60,
       "bossSize": 3
     },
     "GRTervigon_6a": {
@@ -188,6 +197,7 @@
         "cols": 16
       },
       "bossStartPosition": { "q": 8, "r": 2 },
+      "bossStartRotation": 60,
       "bossSize": 3
     },
     "GRTervigon_6b": {
@@ -207,6 +217,7 @@
         "cols": 16
       },
       "bossStartPosition": { "q": 8, "r": 2 },
+      "bossStartRotation": 60,
       "bossSize": 3
     }
   }

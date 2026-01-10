@@ -262,20 +262,20 @@ export function HexGrid({
   }, []);
 
   return (
-    <div className="w-full h-full overflow-auto flex items-center justify-center bg-gray-950">
+    <div className="w-full h-full flex items-center justify-center bg-gray-950">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        style={{ height: '100%', cursor: draggingToken ? 'grabbing' : 'default', touchAction: 'none' }}
+        className="max-w-full max-h-full"
+        style={{ cursor: draggingToken ? 'grabbing' : 'default', touchAction: 'none' }}
         onPointerMove={handleSvgPointerMove}
         onPointerUp={(e) => {
-          if (draggingToken) {
-            (e.target as Element).releasePointerCapture?.(e.pointerId);
-          }
+          svgRef.current?.releasePointerCapture?.(e.pointerId);
           handleSvgPointerUp(e);
         }}
         onPointerLeave={handleSvgPointerLeave}
-        onPointerCancel={() => {
+        onPointerCancel={(e) => {
+          svgRef.current?.releasePointerCapture?.(e.pointerId);
           setDraggingToken(null);
           setDragPosition(null);
           setDragStartHex(null);
@@ -458,6 +458,7 @@ export function HexGrid({
                 setDragStartHex(bossPlacement.positions[currentTurn].hexCoord);
               }}
               onRotate={onBossRotate}
+              onPointerCapture={(pointerId) => svgRef.current?.setPointerCapture?.(pointerId)}
             />
           )}
 
@@ -469,6 +470,8 @@ export function HexGrid({
             if (draggingToken?.id === placement.characterId) return null;
 
             const center = hexToPixel(pos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale);
+            const corners = hexCorners(center, hexSize, verticalScale);
+            const hexPoints = corners.map((c) => `${c.x},${c.y}`).join(' ');
             const isSelected = selectedTokenId === placement.characterId && selectedTokenType === 'character';
             const colorIndex = index % CHARACTER_COLORS.length;
             const charColor = CHARACTER_COLORS[colorIndex];
@@ -480,8 +483,8 @@ export function HexGrid({
                 style={{ cursor: 'grab', touchAction: 'none' }}
                 onPointerDown={(e) => {
                   e.stopPropagation();
-                  // Capture pointer for reliable touch dragging
-                  (e.target as Element).setPointerCapture?.(e.pointerId);
+                  // Capture pointer on SVG for reliable touch dragging
+                  svgRef.current?.setPointerCapture?.(e.pointerId);
                   // Select the character
                   if (selectedTokenId !== placement.characterId) {
                     onTokenClick(placement.characterId, 'character');
@@ -492,6 +495,13 @@ export function HexGrid({
                   setDragStartHex(pos.hexCoord);
                 }}
               >
+                {/* Hex fill polygon */}
+                <polygon
+                  points={hexPoints}
+                  fill={charColor.fill}
+                  stroke={isSelected ? '#eab308' : charColor.stroke}
+                  strokeWidth={isSelected ? 3 : 2}
+                />
                 {/* Token circle */}
                 <circle
                   cx={center.x}
@@ -725,9 +735,10 @@ interface BossTokenProps {
   onHexClick: (hex: HexCoord) => void;
   onDragStart?: (center: Point) => void;
   onRotate?: () => void;
+  onPointerCapture?: (pointerId: number) => void;
 }
 
-function BossToken({ bossPlacement, position, hexSize, verticalScale, origin, isSelected, onCenterClick, onHexClick, onDragStart, onRotate }: BossTokenProps) {
+function BossToken({ bossPlacement, position, hexSize, verticalScale, origin, isSelected, onCenterClick, onHexClick, onDragStart, onRotate, onPointerCapture }: BossTokenProps) {
   const center = hexToPixel(position.hexCoord, hexSize, origin, verticalScale);
   const bossHexes = getBossOccupiedHexes(position.hexCoord, bossPlacement.size, position.rotation || 0);
 
@@ -736,8 +747,8 @@ function BossToken({ bossPlacement, position, hexSize, verticalScale, origin, is
 
   const handlePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
-    // Capture pointer for reliable touch dragging
-    (e.target as Element).setPointerCapture?.(e.pointerId);
+    // Capture pointer on parent SVG for reliable touch dragging
+    onPointerCapture?.(e.pointerId);
 
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;

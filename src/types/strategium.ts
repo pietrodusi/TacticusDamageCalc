@@ -60,6 +60,7 @@ export interface MapMetadata {
   imageHeight: number;
   hexGrid: HexGridConfig;
   bossStartPosition: HexCoord;
+  bossStartRotation?: number; // Initial rotation for 3-hex bosses (0, 60, 120, 180, 240, 300)
   bossSize: 1 | 3 | 7;
 }
 
