@@ -4,7 +4,7 @@ import { Search } from 'lucide-react';
 import { useCharacterList } from '../hooks/useCharacters';
 import { CharacterCard } from '../components/character';
 import { LoadingSpinner } from '../components/ui';
-import { getFactionsByAlliance, getAllianceOrder, getFactionImageUrl, getFactionDisplayName, getCharacter } from '../services/dataService';
+import { getFactionsByAlliance, getAllianceOrder, getFactionImageUrl, getFactionDisplayName } from '../services/dataService';
 import { useTeamStore } from '../stores/teamStore';
 
 export function CharacterListPage() {
@@ -14,21 +14,22 @@ export function CharacterListPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const factionsByAlliance = getFactionsByAlliance();
   const allianceOrder = getAllianceOrder();
-  const { addCharacter, team } = useTeamStore();
+  const { team } = useTeamStore();
 
-  // Check if we're in "add to team" mode
-  const addToTeamMode = (location.state as { addToTeam?: boolean })?.addToTeam === true;
+  // Check if we're in "add to team" mode and get return path
+  const locationState = location.state as { addToTeam?: boolean; returnTo?: string } | null;
+  const addToTeamMode = locationState?.addToTeam === true;
+  const returnTo = locationState?.returnTo || '/calculator';
 
   const handleCharacterClick = (characterId: string) => {
     if (addToTeamMode) {
       // Check if already in team
       if (team.some(c => c.id === characterId)) return;
 
-      const character = getCharacter(characterId);
-      if (character) {
-        addCharacter(character);
-        navigate('/calculator');
-      }
+      // Navigate to detail page to configure the character before adding
+      navigate(`/characters/${encodeURIComponent(characterId)}`, {
+        state: { addToTeam: true, returnTo }
+      });
     }
   };
 

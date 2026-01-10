@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Plus, Check, User } from 'lucide-react';
 import { useCharacter } from '../hooks/useCharacters';
 import { CharacterStats, DEFAULT_PROGRESSION_STEP, DEFAULT_RANK, AbilitySection, EquipmentSection } from '../components/character';
@@ -11,8 +11,13 @@ import type { EquippedItem, ItemStats } from '../types';
 export function CharacterDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { data: character, isLoading, error } = useCharacter(id || '');
   const { addCharacter, updateCharacterProgression, updateCharacterAbilityLevels, updateCharacterEquipment, team, canAddCharacter } = useTeamStore();
+
+  // Get navigation state for return path
+  const locationState = location.state as { addToTeam?: boolean; returnTo?: string } | null;
+  const returnTo = locationState?.returnTo || '/calculator';
 
   // Find if character is already in team (use id from params for initial state)
   const existingTeamMember = team.find((c) => c.id === id);
@@ -61,9 +66,11 @@ export function CharacterDetailPage() {
   }, []);
 
   const handleAddToTeam = () => {
-    if (character && canAddCharacter()) {
+    if (!character) return;
+
+    if (canAddCharacter()) {
       addCharacter(character, selectedProgressionStep, selectedRank, abilityLevels, equipment);
-      navigate('/calculator');
+      navigate(returnTo);
     }
   };
 
@@ -72,7 +79,7 @@ export function CharacterDetailPage() {
       updateCharacterProgression(character.id, selectedProgressionStep, selectedRank);
       updateCharacterAbilityLevels(character.id, abilityLevels);
       updateCharacterEquipment(character.id, equipment);
-      navigate('/calculator');
+      navigate(returnTo);
     }
   };
 

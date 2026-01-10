@@ -6,6 +6,7 @@ import {
   CharacterListPage,
   CharacterDetailPage,
   CalculatorPage,
+  StrategiumPage,
 } from './pages';
 
 const queryClient = new QueryClient({
@@ -27,6 +28,7 @@ function App() {
             <Route path="characters" element={<CharacterListPage />} />
             <Route path="characters/:id" element={<CharacterDetailPage />} />
             <Route path="calculator" element={<CalculatorPage />} />
+            <Route path="strategium" element={<StrategiumPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

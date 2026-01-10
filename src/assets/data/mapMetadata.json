@@ -1,0 +1,213 @@
+{
+  "maps": {
+    "GRTervigon_1a": {
+      "mapId": "GRTervigon_1a",
+      "imageFile": "GRTervigon_1a.webp",
+      "bossId": "GuildBoss1Boss1TyranTervigonLeviathan",
+      "displayName": "Tervigon Stage 1A",
+      "imageWidth": 1080,
+      "imageHeight": 1920,
+      "hexGrid": {
+        "originX": 123,
+        "originY": 85,
+        "hexSize": 92,
+        "verticalScale": 0.88,
+        "rotation": 0,
+        "rows": 14,
+        "cols": 16
+      },
+      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossSize": 3
+    },
+    "GRTervigon_1b": {
+      "mapId": "GRTervigon_1b",
+      "imageFile": "GRTervigon_1b.webp",
+      "bossId": "GuildBoss1Boss1TyranTervigonLeviathan",
+      "displayName": "Tervigon Stage 1B",
+      "imageWidth": 1080,
+      "imageHeight": 1920,
+      "hexGrid": {
+        "originX": 100,
+        "originY": 80,
+        "hexSize": 42,
+        "verticalScale": 0.55,
+        "rotation": 0,
+        "rows": 14,
+        "cols": 16
+      },
+      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossSize": 3
+    },
+    "GRTervigon_2a": {
+      "mapId": "GRTervigon_2a",
+      "imageFile": "GRTervigon_2a.webp",
+      "bossId": "GuildBoss1Boss1TyranTervigonLeviathan",
+      "displayName": "Tervigon Stage 2A",
+      "imageWidth": 1080,
+      "imageHeight": 1920,
+      "hexGrid": {
+        "originX": 100,
+        "originY": 80,
+        "hexSize": 42,
+        "verticalScale": 0.55,
+        "rotation": 0,
+        "rows": 14,
+        "cols": 16
+      },
+      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossSize": 3
+    },
+    "GRTervigon_2b": {
+      "mapId": "GRTervigon_2b",
+      "imageFile": "GRTervigon_2b.webp",
+      "bossId": "GuildBoss1Boss1TyranTervigonLeviathan",
+      "displayName": "Tervigon Stage 2B",
+      "imageWidth": 1080,
+      "imageHeight": 1920,
+      "hexGrid": {
+        "originX": 100,
+        "originY": 80,
+        "hexSize": 42,
+        "verticalScale": 0.55,
+        "rotation": 0,
+        "rows": 14,
+        "cols": 16
+      },
+      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossSize": 3
+    },
+    "GRTervigon_3": {
+      "mapId": "GRTervigon_3",
+      "imageFile": "GRTervigon_3.webp",
+      "bossId": "GuildBoss1Boss1TyranTervigonLeviathan",
+      "displayName": "Tervigon Stage 3",
+      "imageWidth": 1080,
+      "imageHeight": 1920,
+      "hexGrid": {
+        "originX": 100,
+        "originY": 80,
+        "hexSize": 42,
+        "verticalScale": 0.55,
+        "rotation": 0,
+        "rows": 14,
+        "cols": 16
+      },
+      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossSize": 3
+    },
+    "GRTervigon_4a": {
+      "mapId": "GRTervigon_4a",
+      "imageFile": "GRTervigon_4a.webp",
+      "bossId": "GuildBoss1Boss1TyranTervigonLeviathan",
+      "displayName": "Tervigon Stage 4A",
+      "imageWidth": 1080,
+      "imageHeight": 1920,
+      "hexGrid": {
+        "originX": 100,
+        "originY": 80,
+        "hexSize": 42,
+        "verticalScale": 0.55,
+        "rotation": 0,
+        "rows": 14,
+        "cols": 16
+      },
+      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossSize": 3
+    },
+    "GRTervigon_4b": {
+      "mapId": "GRTervigon_4b",
+      "imageFile": "GRTervigon_4b.webp",
+      "bossId": "GuildBoss1Boss1TyranTervigonLeviathan",
+      "displayName": "Tervigon Stage 4B",
+      "imageWidth": 1080,
+      "imageHeight": 1920,
+      "hexGrid": {
+        "originX": 100,
+        "originY": 80,
+        "hexSize": 42,
+        "verticalScale": 0.55,
+        "rotation": 0,
+        "rows": 14,
+        "cols": 16
+      },
+      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossSize": 3
+    },
+    "GRTervigon_5a": {
+      "mapId": "GRTervigon_5a",
+      "imageFile": "GRTervigon_5a.webp",
+      "bossId": "GuildBoss1Boss1TyranTervigonLeviathan",
+      "displayName": "Tervigon Stage 5A",
+      "imageWidth": 1080,
+      "imageHeight": 1920,
+      "hexGrid": {
+        "originX": 100,
+        "originY": 80,
+        "hexSize": 42,
+        "verticalScale": 0.55,
+        "rotation": 0,
+        "rows": 14,
+        "cols": 16
+      },
+      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossSize": 3
+    },
+    "GRTervigon_5b": {
+      "mapId": "GRTervigon_5b",
+      "imageFile": "GRTervigon_5b.webp",
+      "bossId": "GuildBoss1Boss1TyranTervigonLeviathan",
+      "displayName": "Tervigon Stage 5B",
+      "imageWidth": 1080,
+      "imageHeight": 1920,
+      "hexGrid": {
+        "originX": 100,
+        "originY": 80,
+        "hexSize": 42,
+        "verticalScale": 0.55,
+        "rotation": 0,
+        "rows": 14,
+        "cols": 16
+      },
+      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossSize": 3
+    },
+    "GRTervigon_6a": {
+      "mapId": "GRTervigon_6a",
+      "imageFile": "GRTervigon_6a.webp",
+      "bossId": "GuildBoss1Boss1TyranTervigonLeviathan",
+      "displayName": "Tervigon Stage 6A",
+      "imageWidth": 1080,
+      "imageHeight": 1920,
+      "hexGrid": {
+        "originX": 100,
+        "originY": 80,
+        "hexSize": 42,
+        "verticalScale": 0.55,
+        "rotation": 0,
+        "rows": 14,
+        "cols": 16
+      },
+      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossSize": 3
+    },
+    "GRTervigon_6b": {
+      "mapId": "GRTervigon_6b",
+      "imageFile": "GRTervigon_6b.webp",
+      "bossId": "GuildBoss1Boss1TyranTervigonLeviathan",
+      "displayName": "Tervigon Stage 6B",
+      "imageWidth": 1080,
+      "imageHeight": 1920,
+      "hexGrid": {
+        "originX": 100,
+        "originY": 80,
+        "hexSize": 42,
+        "verticalScale": 0.55,
+        "rotation": 0,
+        "rows": 14,
+        "cols": 16
+      },
+      "bossStartPosition": { "q": 8, "r": 2 },
+      "bossSize": 3
+    }
+  }
+}

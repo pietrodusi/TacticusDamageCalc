@@ -19,9 +19,11 @@ interface TeamSlotProps {
   character?: TeamMember;
   slotIndex: number;
   onRemove?: (characterId: string) => void;
+  /** Custom navigation state when clicking empty slot to add character */
+  navigationState?: { addToTeam: boolean; returnTo?: string };
 }
 
-export function TeamSlot({ character, slotIndex, onRemove }: TeamSlotProps) {
+export function TeamSlot({ character, slotIndex, onRemove, navigationState }: TeamSlotProps) {
   const progressionSteps = getAllProgressionSteps();
   const [abilitiesLoaded, setAbilitiesLoaded] = useState(false);
 
@@ -29,11 +31,14 @@ export function TeamSlot({ character, slotIndex, onRemove }: TeamSlotProps) {
     ensureAbilitiesLoaded().then(() => setAbilitiesLoaded(true));
   }, []);
 
+  // Default navigation state for calculator
+  const navState = navigationState || { addToTeam: true };
+
   if (!character) {
     return (
       <Link
         to="/characters"
-        state={{ addToTeam: true }}
+        state={navState}
         className="card p-4 flex flex-col items-center justify-center min-h-[180px] border-dashed hover:border-imperial-gold group"
       >
         <div className="w-16 h-16 rounded-full bg-gray-700 flex items-center justify-center mb-3 group-hover:bg-gray-600 transition-colors">

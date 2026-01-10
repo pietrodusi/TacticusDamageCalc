@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Users, Calculator, Home } from 'lucide-react';
+import { Menu, X, Users, Calculator, Home, Map } from 'lucide-react';
 import { useState } from 'react';
 import { useTeamStore } from '../../stores/teamStore';
 
@@ -12,6 +12,7 @@ export function Header() {
     { to: '/', label: 'Home', icon: Home },
     { to: '/characters', label: 'Characters', icon: Users },
     { to: '/calculator', label: 'Calculator', icon: Calculator, badge: team.length || undefined },
+    { to: '/strategium', label: 'Strategium', icon: Map },
   ];
 
   const isActive = (path: string) => {
