@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Users, Calculator } from 'lucide-react';
+import { Users, Calculator, Map } from 'lucide-react';
 
 export function HomePage() {
   return (
@@ -15,7 +15,7 @@ export function HomePage() {
       </div>
 
       {/* Feature Cards */}
-      <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+      <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
         <Link to="/characters" className="card p-6 group">
           <div className="w-14 h-14 rounded-lg bg-blue-900/30 flex items-center justify-center mb-4 group-hover:bg-blue-900/50 transition-colors">
             <Users size={28} className="text-blue-400" />
@@ -33,6 +33,16 @@ export function HomePage() {
           <h2 className="text-xl font-semibold text-gray-100 mb-2">Damage Calculator</h2>
           <p className="text-gray-400">
             Build a team of 5 characters and simulate 6-turn Guild Raid battles
+          </p>
+        </Link>
+
+        <Link to="/strategium" className="card p-6 group">
+          <div className="w-14 h-14 rounded-lg bg-emerald-900/30 flex items-center justify-center mb-4 group-hover:bg-emerald-900/50 transition-colors">
+            <Map size={28} className="text-emerald-400" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-100 mb-2">Strategium</h2>
+          <p className="text-gray-400">
+            Plan character positions and movements across a 6-turn Guild Raid battle
           </p>
         </Link>
       </div>

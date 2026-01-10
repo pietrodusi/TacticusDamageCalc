@@ -266,10 +266,20 @@ export function HexGrid({
       <svg
         ref={svgRef}
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        style={{ height: '100%', cursor: draggingToken ? 'grabbing' : 'default', touchAction: 'manipulation' }}
+        style={{ height: '100%', cursor: draggingToken ? 'grabbing' : 'default', touchAction: 'none' }}
         onPointerMove={handleSvgPointerMove}
-        onPointerUp={handleSvgPointerUp}
+        onPointerUp={(e) => {
+          if (draggingToken) {
+            (e.target as Element).releasePointerCapture?.(e.pointerId);
+          }
+          handleSvgPointerUp(e);
+        }}
         onPointerLeave={handleSvgPointerLeave}
+        onPointerCancel={() => {
+          setDraggingToken(null);
+          setDragPosition(null);
+          setDragStartHex(null);
+        }}
       >
         {/* Map background */}
         {imageUrl && (
@@ -470,6 +480,8 @@ export function HexGrid({
                 style={{ cursor: 'grab', touchAction: 'none' }}
                 onPointerDown={(e) => {
                   e.stopPropagation();
+                  // Capture pointer for reliable touch dragging
+                  (e.target as Element).setPointerCapture?.(e.pointerId);
                   // Select the character
                   if (selectedTokenId !== placement.characterId) {
                     onTokenClick(placement.characterId, 'character');
@@ -724,6 +736,9 @@ function BossToken({ bossPlacement, position, hexSize, verticalScale, origin, is
 
   const handlePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
+    // Capture pointer for reliable touch dragging
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;
 

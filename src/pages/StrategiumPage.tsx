@@ -108,7 +108,7 @@ export function StrategiumPage() {
   // Planning mode
   if (isPlanning) {
     return (
-      <div className="flex-1 flex flex-col min-h-0 max-h-[calc(100dvh-120px)] md:max-h-[calc(100vh-120px)]">
+      <div className="h-[calc(100dvh-120px)] md:h-[calc(100vh-120px)] flex flex-col">
         {/* Header - responsive stacking */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-4 mb-2 md:mb-4">
           <div className="flex items-center justify-between md:block">
@@ -332,7 +332,7 @@ export function StrategiumPage() {
           </div>
 
           {/* Map Area */}
-          <div className="flex-1 min-h-0 bg-gray-900 rounded-lg overflow-hidden">
+          <div className="flex-1 min-h-0 h-full bg-gray-900 rounded-lg overflow-hidden">
             <HexGrid
               mapId={selectedMapId!}
               currentTurn={currentTurn}
