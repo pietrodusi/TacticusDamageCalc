@@ -195,12 +195,12 @@ export function HexGrid({
     );
   }
 
-  const { imageUrl, imageWidth, imageHeight } = mapData;
+  const { imageUrl, imageWidth } = mapData;
   const { originX, originY, hexSize, verticalScale = 0.55 } = effectiveHexGrid;
 
   // Use actual image dimensions for SVG viewBox to preserve aspect ratio
   const svgWidth = imageWidth;
-  const svgHeight = imageHeight;
+  const svgHeight = 1787;
 
   // Convert screen coordinates to SVG coordinates (works with both mouse and touch via PointerEvent)
   const screenToSvg = useCallback((clientX: number, clientY: number): Point | null => {
@@ -262,11 +262,11 @@ export function HexGrid({
   }, []);
 
   return (
-    <div className="w-full h-full overflow-auto bg-gray-950">
+    <div className="w-full h-full overflow-auto bg-gray-950 flex items-center justify-center">
       <svg
         ref={svgRef}
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-        className="w-full h-auto"
+        className="w-full h-auto md:w-auto md:h-full md:max-w-full"
         style={{ cursor: draggingToken ? 'grabbing' : 'default', touchAction: 'none' }}
         onPointerMove={handleSvgPointerMove}
         onPointerUp={(e) => {

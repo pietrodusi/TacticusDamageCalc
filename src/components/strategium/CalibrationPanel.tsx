@@ -81,6 +81,7 @@ export function CalibrationPanel({
           value={gridOverrides.originX}
           min={0}
           max={imageWidth}
+          step={0.5}
           onChange={(v) => handleChange('originX', v)}
         />
         <SliderControl
@@ -88,22 +89,24 @@ export function CalibrationPanel({
           value={gridOverrides.originY}
           min={0}
           max={imageHeight}
+          step={0.5}
           onChange={(v) => handleChange('originY', v)}
         />
         <SliderControl
           label="Hex Size"
           value={gridOverrides.hexSize}
           min={20}
-          max={100}
+          max={150}
+          step={0.5}
           onChange={(v) => handleChange('hexSize', v)}
         />
         <SliderControl
           label="V. Scale"
-          value={Math.round(gridOverrides.verticalScale * 100)}
-          min={30}
-          max={100}
-          onChange={(v) => handleChange('verticalScale', v / 100)}
-          suffix="%"
+          value={gridOverrides.verticalScale}
+          min={0.3}
+          max={1}
+          step={0.01}
+          onChange={(v) => handleChange('verticalScale', v)}
         />
         <SliderControl
           label="Rows"
@@ -123,11 +126,11 @@ export function CalibrationPanel({
         <div className="border-t border-gray-700 pt-3">
           <SliderControl
             label="Grid Opacity"
-            value={Math.round(gridOpacity * 100)}
-            min={10}
-            max={100}
-            onChange={(v) => onOpacityChange(v / 100)}
-            suffix="%"
+            value={gridOpacity}
+            min={0.1}
+            max={1}
+            step={0.05}
+            onChange={(v) => onOpacityChange(v)}
           />
         </div>
       </div>
@@ -167,22 +170,32 @@ interface SliderControlProps {
   min: number;
   max: number;
   onChange: (value: number) => void;
-  suffix?: string;
+  step?: number;
 }
 
-function SliderControl({ label, value, min, max, onChange, suffix = '' }: SliderControlProps) {
+function SliderControl({ label, value, min, max, onChange, step = 1 }: SliderControlProps) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
         <label className="text-xs text-gray-400">{label}</label>
-        <span className="text-xs text-gray-300 font-mono">
-          {value}{suffix}
-        </span>
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => {
+            const val = parseFloat(e.target.value);
+            if (!isNaN(val)) onChange(val);
+          }}
+          className="w-16 text-xs text-gray-300 font-mono bg-gray-700 rounded px-1 py-0.5 text-right"
+        />
       </div>
       <input
         type="range"
         min={min}
         max={max}
+        step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-imperial-gold"

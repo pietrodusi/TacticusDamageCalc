@@ -8,10 +8,10 @@
       "imageWidth": 1080,
       "imageHeight": 1920,
       "hexGrid": {
-        "originX": 123,
-        "originY": 85,
+        "originX": 119,
+        "originY": 9,
         "hexSize": 92,
-        "verticalScale": 0.88,
+        "verticalScale": 0.89,
         "rotation": 0,
         "rows": 14,
         "cols": 16
