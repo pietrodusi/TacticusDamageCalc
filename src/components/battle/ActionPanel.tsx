@@ -166,12 +166,11 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer, onExecuteO
       {/* Attack Actions */}
       <div className="grid grid-cols-2 gap-2">
         {/* Melee Attack */}
-        {/* Melee requires being adjacent to boss */}
         <button
-          onClick={() => !isTurnEnded && !character.hasActed && isAdjacentToBoss && onAction('meleeAttack')}
-          disabled={isTurnEnded || character.hasActed || !isAdjacentToBoss}
+          onClick={() => !isTurnEnded && !character.hasActed && onAction('meleeAttack')}
+          disabled={isTurnEnded || character.hasActed}
           className={`flex flex-col items-center gap-1 p-3 rounded-lg border border-gray-700 transition-colors ${
-            isTurnEnded || character.hasActed || !isAdjacentToBoss ? disabledClasses : colorClasses.red
+            isTurnEnded || character.hasActed ? disabledClasses : colorClasses.red
           }`}
         >
           <div className="flex items-center gap-1">
@@ -186,13 +185,12 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer, onExecuteO
         </button>
 
         {/* Ranged Attack (only show if character has ranged) */}
-        {/* Disable ranged when adjacent to boss */}
         {hasRanged && (
           <button
-            onClick={() => !isTurnEnded && !character.hasActed && !isAdjacentToBoss && onAction('rangedAttack')}
-            disabled={isTurnEnded || character.hasActed || isAdjacentToBoss}
+            onClick={() => !isTurnEnded && !character.hasActed && onAction('rangedAttack')}
+            disabled={isTurnEnded || character.hasActed}
             className={`flex flex-col items-center gap-1 p-3 rounded-lg border border-gray-700 transition-colors ${
-              isTurnEnded || character.hasActed || isAdjacentToBoss ? disabledClasses : colorClasses.blue
+              isTurnEnded || character.hasActed ? disabledClasses : colorClasses.blue
             }`}
           >
             <div className="flex items-center gap-1">
