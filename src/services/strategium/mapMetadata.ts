@@ -26,9 +26,17 @@ export function getAllMaps(): MapMetadata[] {
 
 /**
  * Get maps available for a specific boss
+ * Supports both legacy bossId and new bossIds array
  */
 export function getMapMetadataForBoss(bossId: string): MapMetadata[] {
-  return Object.values(mapMetadata.maps).filter((map) => map.bossId === bossId);
+  return Object.values(mapMetadata.maps).filter((map) => {
+    // Check new bossIds array first
+    if (map.bossIds && map.bossIds.includes(bossId)) {
+      return true;
+    }
+    // Fall back to legacy bossId field
+    return map.bossId === bossId;
+  });
 }
 
 /**

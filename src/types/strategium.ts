@@ -56,7 +56,8 @@ export interface HexGridConfig {
 export interface MapMetadata {
   mapId: string;
   imageFile: string;
-  bossId: string;
+  bossId?: string; // Deprecated: use bossIds instead
+  bossIds?: string[]; // Array of boss IDs that can use this map
   displayName: string;
   imageWidth: number;
   imageHeight: number;
