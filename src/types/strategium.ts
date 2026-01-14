@@ -48,6 +48,8 @@ export interface HexGridConfig {
   rotation: number; // Grid rotation in degrees
   rows: number; // Number of rows
   cols: number; // Number of columns
+  levelYOffset?: number; // Pixels to offset per elevation level
+  hexMargin?: number; // Hex size multiplier for margin (0.8-1.0, default 1.0)
 }
 
 // Map metadata for a specific boss map
@@ -62,6 +64,7 @@ export interface MapMetadata {
   bossStartPosition: HexCoord;
   bossStartRotation?: number; // Initial rotation for 3-hex bosses (0, 60, 120, 180, 240, 300)
   bossSize: 1 | 3 | 7;
+  hexLevels?: Record<string, number>; // "q,r" -> elevation level (0 = ground)
 }
 
 // Map metadata collection

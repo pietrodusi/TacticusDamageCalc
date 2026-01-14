@@ -7,8 +7,17 @@ import type { HexCoord, Point } from '../../types/strategium';
  * @param size The hex size (center to vertex for regular hex)
  * @param origin The pixel origin point
  * @param verticalScale Vertical compression factor for isometric view (default 0.55)
+ * @param level Elevation level (0 = ground, higher = elevated)
+ * @param levelYOffset Pixels to offset per elevation level
  */
-export function hexToPixel(hex: HexCoord, size: number, origin: Point, verticalScale: number = 1): Point {
+export function hexToPixel(
+  hex: HexCoord,
+  size: number,
+  origin: Point,
+  verticalScale: number = 1,
+  level: number = 0,
+  levelYOffset: number = 0
+): Point {
   // Flat-top axial hex layout with isometric compression
   // For flat-top hexes with axial coordinates:
   // x = size * 3/2 * q
@@ -16,9 +25,12 @@ export function hexToPixel(hex: HexCoord, size: number, origin: Point, verticalS
   const x = size * 1.5 * hex.q;
   const y = size * Math.sqrt(3) * (hex.r + hex.q / 2) * verticalScale;
 
+  // Apply elevation offset (higher levels = lower y value on screen)
+  const offset = level * levelYOffset;
+
   return {
     x: origin.x + x,
-    y: origin.y + y,
+    y: origin.y + y - offset,
   };
 }
 
@@ -166,6 +178,17 @@ export function hexEquals(a: HexCoord, b: HexCoord): boolean {
  */
 export function hexKey(hex: HexCoord): string {
   return `${hex.q},${hex.r}`;
+}
+
+/**
+ * Get the elevation level for a hex from a hexLevels map
+ * @param hex The hex coordinate
+ * @param hexLevels Map of "q,r" -> level
+ * @returns The level (0 if not found)
+ */
+export function getHexLevel(hex: HexCoord, hexLevels?: Record<string, number>): number {
+  if (!hexLevels) return 0;
+  return hexLevels[hexKey(hex)] ?? 0;
 }
 
 /**

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Copy, Check, X } from 'lucide-react';
+import type { HexCoord } from '../../types/strategium';
+import { hexKey } from '../../services/strategium/hexUtils';
 
 export interface GridOverrides {
   originX: number;
@@ -8,6 +10,9 @@ export interface GridOverrides {
   verticalScale: number;
   rows: number;
   cols: number;
+  levelYOffset: number;
+  hexLevels: Record<string, number>;
+  hexMargin: number;
 }
 
 interface CalibrationPanelProps {
@@ -18,6 +23,7 @@ interface CalibrationPanelProps {
   onClose: () => void;
   imageWidth: number;
   imageHeight: number;
+  selectedHexes?: HexCoord[];
 }
 
 export function CalibrationPanel({
@@ -28,12 +34,39 @@ export function CalibrationPanel({
   onClose,
   imageWidth,
   imageHeight,
+  selectedHexes = [],
 }: CalibrationPanelProps) {
   const [copied, setCopied] = useState(false);
 
   const handleChange = (field: keyof GridOverrides, value: number) => {
     onGridChange({ ...gridOverrides, [field]: value });
   };
+
+  const handleHexLevelChange = (level: number) => {
+    if (selectedHexes.length === 0) return;
+    const newHexLevels = { ...gridOverrides.hexLevels };
+    for (const hex of selectedHexes) {
+      const key = hexKey(hex);
+      if (level === 0) {
+        delete newHexLevels[key];
+      } else {
+        newHexLevels[key] = level;
+      }
+    }
+    onGridChange({ ...gridOverrides, hexLevels: newHexLevels });
+  };
+
+  // Get common level if all selected hexes have the same level, otherwise null
+  const getCommonLevel = (): number | null => {
+    if (selectedHexes.length === 0) return null;
+    const firstLevel = gridOverrides.hexLevels[hexKey(selectedHexes[0])] ?? 0;
+    const allSame = selectedHexes.every(hex => (gridOverrides.hexLevels[hexKey(hex)] ?? 0) === firstLevel);
+    return allSame ? firstLevel : null;
+  };
+  const commonLevel = getCommonLevel();
+
+  // Only include hexLevels in output if there are any
+  const hasHexLevels = Object.keys(gridOverrides.hexLevels).length > 0;
 
   const jsonOutput = JSON.stringify(
     {
@@ -45,7 +78,10 @@ export function CalibrationPanel({
         rotation: 0,
         rows: gridOverrides.rows,
         cols: gridOverrides.cols,
+        ...(gridOverrides.levelYOffset > 0 && { levelYOffset: gridOverrides.levelYOffset }),
+        ...(gridOverrides.hexMargin < 1 && { hexMargin: Math.round(gridOverrides.hexMargin * 100) / 100 }),
       },
+      ...(hasHexLevels && { hexLevels: gridOverrides.hexLevels }),
     },
     null,
     2
@@ -122,6 +158,53 @@ export function CalibrationPanel({
           max={20}
           onChange={(v) => handleChange('cols', v)}
         />
+        <SliderControl
+          label="Hex Margin"
+          value={gridOverrides.hexMargin}
+          min={0.8}
+          max={1}
+          step={0.01}
+          onChange={(v) => handleChange('hexMargin', v)}
+        />
+
+        <div className="border-t border-gray-700 pt-3">
+          <SliderControl
+            label="Level Offset"
+            value={gridOverrides.levelYOffset}
+            min={0}
+            max={50}
+            step={1}
+            onChange={(v) => handleChange('levelYOffset', v)}
+          />
+        </div>
+
+        {/* Selected Hex Level */}
+        {selectedHexes.length > 0 && (
+          <div className="border-t border-gray-700 pt-3">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs text-gray-400">
+                {selectedHexes.length === 1
+                  ? `Hex (${selectedHexes[0].q}, ${selectedHexes[0].r}) Level`
+                  : `${selectedHexes.length} hexes selected`}
+              </label>
+            </div>
+            <div className="flex gap-1">
+              {[0, 1, 2, 3].map((level) => (
+                <button
+                  key={level}
+                  onClick={() => handleHexLevelChange(level)}
+                  className={`flex-1 py-1 px-2 text-xs rounded ${
+                    commonLevel === level
+                      ? 'bg-imperial-gold text-gray-900 font-medium'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="border-t border-gray-700 pt-3">
           <SliderControl

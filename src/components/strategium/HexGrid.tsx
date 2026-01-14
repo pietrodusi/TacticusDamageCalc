@@ -13,6 +13,7 @@ import {
   hexCorners,
   getBossOccupiedHexes,
   pixelToHex,
+  getHexLevel,
 } from '../../services/strategium/hexUtils';
 import type { GridOverrides } from './CalibrationPanel';
 
@@ -33,6 +34,9 @@ interface HexGridProps {
   calibrationMode?: boolean;
   gridOverrides?: GridOverrides;
   gridOpacity?: number;
+  // Hex selection for calibration (supports multi-select with Ctrl)
+  selectedCalibrationHexes?: HexCoord[];
+  onCalibrationHexSelect?: (hex: HexCoord, isMultiSelect: boolean) => void;
 }
 
 // Color palette for characters (5 distinct colors for up to 5 team members)
@@ -60,6 +64,8 @@ export function HexGrid({
   calibrationMode = false,
   gridOverrides,
   gridOpacity = 0,
+  selectedCalibrationHexes = [],
+  onCalibrationHexSelect,
 }: HexGridProps) {
   const [hoveredHex, setHoveredHex] = useState<HexCoord | null>(null);
 
@@ -83,10 +89,20 @@ export function HexGrid({
         rotation: 0,
         rows: gridOverrides.rows,
         cols: gridOverrides.cols,
+        levelYOffset: gridOverrides.levelYOffset,
+        hexMargin: gridOverrides.hexMargin,
       };
     }
     return mapData.hexGrid;
   }, [mapData, calibrationMode, gridOverrides]);
+
+  // Get hex levels (from overrides in calibration mode, or from map metadata)
+  const hexLevels = useMemo(() => {
+    if (calibrationMode && gridOverrides) {
+      return gridOverrides.hexLevels;
+    }
+    return mapData?.hexLevels ?? {};
+  }, [calibrationMode, gridOverrides, mapData]);
 
   // Generate hex grid
   const hexes = useMemo(() => {
@@ -95,11 +111,10 @@ export function HexGrid({
     const { rows, cols } = effectiveHexGrid;
     const result: HexCoord[] = [];
 
-    for (let r = 0; r < rows; r++) {
+    const rowOffset = -2;  // Start 2 rows higher to cover top-right corner
+    for (let r = rowOffset; r < rows; r++) {
       for (let q = 0; q < cols; q++) {
-        // Offset coordinates to axial
-        const axialQ = q - Math.floor(r / 2);
-        result.push({ q: axialQ, r });
+        result.push({ q, r });
       }
     }
 
@@ -151,7 +166,14 @@ export function HexGrid({
 
   // Handle hex click
   const handleHexClick = useCallback(
-    (hex: HexCoord) => {
+    (hex: HexCoord, e?: React.PointerEvent | React.MouseEvent) => {
+      // In calibration mode, select hex for level editing
+      if (calibrationMode && onCalibrationHexSelect) {
+        const isMultiSelect = e ? (e.ctrlKey || e.metaKey) : false;
+        onCalibrationHexSelect(hex, isMultiSelect);
+        return;
+      }
+
       const key = `${hex.q},${hex.r}`;
       const occupant = occupiedHexes.get(key);
 
@@ -166,7 +188,7 @@ export function HexGrid({
         onHexClick(hex);
       }
     },
-    [occupiedHexes, onHexClick, onTokenClick, selectedTokenId, selectedTokenType]
+    [occupiedHexes, onHexClick, onTokenClick, selectedTokenId, selectedTokenType, calibrationMode, onCalibrationHexSelect]
   );
 
   // Handle drag and drop
@@ -196,7 +218,7 @@ export function HexGrid({
   }
 
   const { imageUrl, imageWidth } = mapData;
-  const { originX, originY, hexSize, verticalScale = 0.55 } = effectiveHexGrid;
+  const { originX, originY, hexSize, verticalScale = 0.55, levelYOffset = 0, hexMargin = 1 } = effectiveHexGrid;
 
   // Use actual image dimensions for SVG viewBox to preserve aspect ratio
   const svgWidth = imageWidth;
@@ -295,20 +317,39 @@ export function HexGrid({
         {/* Hex grid overlay */}
         <g className="hex-grid" opacity={gridOpacity}>
           {hexes.map((hex) => {
-            const center = hexToPixel(hex, hexSize, { x: originX, y: originY }, verticalScale);
-            const corners = hexCorners(center, hexSize, verticalScale);
+            const hexLevel = getHexLevel(hex, hexLevels);
+            const center = hexToPixel(hex, hexSize, { x: originX, y: originY }, verticalScale, hexLevel, levelYOffset);
+            const corners = hexCorners(center, hexSize * hexMargin, verticalScale);
             const points = corners.map((c) => `${c.x},${c.y}`).join(' ');
             const key = `${hex.q},${hex.r}`;
             const occupant = occupiedHexes.get(key);
             const isHovered = hoveredHex?.q === hex.q && hoveredHex?.r === hex.r;
             const isBossHex = bossHexes.some((bh) => bh.q === hex.q && bh.r === hex.r);
             const isOccupantSelected = occupant && selectedTokenId === occupant.id && selectedTokenType === occupant.type;
+            const isCalibrationSelected = calibrationMode && selectedCalibrationHexes.some(h => h.q === hex.q && h.r === hex.r);
 
             let fillColor = 'transparent';
             let strokeColor = 'rgba(255,255,255,0.3)';
             let strokeWidth = 1;
 
-            if (occupant?.type === 'character') {
+            // In calibration mode, color hexes by level
+            if (calibrationMode && hexLevel > 0) {
+              const levelColors = [
+                'transparent',                    // Level 0 - no color
+                'rgba(59, 130, 246, 0.5)',        // Level 1 - Blue
+                'rgba(168, 85, 247, 0.5)',        // Level 2 - Purple
+                'rgba(236, 72, 153, 0.5)',        // Level 3 - Pink
+              ];
+              fillColor = levelColors[hexLevel] ?? levelColors[3];
+              strokeColor = hexLevel === 1 ? '#3b82f6' : hexLevel === 2 ? '#a855f7' : '#ec4899';
+              strokeWidth = 2;
+            }
+
+            if (isCalibrationSelected) {
+              fillColor = 'rgba(234, 179, 8, 0.6)';
+              strokeColor = '#eab308';
+              strokeWidth = 3;
+            } else if (occupant?.type === 'character') {
               const colorIndex = occupant.colorIndex ?? 0;
               const charColor = CHARACTER_COLORS[colorIndex];
               fillColor = charColor.fill;
@@ -335,7 +376,7 @@ export function HexGrid({
                   strokeWidth={strokeWidth}
                   className="cursor-pointer transition-colors"
                   style={{ touchAction: 'manipulation' }}
-                  onPointerDown={() => handleHexClick(hex)}
+                  onPointerDown={(e) => handleHexClick(hex, e)}
                   onPointerEnter={() => setHoveredHex(hex)}
                   onPointerLeave={() => setHoveredHex(null)}
                   onDrop={(e) => handleDrop(e, hex)}
@@ -371,8 +412,10 @@ export function HexGrid({
               return null;
             }
 
-            const from = hexToPixel(prevPos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale);
-            const to = hexToPixel(currPos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale);
+            const fromLevel = getHexLevel(prevPos.hexCoord, hexLevels);
+            const toLevel = getHexLevel(currPos.hexCoord, hexLevels);
+            const from = hexToPixel(prevPos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale, fromLevel, levelYOffset);
+            const to = hexToPixel(currPos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale, toLevel, levelYOffset);
             const colorIndex = index % CHARACTER_COLORS.length;
             const charColor = CHARACTER_COLORS[colorIndex];
 
@@ -412,8 +455,10 @@ export function HexGrid({
               return null;
             }
 
-            const from = hexToPixel(prevPos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale);
-            const to = hexToPixel(currPos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale);
+            const fromLevel = getHexLevel(prevPos.hexCoord, hexLevels);
+            const toLevel = getHexLevel(currPos.hexCoord, hexLevels);
+            const from = hexToPixel(prevPos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale, fromLevel, levelYOffset);
+            const to = hexToPixel(currPos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale, toLevel, levelYOffset);
 
             return (
               <g key="arrow-boss">
@@ -447,8 +492,11 @@ export function HexGrid({
               bossPlacement={bossPlacement}
               position={bossPlacement.positions[currentTurn]}
               hexSize={hexSize}
+              hexMargin={hexMargin}
               verticalScale={verticalScale}
               origin={{ x: originX, y: originY }}
+              hexLevels={hexLevels}
+              levelYOffset={levelYOffset}
               isSelected={selectedTokenId === bossPlacement.bossId && selectedTokenType === 'boss'}
               onCenterClick={() => onTokenClick(bossPlacement.bossId, 'boss')}
               onHexClick={onHexClick}
@@ -469,8 +517,9 @@ export function HexGrid({
             // Don't render if this token is being dragged
             if (draggingToken?.id === placement.characterId) return null;
 
-            const center = hexToPixel(pos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale);
-            const corners = hexCorners(center, hexSize, verticalScale);
+            const charLevel = getHexLevel(pos.hexCoord, hexLevels);
+            const center = hexToPixel(pos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale, charLevel, levelYOffset);
+            const corners = hexCorners(center, hexSize * hexMargin, verticalScale);
             const hexPoints = corners.map((c) => `${c.x},${c.y}`).join(' ');
             const isSelected = selectedTokenId === placement.characterId && selectedTokenType === 'character';
             const colorIndex = index % CHARACTER_COLORS.length;
@@ -549,7 +598,8 @@ export function HexGrid({
             const pos = placement.positions[currentTurn];
             if (!pos) return null;
 
-            const center = hexToPixel(pos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale);
+            const summonLevel = getHexLevel(pos.hexCoord, hexLevels);
+            const center = hexToPixel(pos.hexCoord, hexSize, { x: originX, y: originY }, verticalScale, summonLevel, levelYOffset);
             const isSelected = selectedTokenId === placement.instanceId && selectedTokenType === 'summon';
 
             return (
@@ -728,8 +778,11 @@ interface BossTokenProps {
   bossPlacement: BossPlacement;
   position: { hexCoord: HexCoord; rotation?: number };
   hexSize: number;
+  hexMargin: number;
   verticalScale: number;
   origin: { x: number; y: number };
+  hexLevels: Record<string, number>;
+  levelYOffset: number;
   isSelected: boolean;
   onCenterClick: () => void;
   onHexClick: (hex: HexCoord) => void;
@@ -738,8 +791,9 @@ interface BossTokenProps {
   onPointerCapture?: (pointerId: number) => void;
 }
 
-function BossToken({ bossPlacement, position, hexSize, verticalScale, origin, isSelected, onCenterClick, onHexClick, onDragStart, onRotate, onPointerCapture }: BossTokenProps) {
-  const center = hexToPixel(position.hexCoord, hexSize, origin, verticalScale);
+function BossToken({ bossPlacement, position, hexSize, hexMargin, verticalScale, origin, hexLevels, levelYOffset, isSelected, onCenterClick, onHexClick, onDragStart, onRotate, onPointerCapture }: BossTokenProps) {
+  const bossLevel = getHexLevel(position.hexCoord, hexLevels);
+  const center = hexToPixel(position.hexCoord, hexSize, origin, verticalScale, bossLevel, levelYOffset);
   const bossHexes = getBossOccupiedHexes(position.hexCoord, bossPlacement.size, position.rotation || 0);
 
   // Track last tap time for double-tap detection
@@ -770,8 +824,9 @@ function BossToken({ bossPlacement, position, hexSize, verticalScale, origin, is
     <g className="cursor-pointer">
       {/* Highlight occupied hexes - clicking moves the boss when selected */}
       {bossHexes.map((hex, i) => {
-        const hCenter = hexToPixel(hex, hexSize, origin, verticalScale);
-        const corners = hexCorners(hCenter, hexSize, verticalScale);
+        const hexLevel = getHexLevel(hex, hexLevels);
+        const hCenter = hexToPixel(hex, hexSize, origin, verticalScale, hexLevel, levelYOffset);
+        const corners = hexCorners(hCenter, hexSize * hexMargin, verticalScale);
         const points = corners.map((c) => `${c.x},${c.y}`).join(' ');
         const isCenter = hex.q === position.hexCoord.q && hex.r === position.hexCoord.r;
         return (

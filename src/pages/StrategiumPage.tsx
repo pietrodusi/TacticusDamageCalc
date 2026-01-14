@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2, Map, Settings, GripVertical, X, RotateCcw } from 'lucide-react';
+import { Trash2, Map, Settings, GripVertical, X, RotateCcw, LogOut } from 'lucide-react';
 import { useStrategiumStore } from '../stores/strategiumStore';
 import { useTeamStore } from '../stores/teamStore';
 import { TeamSlot, BossSelector, MachineOfWarSelector } from '../components/battle';
 import { MapSelector, HexGrid, CalibrationPanel } from '../components/strategium';
 import type { GridOverrides } from '../components/strategium';
 import type { BossRank, MachineOfWarStars } from '../types';
+import type { HexCoord } from '../types/strategium';
 import { getMapWithImage } from '../services/strategium/mapMetadata';
 
 export function StrategiumPage() {
@@ -32,6 +33,7 @@ export function StrategiumPage() {
     clearSelectedMap,
     isPlanning,
     startPlanning,
+    exitPlanning,
     currentTurn,
     setCurrentTurn,
     nextTurn,
@@ -55,6 +57,7 @@ export function StrategiumPage() {
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [gridOverrides, setGridOverrides] = useState<GridOverrides | null>(null);
   const [gridOpacity, setGridOpacity] = useState(0);
+  const [selectedCalibrationHexes, setSelectedCalibrationHexes] = useState<HexCoord[]>([]);
 
   // Get map data for calibration
   const mapData = selectedMapId ? getMapWithImage(selectedMapId) : null;
@@ -68,6 +71,9 @@ export function StrategiumPage() {
         verticalScale: mapData.hexGrid.verticalScale ?? 0.55,
         rows: mapData.hexGrid.rows,
         cols: mapData.hexGrid.cols,
+        levelYOffset: mapData.hexGrid.levelYOffset ?? 0,
+        hexLevels: mapData.hexLevels ?? {},
+        hexMargin: mapData.hexGrid.hexMargin ?? 1,
       });
       setIsCalibrating(true);
     }
@@ -77,6 +83,23 @@ export function StrategiumPage() {
     setIsCalibrating(false);
     setGridOverrides(null);
     setGridOpacity(0.4);
+    setSelectedCalibrationHexes([]);
+  };
+
+  // Handle calibration hex selection with multi-select support
+  const handleCalibrationHexSelect = (hex: HexCoord, isMultiSelect: boolean) => {
+    if (isMultiSelect) {
+      // Toggle hex in selection
+      const exists = selectedCalibrationHexes.some(h => h.q === hex.q && h.r === hex.r);
+      if (exists) {
+        setSelectedCalibrationHexes(prev => prev.filter(h => h.q !== hex.q || h.r !== hex.r));
+      } else {
+        setSelectedCalibrationHexes(prev => [...prev, hex]);
+      }
+    } else {
+      // Replace selection with single hex
+      setSelectedCalibrationHexes([hex]);
+    }
   };
 
   const canStartPlanning = team.length > 0 && selectedBoss && selectedMapId;
@@ -121,6 +144,13 @@ export function StrategiumPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
+            {/* Map name */}
+            {mapData && (
+              <span className="text-sm text-gray-300 font-medium hidden md:block">
+                {mapData.displayName}
+              </span>
+            )}
+
             {/* Turn Navigation - larger touch targets on mobile */}
             <div className="flex items-center gap-1 md:gap-2">
               <button
@@ -163,6 +193,16 @@ export function StrategiumPage() {
             >
               <RotateCcw size={16} />
               <span className="hidden md:inline">Reset</span>
+            </button>
+
+            {/* Exit button - returns to map selection */}
+            <button
+              onClick={exitPlanning}
+              className="btn-secondary text-sm flex items-center gap-1 px-2 md:px-3"
+              title="Exit to Map Selection"
+            >
+              <LogOut size={16} />
+              <span className="hidden md:inline">Exit</span>
             </button>
 
             {/* Calibrate button - hidden on mobile */}
@@ -374,6 +414,8 @@ export function StrategiumPage() {
               calibrationMode={isCalibrating}
               gridOverrides={gridOverrides ?? undefined}
               gridOpacity={gridOpacity}
+              selectedCalibrationHexes={selectedCalibrationHexes}
+              onCalibrationHexSelect={handleCalibrationHexSelect}
             />
           </div>
 
@@ -387,6 +429,7 @@ export function StrategiumPage() {
               onClose={handleStopCalibration}
               imageWidth={mapData.imageWidth}
               imageHeight={mapData.imageHeight}
+              selectedHexes={selectedCalibrationHexes}
             />
           )}
         </div>
