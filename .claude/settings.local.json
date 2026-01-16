@@ -29,7 +29,11 @@
       "Bash(node:*)",
       "WebFetch(domain:tacticus.fandom.com)",
       "Bash(npm run dev:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Skill(add-ability)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

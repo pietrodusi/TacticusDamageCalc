@@ -189,7 +189,7 @@ export function CalibrationPanel({
               </label>
             </div>
             <div className="flex gap-1">
-              {[0, 1, 2, 3].map((level) => (
+              {[0, 1, 2, 3, 4, 5].map((level) => (
                 <button
                   key={level}
                   onClick={() => handleHexLevelChange(level)}

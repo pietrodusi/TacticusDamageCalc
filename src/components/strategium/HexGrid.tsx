@@ -339,9 +339,12 @@ export function HexGrid({
                 'rgba(59, 130, 246, 0.5)',        // Level 1 - Blue
                 'rgba(168, 85, 247, 0.5)',        // Level 2 - Purple
                 'rgba(236, 72, 153, 0.5)',        // Level 3 - Pink
+                'rgba(249, 115, 22, 0.5)',        // Level 4 - Orange
+                'rgba(20, 184, 166, 0.5)',        // Level 5 - Teal
               ];
-              fillColor = levelColors[hexLevel] ?? levelColors[3];
-              strokeColor = hexLevel === 1 ? '#3b82f6' : hexLevel === 2 ? '#a855f7' : '#ec4899';
+              const levelStrokes = ['', '#3b82f6', '#a855f7', '#ec4899', '#f97316', '#14b8a6'];
+              fillColor = levelColors[hexLevel] ?? levelColors[5];
+              strokeColor = levelStrokes[hexLevel] ?? levelStrokes[5];
               strokeWidth = 2;
             }
 
