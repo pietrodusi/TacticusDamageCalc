@@ -365,11 +365,22 @@ export function BattleLog({ entries, currentTurn, editingTurn, isComplete, team,
                                     <div className="flex-1 min-w-0">
                                       <p className="text-gray-200 text-xs">{entry.message}</p>
                                       {entry.damageBreakdown ? (
-                                        <DamageBreakdownDisplay
-                                          breakdown={entry.damageBreakdown}
-                                          sourceName={entry.action === 'ability' ? undefined : (entry.attackType === 'ranged' ? 'Ranged Attack' : 'Melee Attack')}
-                                          damageType={entry.damageType}
-                                        />
+                                        entry.action === 'ability' ? (
+                                          // Ability damage - purple styling like special attacks
+                                          <div className="mt-1 bg-purple-900/30 rounded p-1.5 border-l-2 border-purple-500">
+                                            <DamageBreakdownDisplay
+                                              breakdown={entry.damageBreakdown}
+                                              sourceName={entry.attackType ? `${entry.attackType.charAt(0).toUpperCase() + entry.attackType.slice(1)} Ability` : 'Special Attack'}
+                                              damageType={entry.damageType}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <DamageBreakdownDisplay
+                                            breakdown={entry.damageBreakdown}
+                                            sourceName={entry.attackType === 'ranged' ? 'Ranged Attack' : 'Melee Attack'}
+                                            damageType={entry.damageType}
+                                          />
+                                        )
                                       ) : entry.damage !== undefined && entry.damage > 0 ? (
                                         <p className="text-red-400 text-xs">
                                           -{entry.damage.toLocaleString()} damage

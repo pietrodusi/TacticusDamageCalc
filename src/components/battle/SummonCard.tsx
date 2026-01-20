@@ -27,12 +27,11 @@ export function SummonCard({
   onAttack,
 }: SummonCardProps) {
   const hasRanged = summon.rangedHits && summon.rangedHits > 0;
-  const isAdjacentToBoss = summon.abilityToggles?.['adjacentToBoss'] ?? false;
+  const hasMelee = summon.meleeHits && summon.meleeHits > 0;
 
-  // Melee requires being adjacent to boss
-  // Ranged is disabled when adjacent to boss
-  const canMelee = isAdjacentToBoss;
-  const canRanged = hasRanged && !isAdjacentToBoss;
+  // Both attack types are always enabled if the summon has the capability
+  const canMelee = hasMelee;
+  const canRanged = hasRanged;
 
   // Calculate total damage for display (damage × hits)
   const meleeTotalDamage = summon.damage * summon.meleeHits;

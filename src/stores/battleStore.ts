@@ -1248,6 +1248,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         currentHealth: attacker.currentHealth,
         maxHealth: attacker.calculatedHealth,
         currentTurn: battleState.turn,
+        activeAbilitiesUsedCount: battleState.activeAbilitiesUsedCount,  // For FuelledByFury
         attackType,
         attackCategory: 'normal',  // Normal attack
         isFirstSpecialAttackOfTurn: !attacker.hasUsedFirstSpecialAttackThisTurn,  // Per-character LC tracking
@@ -1487,6 +1488,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         currentHealth: attacker.currentHealth,
         maxHealth: attacker.calculatedHealth,
         currentTurn: battleState.turn,
+        activeAbilitiesUsedCount: battleState.activeAbilitiesUsedCount,  // For FuelledByFury
         attackType,
         attackCategory: 'normal',  // Normal attack
         isFirstSpecialAttackOfTurn: !attacker.hasUsedFirstSpecialAttackThisTurn,  // Per-character LC tracking
@@ -1533,6 +1535,34 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         }
         return mods;
       });
+
+    // RitesOfBattle (Calgar) - damage bonus to adjacent allies
+    // Imperial characters get extraDmg_2, others get extraDmg
+    let ritesOfBattleDmgBonus = 0;
+    let ritesOfBattleSource: { name: string; sourceName: string; damageBonus: number } | null = null;
+    for (const teammate of battleState.team) {
+      if (teammate.id === attacker.id) continue;
+      if (teammate.passiveAbilities.includes('RitesOfBattle')) {
+        const toggleId = `RitesOfBattle_${teammate.id}_adjacent`;
+        if (attacker.abilityToggles[toggleId]) {
+          const levelIndex = teammate.abilityLevels?.['RitesOfBattle'] ?? 54;
+          const values = getAbilityValues('RitesOfBattle', levelIndex);
+          if (values) {
+            const isImperial = attacker.alliance === 'Imperial';
+            const extraDmg = isImperial
+              ? (values.extraDmg_2 as number || 0)
+              : (values.extraDmg as number || 0);
+            ritesOfBattleDmgBonus = extraDmg;
+            ritesOfBattleSource = {
+              name: 'Rites of Battle',
+              sourceName: teammate.name,
+              damageBonus: extraDmg,
+            };
+          }
+          break; // Only one Calgar can provide the buff
+        }
+      }
+    }
 
     // Build buff sources for display in damage breakdown
     // Define BuffSource type inline
@@ -1627,6 +1657,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Add RitesOfBattle source for display
+    if (ritesOfBattleSource) {
+      buffSources.push(ritesOfBattleSource);
+    }
+
     // LegendaryCommander is now handled via the buff pool system
     // LC damage and +2 hits bonuses come from poolBuffEffects via getApplicableBuffs
     // For normal attacks, LC +2 hits doesn't apply (only for special attacks)
@@ -1646,9 +1681,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Combine damage multipliers: passive mods + active buff multiplier + markerlight + high ground + war machine
     const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * markerlightMultiplier * highGroundMultiplier * warMachineMultiplier;
-    // Combine flat damage bonuses: passive mods + active buff bonus + options bonus (Overwatch)
+    // Combine flat damage bonuses: passive mods + active buff bonus + options bonus (Overwatch) + RitesOfBattle
     const optionsDamageBonus = options?.baseDamageBonus || 0;
-    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus + optionsDamageBonus;
+    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus + optionsDamageBonus + ritesOfBattleDmgBonus;
 
     // Add options damage bonus source for display (Overwatch)
     if (optionsDamageBonus > 0) {
@@ -2716,105 +2751,6 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       console.log(`Total with Chordclaw: ${totalDamage.toLocaleString()}`);
     }
 
-    // Handle ShockAssault follow-up attacks (Bellator)
-    // When attacker has ShockAssault with toggle enabled, adjacent Inceptor summons attack
-    const shockAssaultEval = passiveResult.evaluations.find(
-      e => e.abilityId === 'ShockAssault' && e.applicable && e.triggerData?.type === 'summonAttack'
-    );
-    if (shockAssaultEval && shockAssaultEval.triggerData) {
-      const currentBattleStateForSA = get().battleState!;
-      const targetSummonId = shockAssaultEval.triggerData.summonId;
-      const shockAssaultExtraDmg = shockAssaultEval.triggerData.extraDmg;
-
-      // Find all matching summons (e.g., Inceptors)
-      const matchingSummons = currentBattleStateForSA.summons.filter(
-        s => s.unitId === targetSummonId
-      );
-
-      if (matchingSummons.length > 0) {
-        console.log('\n--- SHOCK ASSAULT ---');
-        console.log(`Triggered by ${attacker.name}: ${matchingSummons.length} Inceptor(s) attack`);
-
-        for (const inceptorSummon of matchingSummons) {
-          // Each Inceptor attacks with its base stats + extraDmg bonus
-          const summonBaseDamage = inceptorSummon.damage || 0;
-          const summonHits = inceptorSummon.meleeHits || 6;  // Inceptors have 6 hits
-          const summonDamageType = inceptorSummon.meleeDamageType || 'Bolter';
-          const avgSummonDamage = summonBaseDamage + shockAssaultExtraDmg;
-
-          // Simple damage calculation for summon (no crit, respects armor)
-          const perHitBeforeArmor = avgSummonDamage;
-          const effectiveArmorForSummon = Math.max(0, bossArmor);  // Use same bossArmor
-          const afterArmorSummon = Math.max(0, perHitBeforeArmor - effectiveArmorForSummon);
-          const perHitDamageSummon = Math.round(afterArmorSummon * 0.5);  // 50% pierce floor
-          const summonAttackDamage = perHitDamageSummon * summonHits;
-
-          // Prophet of Gork and Mork reduction
-          let saInceptorProphetReduction = 1;
-          if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
-            saInceptorProphetReduction = prophetMultiplier;
-            console.log(`[Prophet of Gork and Mork: -${prophetReductionPct}% damage on Inceptor (attack ${prophetAttackCounter + 1})]`);
-          }
-          const adjustedSummonDamage = Math.round(summonAttackDamage * saInceptorProphetReduction);
-          prophetAttackCounter++;
-
-          totalDamage += adjustedSummonDamage;
-
-          console.log(`${inceptorSummon.name}: ${summonHits}x ${perHitDamageSummon} = ${adjustedSummonDamage}`);
-          console.log(`  Base: ${summonBaseDamage} + Shock Assault: +${shockAssaultExtraDmg} = ${avgSummonDamage}`);
-
-          // Build breakdown for Inceptor attack (summons don't crit)
-          const inceptorBreakdown: DamageBreakdown = {
-            damage: adjustedSummonDamage,
-            perHitDamage: perHitDamageSummon,
-            hits: summonHits,
-            baseDamage: summonBaseDamage,
-            flatModifiers: shockAssaultExtraDmg,
-            flatModifierSources: [{ name: 'Shock Assault', damageBonus: shockAssaultExtraDmg }],
-            critBonus: 0,  // Summons don't crit
-            critChanceSources: [],
-            critDamageSources: [],
-            extraHits: 0,
-            extraHitsSources: [],
-            damVarMod: avgSummonDamage,
-            targetArmor: bossArmor,
-            effectiveArmor: effectiveArmorForSummon,
-            afterArmor: afterArmorSummon,
-            pierceRatio: 50,  // Summons use 50% pierce floor
-            effectivePierceRatio: 50,
-            pierceFloor: Math.round(perHitBeforeArmor * 0.5),
-            afterArmorPierce: perHitDamageSummon,
-            globalMultiplier: 1,
-            globalMultiplierSources: [],
-            baseCritChance: 0,
-            baseCritDamage: 0,
-            critChanceBonus: 0,
-            critDmgBonus: 0,
-            critChance: 0,
-            critDamage: 0,
-          };
-
-          // Add Prophet reduction to breakdown if applied
-          if (saInceptorProphetReduction < 1) {
-            inceptorBreakdown.globalMultiplier = saInceptorProphetReduction;
-            inceptorBreakdown.globalMultiplierSources = [
-              { name: 'Prophet of Gork and Mork', damageMultiplier: saInceptorProphetReduction }
-            ];
-          }
-
-          followUpAttackLogs.push({
-            abilityName: `Shock Assault (${inceptorSummon.name})`,
-            damage: adjustedSummonDamage,
-            hits: summonHits,
-            damageType: summonDamageType as DamageType,
-            breakdown: inceptorBreakdown,
-          });
-        }
-
-        console.log(`Total with Shock Assault: ${totalDamage.toLocaleString()}`);
-      }
-    }
-
     console.groupEnd();
 
     // Build damage breakdown for UI with calculation steps
@@ -3734,7 +3670,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
 
       // Build buff sources for breakdown display
-      const abilityBuffSources: Array<{ name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number }> = [];
+      const abilityBuffSources: Array<{ name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number }> = [];
 
       // Add pool buff sources (including Daughter of the Abyss multiplier, Legendary Commander, etc.)
       for (const poolBuff of singleAbilityApplicableBuffs) {
@@ -3795,8 +3731,26 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         daemonBlockMaxAmount: hasDaemonTraitAbilityDmg ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
       };
 
-      // Calculate total damage and hit bonuses (LC + aura)
-      const totalDmgBonus = lcExtraDmg + auraDmgBonus;
+      // FuelledByFury (Titus): +extraDmg per active ability used in battle
+      let fuelledByFuryBonus = 0;
+      if (character.passiveAbilities.includes('FuelledByFury')) {
+        const fuelledByFuryLevelIndex = character.abilityLevels?.['FuelledByFury'] ?? 54;
+        const fuelledByFuryValues = getAbilityValues('FuelledByFury', fuelledByFuryLevelIndex);
+        if (fuelledByFuryValues) {
+          const extraDmgPerAbility = fuelledByFuryValues.extraDmg as number || 0;
+          fuelledByFuryBonus = battleState.activeAbilitiesUsedCount * extraDmgPerAbility;
+          if (fuelledByFuryBonus > 0) {
+            abilityBuffSources.push({
+              name: `Fuelled by Fury (+${extraDmgPerAbility} × ${battleState.activeAbilitiesUsedCount})`,
+              damageBonus: fuelledByFuryBonus,
+            });
+            console.log(`[FuelledByFury applied to ability: +${extraDmgPerAbility} × ${battleState.activeAbilitiesUsedCount} = +${fuelledByFuryBonus} dmg]`);
+          }
+        }
+      }
+
+      // Calculate total damage and hit bonuses (LC + aura + FuelledByFury)
+      const totalDmgBonus = lcExtraDmg + auraDmgBonus + fuelledByFuryBonus;
       const totalHitsBonus = lcExtraHits + auraHitsBonus;
 
       // Add ability-specific modifiers to buff sources (e.g., Talons of the Emperor scaling)
@@ -3831,15 +3785,42 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         });
       }
 
+      // MortisRound: applies HeavyWeapon bonus twice (extra 1.25x on top of trait bonus)
+      const mortisRoundHeavyWeaponMultiplier = abilityId === 'MortisRound' &&
+        character.traits.includes('HeavyWeapon') &&
+        character.abilityToggles['HeavyWeapon_notMoved']
+        ? 1.25 : 1;
+
+      // Add MortisRound extra HeavyWeapon buff source for display
+      if (mortisRoundHeavyWeaponMultiplier > 1) {
+        abilityBuffSources.push({
+          name: 'Heavy Weapon (MortisRound x2)',
+          damageMultiplier: mortisRoundHeavyWeaponMultiplier,
+        });
+      }
+
+      // Merge ability-specific crit bonuses (e.g., TacticalPrecision 100% crit when charging)
+      const abilityCritChanceBonus = result.abilityModifiers?.critChanceBonus || 0;
+      const abilityCritDamageBonus = result.abilityModifiers?.critDamageBonus || 0;
+
+      // Add ability crit bonuses to buff sources for display
+      if (abilityCritChanceBonus > 0 || abilityCritDamageBonus > 0) {
+        abilityBuffSources.push({
+          name: abilityName,
+          critChanceBonus: abilityCritChanceBonus > 0 ? abilityCritChanceBonus : undefined,
+          critDamageBonus: abilityCritDamageBonus > 0 ? abilityCritDamageBonus : undefined,
+        });
+      }
+
       // Check if we have any ability modifiers to pass
-      const hasModifiers = totalDmgBonus > 0 || totalHitsBonus > 0 || abilityGlobalMultiplier || result.abilityModifiers || poolDamageMultiplier !== 1 || abilityHighGroundMultiplier !== 1 || abilityWarMachineMultiplier !== 1;
+      const hasModifiers = totalDmgBonus > 0 || totalHitsBonus > 0 || abilityGlobalMultiplier || result.abilityModifiers || poolDamageMultiplier !== 1 || abilityHighGroundMultiplier !== 1 || abilityWarMachineMultiplier !== 1 || mortisRoundHeavyWeaponMultiplier !== 1 || abilityCritChanceBonus > 0 || abilityCritDamageBonus > 0;
 
       // Merge ability-specific modifiers with LC + aura bonuses + pool multipliers + high ground + war machine
       const mergedBaseDmgBonus = totalDmgBonus + (result.abilityModifiers?.baseDamageBonus || 0);
-      // Combine all multipliers: pool buff (Daughter of the Abyss) * ability-specific * global multiplier * high ground * war machine
+      // Combine all multipliers: pool buff (Daughter of the Abyss) * ability-specific * global multiplier * high ground * war machine * MortisRound extra
       const abilitySpecificMult = result.abilityModifiers?.baseDamageMultiplier || 1;
       const globalMult = abilityGlobalMultiplier || 1;
-      const combinedMultiplier = poolDamageMultiplier * abilitySpecificMult * globalMult * abilityHighGroundMultiplier * abilityWarMachineMultiplier;
+      const combinedMultiplier = poolDamageMultiplier * abilitySpecificMult * globalMult * abilityHighGroundMultiplier * abilityWarMachineMultiplier * mortisRoundHeavyWeaponMultiplier;
       const mergedBaseDmgMult = combinedMultiplier !== 1 ? combinedMultiplier : undefined;
       const mergedExtraHits = totalHitsBonus + (result.abilityModifiers?.extraHits || 0);
 
@@ -3849,14 +3830,15 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         baseDamage: avgDamagePerHit,
         damageType: result.damageResult.damageProfile,
         hits: baseHits,  // Base hits only, extra hits via abilityModifiers
-        critChance: equipmentStats.critChance || 0,
-        critDamage: equipmentStats.critDmg || 0,
-        critChanceBonus: equipmentStats.critChanceBonus || 0,
-        critDmgBonus: equipmentStats.critDmgBonus || 0,
+        // Pre-sum equipment crit values (like normal attacks) - ability bonuses go via abilityModifiers
+        critChance: (equipmentStats.critChance || 0) + (equipmentStats.critChanceBonus || 0),
+        critDamage: (equipmentStats.critDmg || 0) + (equipmentStats.critDmgBonus || 0),
+        critChanceBonus: 0,  // Ability crit bonus passed via abilityModifiers
+        critDmgBonus: 0,     // Ability crit damage bonus passed via abilityModifiers
         ignoreCrit,
         traits: character.traits,
         hasMoved: true,
-        attackType: 'melee',
+        attackType: abilityAttackType,  // Use ability's attack type for trait evaluation
         hasAttackedThisBattle: character.hasAttackedThisBattle,
         attacksThisTurn: character.attacksThisTurn,
         firstAttackTurn: character.firstAttackTurn,
@@ -3868,6 +3850,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           baseDamageBonus: mergedBaseDmgBonus > 0 ? mergedBaseDmgBonus : undefined,
           baseDamageMultiplier: mergedBaseDmgMult,
           extraHits: mergedExtraHits > 0 ? mergedExtraHits : undefined,
+          critChanceBonus: abilityCritChanceBonus > 0 ? abilityCritChanceBonus : undefined,
+          critDamageBonus: abilityCritDamageBonus > 0 ? abilityCritDamageBonus : undefined,
           buffSources: abilityBuffSources,
         } : undefined,
       };
@@ -5146,6 +5130,20 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
               buffSources.push({ name: 'Serene Unifier', damageBonus: extraDmg });
             }
           }
+        }
+      }
+    }
+
+    // Shock Assault from Bellator (for Inceptor summons adjacent to Bellator)
+    if (summon.unitId === 'ultraSmnInceptor' && sourceCharacter?.passiveAbilities.includes('ShockAssault')) {
+      const toggleId = `ShockAssault_${sourceCharacter.id}_adjacentToBellator`;
+      if (toggles[toggleId]) {
+        const levelIndex = sourceCharacter.abilityLevels?.['ShockAssault'] ?? 54;
+        const values = getAbilityValues('ShockAssault', levelIndex);
+        if (values) {
+          const extraDmg = values.extraDmg as number || 0;
+          flatDamageBonus += extraDmg;
+          buffSources.push({ name: 'Shock Assault', damageBonus: extraDmg });
         }
       }
     }

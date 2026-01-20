@@ -760,6 +760,7 @@ export function CalculatorPage() {
                   team={battleState.team}
                   isSelected={selectedCharacterId === character.id}
                   currentTurn={battleState.turn}
+                  activeAbilitiesUsedCount={battleState.activeAbilitiesUsedCount}
                   selectedMachineOfWar={selectedMachineOfWar}
                   custodedUsedAbilityThisTurn={battleState.custodedUsedAbilityThisTurn}
                   onSelect={() =>

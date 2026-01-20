@@ -112,6 +112,7 @@ export const ExecutionerHandler: AbilityHandler = {
 /**
  * GauntletsOfUltramar (Calgar)
  * Ranged Bolter damage attack
+ * +1 hit when adjacent to boss
  * Variables: minDmg, maxDmg
  * Constants: damageProfile: Bolter, nrOfHits: 1
  */
@@ -121,12 +122,16 @@ export const GauntletsOfUltramarHandler: AbilityHandler = {
   category: 'damage',
   cooldown: -1,
 
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('GauntletsOfUltramar');
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
-    const hits = values.nrOfHits as number || 1;
+    const baseHits = values.nrOfHits as number || 1;
+
+    // +1 hit when adjacent to boss
+    const isAdjacentToBoss = context.abilityToggles?.['adjacentToBoss'] ?? false;
+    const hits = isAdjacentToBoss ? baseHits + 1 : baseHits;
 
     return {
       abilityId: 'GauntletsOfUltramar',
@@ -139,7 +144,8 @@ export const GauntletsOfUltramarHandler: AbilityHandler = {
         hits,
         damageProfile: (values.damageProfile as DamageType) || 'Bolter',
       },
-      message: abilityName,
+      attackType: 'ranged',
+      message: isAdjacentToBoss ? `${abilityName} (+1 hit adjacent)` : abilityName,
     };
   },
 };
@@ -315,10 +321,9 @@ export const StormOfWrathHandler: AbilityHandler = {
 
 /**
  * TacticalPrecision (Titus)
- * Melee ability with two damage components:
- * - Primary: 1x Bolter damage (minDmg, maxDmg)
- * - Secondary: 3x Chain damage (minDmg_2, maxDmg_2)
- * Also provides extraCritDmg bonus
+ * Melee ability with damage based on Charging toggle:
+ * - Charging: 1x Bolter (minDmg, maxDmg) with 100% crit chance and +extraCritDmg
+ * - Not Charging: 3x Chain (minDmg_2, maxDmg_2)
  * Variables: minDmg, maxDmg, minDmg_2, maxDmg_2, extraCritDmg
  */
 export const TacticalPrecisionHandler: AbilityHandler = {
@@ -327,47 +332,57 @@ export const TacticalPrecisionHandler: AbilityHandler = {
   category: 'damage',
   cooldown: -1,
 
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('TacticalPrecision');
+    const isCharging = context.abilityToggles?.['TacticalPrecision_charging'] ?? false;
 
-    // Primary damage: 1x Bolter
-    const minDmg1 = values.minDmg as number || 0;
-    const maxDmg1 = values.maxDmg as number || 0;
-    const avgDmg1 = Math.round((minDmg1 + maxDmg1) / 2);
-    const hits1 = values.nrOfHits as number || 1;
+    if (isCharging) {
+      // Charging: 1x Bolter with 100% crit chance and +extraCritDmg
+      const minDmg = values.minDmg as number || 0;
+      const maxDmg = values.maxDmg as number || 0;
+      const avgDmg = Math.round((minDmg + maxDmg) / 2);
+      const extraCritDmg = values.extraCritDmg as number || 0;
 
-    // Secondary damage: 3x Chain
-    const minDmg2 = values.minDmg_2 as number || 0;
-    const maxDmg2 = values.maxDmg_2 as number || 0;
-    const avgDmg2 = Math.round((minDmg2 + maxDmg2) / 2);
-    const hits2 = values.nrOfHits_2 as number || 3;
-
-    return {
-      abilityId: 'TacticalPrecision',
-      abilityName,
-      category: 'damage',
-      damageComponents: [
-        {
-          minDamage: minDmg1,
-          maxDamage: maxDmg1,
-          averageDamage: avgDmg1,
-          hits: hits1,
+      return {
+        abilityId: 'TacticalPrecision',
+        abilityName,
+        category: 'damage',
+        damageResult: {
+          minDamage: minDmg,
+          maxDamage: maxDmg,
+          averageDamage: avgDmg,
+          hits: 1,
           damageProfile: (values.damageProfile as DamageType) || 'Bolter',
         },
-        {
+        abilityModifiers: {
+          critChanceBonus: 100,  // 100% crit chance
+          critDamageBonus: extraCritDmg,
+        },
+        attackType: 'melee',
+        message: `${abilityName} (Charging)`,
+      };
+    } else {
+      // Not Charging: 3x Chain
+      const minDmg2 = values.minDmg_2 as number || 0;
+      const maxDmg2 = values.maxDmg_2 as number || 0;
+      const avgDmg2 = Math.round((minDmg2 + maxDmg2) / 2);
+      const hits2 = values.nrOfHits_2 as number || 3;
+
+      return {
+        abilityId: 'TacticalPrecision',
+        abilityName,
+        category: 'damage',
+        damageResult: {
           minDamage: minDmg2,
           maxDamage: maxDmg2,
           averageDamage: avgDmg2,
           hits: hits2,
           damageProfile: (values.damageProfile_2 as DamageType) || 'Chain',
         },
-      ],
-      abilityModifiers: {
-        critDamageBonus: values.extraCritDmg as number || 0,
-      },
-      attackType: 'melee',
-      message: abilityName,
-    };
+        attackType: 'melee',
+        message: abilityName,
+      };
+    }
   },
 };
 

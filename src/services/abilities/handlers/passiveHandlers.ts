@@ -72,8 +72,9 @@ export const FuryOfTheAncientsHandler: AbilityHandler = {
 
 /**
  * ShockAssault (Bellator)
- * When Bellator attacks, adjacent Inceptor summons also attack with +extraDmg bonus.
- * This is a summon-trigger passive - the trigger logic is in battleStore.ts.
+ * Inceptor summons adjacent to Bellator get +extraDmg when they attack.
+ * The toggle is on the Inceptor summons ("Adjacent to Bellator"), not on Bellator.
+ * Damage buff is applied in executeSummonAttack when the toggle is enabled.
  * Variables: extraDmg
  */
 export const ShockAssaultHandler: AbilityHandler = {
@@ -82,27 +83,19 @@ export const ShockAssaultHandler: AbilityHandler = {
   category: 'passive',
   cooldown: -1,
 
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
-    // This passive doesn't modify Bellator's own attack
-    // Instead, it triggers adjacent Inceptor summons to attack when Bellator attacks
-    // The trigger logic is in battleStore.triggerShockAssault()
-    // We need a toggle to indicate Bellator is adjacent to Inceptor summons
-    const hasAdjacentInceptors = context.abilityToggles['ShockAssault'] ?? false;
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    // This passive provides a damage buff to adjacent Inceptor summons
+    // The toggle appears on Inceptor summon cards ("Adjacent to Bellator")
+    // Buff is applied directly in executeSummonAttack, not via triggerData
+    const extraDmg = values.extraDmg as number || 0;
 
     return {
       abilityId: 'ShockAssault',
       abilityName: getAbilityNameSync('ShockAssault'),
       modifiers: {}, // No modifier to Bellator's attack
-      applicable: hasAdjacentInceptors,
-      reason: hasAdjacentInceptors ? 'Adjacent Inceptors will attack' : 'No adjacent Inceptors',
-      requiresToggle: true,
-      toggleLabel: 'Adjacent to Inceptors',
-      // Store extraDmg for the trigger logic to use
-      triggerData: {
-        type: 'summonAttack',
-        summonId: 'ultraSmnInceptor',
-        extraDmg: values.extraDmg as number || 0,
-      },
+      applicable: true,
+      reason: `Adjacent Inceptors get +${extraDmg} dmg`,
+      requiresToggle: false,  // Toggle is on summons, not character
     };
   },
 };

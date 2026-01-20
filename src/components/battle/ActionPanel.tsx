@@ -1,4 +1,4 @@
-import { Move, Sparkles, Clock, Wrench, Crosshair } from 'lucide-react';
+import { Sparkles, Clock, Wrench, Crosshair } from 'lucide-react';
 import type { BattleCharacter, ActionType } from '../../types';
 import { getDamageTypeImageUrl } from '../../services/dataService';
 import { getAbilityNameSync, getAbilityValues, executeActiveAbility, classifyAbility, isAbilityReady, getCooldownDisplayText, getFormattedAbilityDescription } from '../../services/abilities';
@@ -207,20 +207,7 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer, onExecuteO
       </div>
 
       {/* Other Actions */}
-      <div className={`grid gap-2 ${hasMechanicTrait || hasTheBetrayerAbility || showOverwatchButton ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
-        {/* Move */}
-        <button
-          onClick={() => !isTurnEnded && !character.hasMoved && onAction('move')}
-          disabled={isTurnEnded || character.hasMoved}
-          className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
-            isTurnEnded || character.hasMoved ? disabledClasses : colorClasses.green
-          }`}
-          title="Mark character as moved (disables HeavyWeapon, CrushingStrike, Emplacement bonuses)"
-        >
-          <Move size={18} />
-          <span className="text-xs font-medium">Move</span>
-        </button>
-
+      <div className={`grid gap-2 ${hasMechanicTrait || hasTheBetrayerAbility || showOverwatchButton ? 'grid-cols-2 sm:grid-cols-2' : 'grid-cols-1'}`}>
         {/* Repair (only for Mechanic trait) */}
         {hasMechanicTrait && (
           <button

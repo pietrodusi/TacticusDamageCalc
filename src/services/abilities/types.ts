@@ -206,6 +206,7 @@ export interface SummonTriggerData {
   type: 'summonAttack';
   summonId: string;  // ID of the summon that attacks (e.g., 'ultraSmnInceptor')
   extraDmg: number;  // Bonus damage for the summon's attack
+  sourceCharacterId?: string;  // ID of the character that triggers the summon attack
 }
 
 /**

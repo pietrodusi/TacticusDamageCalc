@@ -134,6 +134,18 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     });
   }
 
+  // Heavy Weapon trait - Has not moved condition
+  if (character.traits.includes('HeavyWeapon')) {
+    conditions.push({
+      id: 'HeavyWeapon_notMoved',
+      label: 'Has not moved',
+      source: 'Heavy Weapon',
+      effect: '+25% ranged dmg',
+      isActive: character.abilityToggles['HeavyWeapon_notMoved'] ?? false,
+      category: 'self',
+    });
+  }
+
   // Ranged Specialist trait - Started turn adjacent to enemy condition
   if (character.traits.includes('RangedSpecialist')) {
     conditions.push({
@@ -146,21 +158,20 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     });
   }
 
-  // Shock Assault (Bellator) - Adjacent to Inceptor summons
-  if (character.passiveAbilities.includes('ShockAssault')) {
-    const levelIndex = character.abilityLevels?.['ShockAssault'] ?? 54;
-    const values = getAbilityValues('ShockAssault', levelIndex);
-    const abilityName = getAbilityNameSync('ShockAssault');
+  // TacticalPrecision (Titus) - Charging changes ability damage type
+  if (character.activeAbilities.includes('TacticalPrecision')) {
+    const levelIndex = character.abilityLevels?.['TacticalPrecision'] ?? 54;
+    const values = getAbilityValues('TacticalPrecision', levelIndex);
+    const abilityName = getAbilityNameSync('TacticalPrecision');
 
     if (values) {
-      const extraDmg = values.extraDmg as number || 0;
-
+      const extraCritDmg = values.extraCritDmg as number || 0;
       conditions.push({
-        id: 'ShockAssault',
-        label: 'Adjacent to Inceptors',
+        id: 'TacticalPrecision_charging',
+        label: 'Charging',
         source: abilityName,
-        effect: `Inceptors attack: +${extraDmg} dmg`,
-        isActive: character.abilityToggles['ShockAssault'] ?? false,
+        effect: `1x Bolter, 100% crit, +${extraCritDmg} crit dmg`,
+        isActive: character.abilityToggles['TacticalPrecision_charging'] ?? false,
         category: 'self',
       });
     }
@@ -1243,6 +1254,34 @@ function getAuraConditions(
         }
       }
     }
+
+    // Rites of Battle (Calgar) - damage bonus to adjacent allies
+    // Imperial characters get higher bonus (extraDmg_2), others get extraDmg
+    if (teammate.passiveAbilities.includes('RitesOfBattle')) {
+      if (character.id !== teammate.id) {
+        const levelIndex = teammate.abilityLevels?.['RitesOfBattle'] ?? 54;
+        const values = getAbilityValues('RitesOfBattle', levelIndex);
+        const abilityName = getAbilityNameSync('RitesOfBattle');
+
+        if (values) {
+          const extraDmg = values.extraDmg as number || 0;
+          const extraDmgImperial = values.extraDmg_2 as number || 0;
+          const isImperial = character.alliance === 'Imperial';
+          const dmgBonus = isImperial ? extraDmgImperial : extraDmg;
+          const toggleId = `RitesOfBattle_${teammate.id}_adjacent`;
+
+          conditions.push({
+            id: toggleId,
+            label: `Adjacent to ${teammate.name}`,
+            source: abilityName,
+            sourceCharacter: teammate.name,
+            effect: `+${dmgBonus} dmg${isImperial ? ' (Imperial)' : ''}`,
+            isActive: character.abilityToggles[toggleId] ?? false,
+            category: 'aura',
+          });
+        }
+      }
+    }
   }
 
   return conditions;
@@ -1367,17 +1406,6 @@ export function getSummonBuffConditions(
     category: 'self',
   });
 
-  // Add "Adjacent to Boss" condition for all summons
-  // This controls whether summon uses melee or ranged attacks
-  conditions.push({
-    id: 'adjacentToBoss',
-    label: 'Adjacent to Boss',
-    source: 'Position',
-    effect: 'Enables melee attacks, disables ranged',
-    isActive: toggles['adjacentToBoss'] ?? false,
-    category: 'self',
-  });
-
   // Add "Machine of War" condition only if a machine is selected
   if (options?.selectedMachineOfWar) {
     const extraDmgPct = getMachineOfWarDamageBonus(
@@ -1425,9 +1453,32 @@ export function getSummonBuffConditions(
     }
   }
 
+  // ShockAssault (Bellator passive) - bonus damage for adjacent Inceptors
+  // Check source character specifically since Bellator summons Inceptors AND has ShockAssault
+  if (summon.unitId === 'ultraSmnInceptor' && sourceCharacter?.passiveAbilities.includes('ShockAssault')) {
+    const levelIndex = sourceCharacter.abilityLevels?.['ShockAssault'] ?? 54;
+    const values = getAbilityValues('ShockAssault', levelIndex);
+    const abilityName = getAbilityNameSync('ShockAssault');
+
+    if (values) {
+      const extraDmg = values.extraDmg as number || 0;
+      const toggleId = `ShockAssault_${sourceCharacter.id}_adjacentToBellator`;
+
+      conditions.push({
+        id: toggleId,
+        label: `Adjacent to ${sourceCharacter.name}`,
+        source: abilityName,
+        sourceCharacter: sourceCharacter.name,
+        effect: `+${extraDmg} dmg`,
+        isActive: toggles[toggleId] ?? false,
+        category: 'aura',
+      });
+    }
+  }
+
   // Add aura conditions from teammates (other than source character)
   for (const teammate of team) {
-    // Skip source character (already handled Waaagh above)
+    // Skip source character (already handled Waaagh and ShockAssault above)
     if (teammate.id === summon.sourceCharacterId) continue;
 
     // Serene Unifier (Aun'Shi passive) - turn-cycling aura buff
@@ -1489,6 +1540,7 @@ export function getSummonBuffConditions(
         }
       }
     }
+
   }
 
   return conditions;

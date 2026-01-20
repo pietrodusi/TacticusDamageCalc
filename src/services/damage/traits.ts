@@ -64,10 +64,12 @@ const TRAIT_EFFECTS: Record<string, TraitEffect> = {
       if (ctx.attackType !== 'ranged') {
         return { applicable: false, multiplier: 1, reason: 'Only applies to ranged attacks' };
       }
-      if (ctx.hasMoved) {
-        return { applicable: false, multiplier: 1, reason: 'Has moved this turn' };
+      // Only active when the "Has not moved" toggle is checked
+      const isActive = ctx.abilityToggles?.['HeavyWeapon_notMoved'] ?? false;
+      if (!isActive) {
+        return { applicable: false, multiplier: 1, reason: 'Has not moved condition not checked' };
       }
-      return { applicable: true, multiplier: 1.25, reason: 'Not moved' };
+      return { applicable: true, multiplier: 1.25, reason: 'Has not moved' };
     },
   },
   Emplacement: {

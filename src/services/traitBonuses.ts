@@ -65,13 +65,14 @@ const TRAIT_BONUS_DEFINITIONS: Record<string, TraitBonusDefinition> = {
       // Only show if character has ranged attack
       if (!character.rangedHits) return null;
 
-      const isActive = !character.hasMoved;
+      // Only active when the "Has not moved" toggle is checked
+      const isActive = character.abilityToggles['HeavyWeapon_notMoved'] ?? false;
       return {
         traitId: 'HeavyWeapon',
         traitName: getTraitName('HeavyWeapon'),
         bonusText: '+25% ranged',
         isActive,
-        reason: isActive ? 'Has not moved' : 'Moved this turn',
+        reason: isActive ? 'Has not moved' : 'Has not moved condition not checked',
         colorClass: isActive ? 'text-green-400' : 'text-gray-500',
       };
     },

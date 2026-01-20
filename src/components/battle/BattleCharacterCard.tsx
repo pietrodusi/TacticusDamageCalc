@@ -11,6 +11,7 @@ interface BattleCharacterCardProps {
   team: BattleCharacter[];
   isSelected: boolean;
   currentTurn?: number;
+  activeAbilitiesUsedCount?: number;  // For FuelledByFury display
   selectedMachineOfWar?: SelectedMachineOfWar | null;
   custodedUsedAbilityThisTurn?: boolean;  // For Stand Vigil range extension
   onSelect: () => void;
@@ -26,6 +27,7 @@ export function BattleCharacterCard({
   team,
   isSelected,
   currentTurn,
+  activeAbilitiesUsedCount,
   selectedMachineOfWar,
   custodedUsedAbilityThisTurn,
   onSelect,
@@ -51,11 +53,18 @@ export function BattleCharacterCard({
   };
 
   // Get passive abilities for display
-  const passiveAbilities = character.passiveAbilities.map(id => ({
-    id,
-    name: getPassiveDisplayName(id),
-    description: getFormattedAbilityDescription(id, character.abilityLevels?.[id] ?? 54),
-  }));
+  const passiveAbilities = character.passiveAbilities.map(id => {
+    let displayName = getPassiveDisplayName(id);
+    // FuelledByFury: Show count of abilities used
+    if (id === 'FuelledByFury' && activeAbilitiesUsedCount !== undefined) {
+      displayName = `${displayName} (${activeAbilitiesUsedCount})`;
+    }
+    return {
+      id,
+      name: displayName,
+      description: getFormattedAbilityDescription(id, character.abilityLevels?.[id] ?? 54),
+    };
+  });
 
   // Get trait bonuses for display
   const showTraitBonuses = hasTraitBonuses(character);
