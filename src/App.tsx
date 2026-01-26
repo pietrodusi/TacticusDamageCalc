@@ -29,7 +29,7 @@ function App() {
             <Route path="characters" element={<CharacterListPage />} />
             <Route path="characters/:id" element={<CharacterDetailPage />} />
             <Route path="calculator" element={<CalculatorPage />} />
-            <Route path="calculator/shared" element={<SharedBattlePage />} />
+            <Route path="calculator/shared/:id" element={<SharedBattlePage />} />
             <Route path="strategium" element={<StrategiumPage />} />
           </Route>
         </Routes>

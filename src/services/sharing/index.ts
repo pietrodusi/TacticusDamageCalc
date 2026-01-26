@@ -30,7 +30,7 @@ export { encodeBattleState } from './encoder';
 // Decoder
 export { decodeShareData, isValidShareData } from './decoder';
 
-// Compression
+// Compression (kept for backwards compatibility)
 export {
   compressToUrl,
   decompressFromUrl,
@@ -38,3 +38,10 @@ export {
   extractDataFromUrl,
   parseShareDataFromUrl,
 } from './compression';
+
+// Firebase Storage
+export {
+  saveToStorage,
+  loadFromStorage,
+  type StoredBattle,
+} from './storage';

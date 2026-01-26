@@ -110,9 +110,11 @@ function decodeTeamMember(member: CompactTeamMember): DecodedTeamMember {
  * Decode results
  */
 function decodeResults(results: CompactResults): DecodedResults {
+  // Firebase may transform empty arrays to undefined, so handle that case
+  const turns = results.turns || [];
   return {
     totalDamage: results.td,
-    turns: results.turns.map(decodeTurn),
+    turns: turns.map(decodeTurn),
   };
 }
 
@@ -120,9 +122,11 @@ function decodeResults(results: CompactResults): DecodedResults {
  * Decode turn
  */
 function decodeTurn(turn: CompactTurn): DecodedTurn {
+  // Firebase may transform empty arrays to undefined, so handle that case
+  const logs = turn.logs || [];
   return {
     turnNumber: turn.n,
-    logs: turn.logs.map(decodeLogEntry),
+    logs: logs.map(decodeLogEntry),
   };
 }
 

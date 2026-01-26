@@ -1,13 +1,13 @@
 /**
  * SharedBattlePage - Display shared battle simulation results
- * Parses URL query parameter and renders read-only battle view
+ * Fetches data from Firebase using ID from URL path parameter
  */
 
 import { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { AlertCircle, Calculator, ExternalLink } from 'lucide-react';
 import {
-  parseShareDataFromUrl,
+  loadFromStorage,
   decodeShareData,
   type DecodedShareData,
 } from '../services/sharing';
@@ -18,9 +18,11 @@ import type { MachineOfWarWithBonus, MachineOfWarStars } from '../types/machineO
 import { SharedBattleView } from '../components/battle/SharedBattleView';
 
 export function SharedBattlePage() {
-  const [searchParams] = useSearchParams();
+  const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [title, setTitle] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
   const [data, setData] = useState<DecodedShareData | null>(null);
   const [characters, setCharacters] = useState<(Character | null)[]>([]);
   const [boss, setBoss] = useState<Boss | null>(null);
@@ -31,21 +33,31 @@ export function SharedBattlePage() {
       setLoading(true);
       setError(null);
 
-      try {
-        // Parse compressed data from URL
-        const compressedData = parseShareDataFromUrl();
+      if (!id) {
+        setError('No battle ID provided in URL.');
+        setLoading(false);
+        return;
+      }
 
-        if (!compressedData) {
-          setError('No shared battle data found in URL. The link may be invalid or expired.');
+      try {
+        // Fetch from Firebase
+        const storedBattle = await loadFromStorage(id);
+
+        if (!storedBattle) {
+          setError('Battle not found. The link may be invalid or the battle may have been deleted.');
           setLoading(false);
           return;
         }
 
-        // Decode the data
-        const decoded = decodeShareData(compressedData);
+        // Extract title and notes
+        setTitle(storedBattle.title);
+        setNotes(storedBattle.notes || '');
+
+        // Decode the battle data
+        const decoded = decodeShareData(storedBattle.data);
 
         if (!decoded) {
-          setError('Failed to decode battle data. The link may be corrupted or from an unsupported version.');
+          setError('Failed to decode battle data. The data may be corrupted.');
           setLoading(false);
           return;
         }
@@ -86,7 +98,7 @@ export function SharedBattlePage() {
     };
 
     loadSharedData();
-  }, [searchParams]);
+  }, [id]);
 
   // Loading state
   if (loading) {
@@ -132,7 +144,7 @@ export function SharedBattlePage() {
       {/* Header with CTA */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-display font-bold text-gray-100">
-          Shared Battle Simulation
+          {title || 'Shared Battle Simulation'}
         </h1>
         <Link
           to="/calculator"
@@ -150,6 +162,8 @@ export function SharedBattlePage() {
         characters={characters}
         boss={boss}
         machine={machine}
+        title={title}
+        notes={notes}
       />
 
       {/* Footer CTA */}

@@ -3,8 +3,18 @@
  * Displays team setup, turn-by-turn log with damage breakdowns, and totals
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { User, Trophy, Shield, Sword, Heart, ChevronDown, ChevronRight, Zap, Crosshair, Move, Sparkles, Clock, Wrench, Skull } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 import type { Character } from '../../types/character';
 import type { Boss } from '../../types/boss';
 import type { MachineOfWarWithBonus } from '../../types/machineOfWar';
@@ -13,15 +23,391 @@ import type {
   DecodedLogEntry,
   DecodedDamageBreakdown,
   DecodedFollowUp,
+  DecodedTurn,
 } from '../../services/sharing/types';
 import type { BuffSource } from '../../services/damage/types';
-import { getDamageTypeImageUrl, getBossRankDisplayName } from '../../services/dataService';
+import {
+  getDamageTypeImageUrl,
+  getBossRankDisplayName,
+  getRarityImageUrl,
+  getRankImageUrl,
+  getRankDisplayName,
+  getProgressionStepDisplayName,
+  getAllProgressionSteps,
+  calculateStats,
+  getItem,
+  getSlotTypeDisplayName,
+  getAbilityInfo,
+  getAbilityDisplayLevel,
+  DEFAULT_ABILITY_LEVEL,
+} from '../../services/dataService';
+import type { DecodedTeamMember } from '../../services/sharing/types';
 
 interface SharedBattleViewProps {
   data: DecodedShareData;
   characters: (Character | null)[]; // Loaded character data for display
   boss?: Boss | null;
   machine?: MachineOfWarWithBonus | null;
+  title?: string;  // Battle title from Firebase storage
+  notes?: string;  // Strategy notes from Firebase storage
+}
+
+// Color palette for chart lines (matches DamagePerTurnChart)
+const LINE_COLORS = [
+  '#f59e0b', // amber-500
+  '#3b82f6', // blue-500
+  '#10b981', // emerald-500
+  '#ef4444', // red-500
+  '#8b5cf6', // violet-500
+  '#ec4899', // pink-500
+];
+
+interface ChartDataPoint {
+  turn: number;
+  [characterName: string]: number;
+}
+
+type ChartMode = 'cumulative' | 'perTurn';
+
+// Chart component for shared battle view (works with decoded data)
+function SharedDamageChart({ turns, characters }: { turns: DecodedTurn[]; characters: (Character | null)[] }) {
+  const [chartMode, setChartMode] = useState<ChartMode>('cumulative');
+
+  // Get valid character names
+  const characterNames = useMemo(() => {
+    return characters.filter((c): c is Character => c !== null).map(c => c.name);
+  }, [characters]);
+
+  // Transform decoded turns into chart data
+  const { cumulativeData, perTurnData } = useMemo(() => {
+    const cumulativeDamage: Record<string, number> = {};
+    characterNames.forEach(name => {
+      cumulativeDamage[name] = 0;
+    });
+
+    const cumulative: ChartDataPoint[] = [];
+    const perTurn: ChartDataPoint[] = [];
+
+    turns.forEach(turn => {
+      const turnDamage: Record<string, number> = {};
+      characterNames.forEach(name => {
+        turnDamage[name] = 0;
+      });
+
+      // Process each log entry
+      turn.logs.forEach(entry => {
+        const damage = entry.damageBreakdown?.damage || entry.damage || 0;
+        if (damage > 0 && entry.characterName) {
+          turnDamage[entry.characterName] = (turnDamage[entry.characterName] || 0) + damage;
+          cumulativeDamage[entry.characterName] = (cumulativeDamage[entry.characterName] || 0) + damage;
+        }
+
+        // Include follow-up attack damage
+        entry.followUpAttacks?.forEach(followUp => {
+          const fuDamage = followUp.breakdown?.damage || followUp.damage || 0;
+          const fuCharName = followUp.sourceCharacterName || entry.characterName;
+          if (fuDamage > 0 && fuCharName) {
+            turnDamage[fuCharName] = (turnDamage[fuCharName] || 0) + fuDamage;
+            cumulativeDamage[fuCharName] = (cumulativeDamage[fuCharName] || 0) + fuDamage;
+          }
+        });
+      });
+
+      // Create data points
+      const cumulativePoint: ChartDataPoint = { turn: turn.turnNumber };
+      const perTurnPoint: ChartDataPoint = { turn: turn.turnNumber };
+      characterNames.forEach(name => {
+        cumulativePoint[name] = cumulativeDamage[name];
+        perTurnPoint[name] = turnDamage[name];
+      });
+      cumulative.push(cumulativePoint);
+      perTurn.push(perTurnPoint);
+    });
+
+    return { cumulativeData: cumulative, perTurnData: perTurn };
+  }, [turns, characterNames]);
+
+  const chartData = chartMode === 'cumulative' ? cumulativeData : perTurnData;
+
+  // Calculate max for Y-axis
+  const maxDamage = useMemo(() => {
+    let max = 0;
+    chartData.forEach(point => {
+      characterNames.forEach(name => {
+        const value = point[name];
+        if (typeof value === 'number' && value > max) {
+          max = value;
+        }
+      });
+    });
+    return Math.ceil(max * 1.1);
+  }, [chartData, characterNames]);
+
+  if (chartData.length === 0) return null;
+
+  const formatYAxis = (value: number) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+    return value.toString();
+  };
+
+  const formatTooltip = (value: number | string | undefined) => {
+    if (typeof value === 'number') return value.toLocaleString();
+    return value ?? '';
+  };
+
+  return (
+    <div className="card p-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-100">Damage Over Time</h3>
+        <div className="flex items-center gap-2 text-sm">
+          <button
+            onClick={() => setChartMode('cumulative')}
+            className={`px-3 py-1 rounded transition-colors ${
+              chartMode === 'cumulative'
+                ? 'bg-amber-500 text-gray-900 font-medium'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+          >
+            Cumulative
+          </button>
+          <button
+            onClick={() => setChartMode('perTurn')}
+            className={`px-3 py-1 rounded transition-colors ${
+              chartMode === 'perTurn'
+                ? 'bg-amber-500 text-gray-900 font-medium'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+          >
+            Per Turn
+          </button>
+        </div>
+      </div>
+      <div className="h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis
+              dataKey="turn"
+              stroke="#9ca3af"
+              tick={{ fill: '#9ca3af', fontSize: 12 }}
+              tickFormatter={(value) => `T${value}`}
+            />
+            <YAxis
+              stroke="#9ca3af"
+              tick={{ fill: '#9ca3af', fontSize: 12 }}
+              tickFormatter={formatYAxis}
+              domain={[0, maxDamage || 'auto']}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#1f2937',
+                border: '1px solid #374151',
+                borderRadius: '0.5rem',
+              }}
+              labelStyle={{ color: '#f3f4f6' }}
+              itemStyle={{ color: '#d1d5db' }}
+              formatter={formatTooltip}
+              labelFormatter={(label) => `Turn ${label}`}
+            />
+            <Legend wrapperStyle={{ color: '#9ca3af', fontSize: '12px' }} />
+            {characterNames.map((name, index) => (
+              <Line
+                key={name}
+                type="monotone"
+                dataKey={name}
+                stroke={LINE_COLORS[index % LINE_COLORS.length]}
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+// Compact team member card for shared view (collapsible)
+function SharedTeamMemberCard({ char, setup }: { char: Character; setup: DecodedTeamMember }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const progressionSteps = getAllProgressionSteps();
+  const step = progressionSteps[setup.progressionStepIndex];
+  const stats = calculateStats(char, setup.progressionStepIndex, setup.rank);
+
+  // Get equipment info
+  const equipmentItems = setup.equipment
+    ? Object.entries(setup.equipment).map(([slotIdx, eq]) => {
+        const item = getItem(eq.itemId);
+        const slotType = char.itemSlots?.[parseInt(slotIdx)];
+        return item ? {
+          slotName: slotType ? getSlotTypeDisplayName(slotType) : `Slot ${parseInt(slotIdx) + 1}`,
+          itemName: item.name,
+          level: eq.level + 1,
+          rarity: item.rarity,
+        } : null;
+      }).filter(Boolean)
+    : [];
+
+  const rarityColors: Record<string, string> = {
+    'Common': 'text-gray-400',
+    'Uncommon': 'text-green-400',
+    'Rare': 'text-blue-400',
+    'Epic': 'text-purple-400',
+    'Legendary': 'text-yellow-400',
+    'Mythic': 'text-red-300',
+  };
+
+  // Get ability levels for collapsed view
+  const abilityLevels = [...char.activeAbilities, ...char.passiveAbilities].map(abilityId => {
+    const levelIndex = setup.abilityLevels?.[abilityId] ?? DEFAULT_ABILITY_LEVEL;
+    return getAbilityDisplayLevel(levelIndex);
+  });
+
+  return (
+    <div className="bg-gray-800/50 rounded-lg p-3">
+      {/* Header (always visible) - clickable to expand/collapse */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center gap-3 text-left"
+      >
+        {/* Character icon */}
+        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ring-gray-600">
+          {char.iconUrl ? (
+            <img src={char.iconUrl} alt={char.name} className="w-full h-full object-cover" />
+          ) : (
+            <User size={20} className="text-gray-500" />
+          )}
+        </div>
+
+        {/* Name and icons */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-gray-100 truncate">{char.name}</span>
+            {/* Rarity icon */}
+            {step && getRarityImageUrl(step.rarity) && (
+              <img src={getRarityImageUrl(step.rarity)} alt={step.rarity} className="w-4 h-4 object-contain" title={getProgressionStepDisplayName(step)} />
+            )}
+            {/* Rank icon */}
+            {getRankImageUrl(setup.rank) && (
+              <img src={getRankImageUrl(setup.rank)} alt="" className="w-4 h-4 object-contain" title={getRankDisplayName(setup.rank)} />
+            )}
+          </div>
+          {/* Ability levels in collapsed view */}
+          <div className="flex items-center gap-1 mt-0.5 text-xs text-gray-500">
+            <Sparkles size={10} />
+            <span>Lv {abilityLevels.join(' / ')}</span>
+          </div>
+        </div>
+
+        {/* Expand/collapse indicator */}
+        <div className="flex-shrink-0">
+          {isExpanded ? (
+            <ChevronDown size={16} className="text-gray-400" />
+          ) : (
+            <ChevronRight size={16} className="text-gray-400" />
+          )}
+        </div>
+      </button>
+
+      {/* Expanded content */}
+      {isExpanded && (
+        <div className="mt-3 pt-3 border-t border-gray-700/50">
+          {/* Full rarity and rank text */}
+          <div className="flex items-center gap-3 mb-3 text-xs">
+            {step && (
+              <div className="flex items-center gap-1">
+                {getRarityImageUrl(step.rarity) && (
+                  <img src={getRarityImageUrl(step.rarity)} alt="" className="w-4 h-4 object-contain" />
+                )}
+                <span className="text-gray-400">{getProgressionStepDisplayName(step)}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1">
+              {getRankImageUrl(setup.rank) && (
+                <img src={getRankImageUrl(setup.rank)} alt="" className="w-4 h-4 object-contain" />
+              )}
+              <span className="text-gray-400">{getRankDisplayName(setup.rank)}</span>
+            </div>
+          </div>
+
+          {/* Stats Row */}
+          <div className="flex gap-4 text-xs">
+            <div className="flex items-center gap-1">
+              <Heart size={12} className="text-red-400" />
+              <span className="text-gray-300">{stats.health.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Sword size={12} className="text-amber-400" />
+              <span className="text-gray-300">{stats.damage.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Shield size={12} className="text-blue-400" />
+              <span className="text-gray-300">{stats.armour}</span>
+            </div>
+          </div>
+
+          {/* Equipment (compact) */}
+          {equipmentItems.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-gray-700/50">
+              <div className="text-xs text-gray-500 mb-1">Equipment:</div>
+              <div className="flex flex-wrap gap-1">
+                {equipmentItems.map((eq, idx) => eq && (
+                  <span
+                    key={idx}
+                    className={`text-xs px-1.5 py-0.5 rounded bg-gray-700/50 ${rarityColors[eq.rarity]}`}
+                    title={`${eq.slotName}: ${eq.itemName} Lv${eq.level}`}
+                  >
+                    {eq.itemName} <span className="text-gray-500">Lv{eq.level}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Abilities (compact) */}
+          {(char.activeAbilities.length > 0 || char.passiveAbilities.length > 0) && (
+            <div className="mt-2 pt-2 border-t border-gray-700/50">
+              <div className="text-xs text-gray-500 mb-1">Abilities:</div>
+              <div className="flex flex-wrap gap-1">
+                {/* Active abilities */}
+                {char.activeAbilities.map(abilityId => {
+                  const levelIndex = setup.abilityLevels?.[abilityId] ?? DEFAULT_ABILITY_LEVEL;
+                  const ability = getAbilityInfo(abilityId, levelIndex);
+                  const displayLevel = getAbilityDisplayLevel(levelIndex);
+                  return ability ? (
+                    <span
+                      key={abilityId}
+                      className="text-xs px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-400"
+                      title={`Active: ${ability.name} Lv${displayLevel}`}
+                    >
+                      {ability.name} <span className="text-amber-600">Lv{displayLevel}</span>
+                    </span>
+                  ) : null;
+                })}
+                {/* Passive abilities */}
+                {char.passiveAbilities.map(abilityId => {
+                  const levelIndex = setup.abilityLevels?.[abilityId] ?? DEFAULT_ABILITY_LEVEL;
+                  const ability = getAbilityInfo(abilityId, levelIndex);
+                  const displayLevel = getAbilityDisplayLevel(levelIndex);
+                  return ability ? (
+                    <span
+                      key={abilityId}
+                      className="text-xs px-1.5 py-0.5 rounded bg-blue-900/30 text-blue-400"
+                      title={`Passive: ${ability.name} Lv${displayLevel}`}
+                    >
+                      {ability.name} <span className="text-blue-600">Lv{displayLevel}</span>
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // Helper function to format sources inline
@@ -193,7 +579,7 @@ const actionIcons: Record<string, React.ComponentType<{ size: number; className?
   heal: Heart,
 };
 
-export function SharedBattleView({ data, characters, boss, machine }: SharedBattleViewProps) {
+export function SharedBattleView({ data, characters, boss, machine, title, notes }: SharedBattleViewProps) {
   const [expandedTurns, setExpandedTurns] = useState<Set<number>>(() => new Set());
 
   const toggleTurn = (turn: number) => {
@@ -206,6 +592,21 @@ export function SharedBattleView({ data, characters, boss, machine }: SharedBatt
       }
       return next;
     });
+  };
+
+  // Build a map of characterId -> iconUrl from freshly loaded character data
+  // This ensures icons work even if the build changes (URLs contain hashes)
+  const characterIconMap = new Map<string, string>();
+  data.setup.team.forEach((member, idx) => {
+    const char = characters[idx];
+    if (char?.iconUrl) {
+      characterIconMap.set(member.characterId, char.iconUrl);
+    }
+  });
+
+  // Helper to get icon URL - prefer fresh data, fall back to stored
+  const getIconUrl = (characterId: string, storedIconUrl?: string): string | undefined => {
+    return characterIconMap.get(characterId) || storedIconUrl;
   };
 
   // Calculate per-character damage from logs
@@ -231,6 +632,7 @@ export function SharedBattleView({ data, characters, boss, machine }: SharedBatt
           } else {
             characterDamage.set(followUp.sourceCharacterId, {
               name: followUp.sourceCharacterName || 'Unknown',
+              iconUrl: getIconUrl(followUp.sourceCharacterId),
               damage: reactionDamage,
             });
           }
@@ -243,7 +645,7 @@ export function SharedBattleView({ data, characters, boss, machine }: SharedBatt
       } else {
         characterDamage.set(log.characterId, {
           name: log.characterName,
-          iconUrl: log.characterIconUrl,
+          iconUrl: getIconUrl(log.characterId, log.characterIconUrl),
           damage: mainDamage + followUpDamage,
         });
       }
@@ -253,13 +655,16 @@ export function SharedBattleView({ data, characters, boss, machine }: SharedBatt
   const sortedCharacterDamage = [...characterDamage.entries()].sort((a, b) => b[1].damage - a[1].damage);
   const maxCharDamage = Math.max(...sortedCharacterDamage.map(([, d]) => d.damage), 1);
 
+  // Use notes from props (Firebase storage) or fallback to data.notes (legacy URL-encoded)
+  const displayNotes = notes || data.notes;
+
   return (
     <div className="space-y-6">
       {/* User Notes */}
-      {data.notes && (
+      {displayNotes && (
         <div className="card p-4 bg-blue-900/20 border-blue-500/30">
           <h3 className="text-sm font-semibold text-blue-400 mb-2">Strategy Notes</h3>
-          <p className="text-gray-300 text-sm whitespace-pre-wrap">{data.notes}</p>
+          <p className="text-gray-300 text-sm whitespace-pre-wrap">{displayNotes}</p>
         </div>
       )}
 
@@ -268,7 +673,7 @@ export function SharedBattleView({ data, characters, boss, machine }: SharedBatt
         <div className="flex items-center justify-center gap-2 mb-2">
           <Trophy className="text-imperial-gold" size={28} />
           <h2 className="text-xl font-display font-bold text-imperial-gold">
-            Shared Battle Results
+            {title || 'Shared Battle Results'}
           </h2>
           <Trophy className="text-imperial-gold" size={28} />
         </div>
@@ -285,26 +690,13 @@ export function SharedBattleView({ data, characters, boss, machine }: SharedBatt
             <Sword size={16} className="text-imperial-gold" />
             Team ({characters.filter(c => c).length})
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {characters.map((char, idx) => {
               if (!char) return null;
               const setup = data.setup.team[idx];
+              if (!setup) return null;
               return (
-                <div key={char.id} className="flex items-center gap-3 bg-gray-800/50 rounded p-2">
-                  <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ring-gray-600">
-                    {char.iconUrl ? (
-                      <img src={char.iconUrl} alt={char.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <User size={20} className="text-gray-500" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-100 truncate">{char.name}</div>
-                    <div className="text-xs text-gray-500">
-                      Rank {setup?.rank}
-                    </div>
-                  </div>
-                </div>
+                <SharedTeamMemberCard key={char.id} char={char} setup={setup} />
               );
             })}
           </div>
@@ -413,6 +805,9 @@ export function SharedBattleView({ data, characters, boss, machine }: SharedBatt
         </div>
       </div>
 
+      {/* Damage Over Time Chart */}
+      <SharedDamageChart turns={data.results.turns} characters={characters} />
+
       {/* Turn-by-Turn Log */}
       <div className="card p-4">
         <h3 className="text-sm font-semibold text-gray-100 mb-3">Battle Log</h3>
@@ -451,7 +846,7 @@ export function SharedBattleView({ data, characters, boss, machine }: SharedBatt
                     {turn.logs.length === 0 ? (
                       <div className="text-center py-2 text-gray-600 text-xs">No actions</div>
                     ) : (
-                      <TurnLogEntries logs={turn.logs} />
+                      <TurnLogEntries logs={turn.logs} characterIconMap={characterIconMap} />
                     )}
                   </div>
                 )}
@@ -465,7 +860,7 @@ export function SharedBattleView({ data, characters, boss, machine }: SharedBatt
 }
 
 // Sub-component for rendering turn log entries (grouped by character)
-function TurnLogEntries({ logs }: { logs: DecodedLogEntry[] }) {
+function TurnLogEntries({ logs, characterIconMap }: { logs: DecodedLogEntry[]; characterIconMap: Map<string, string> }) {
   const characterIds = [...new Set(logs.map(e => e.characterId))];
 
   return (
@@ -473,7 +868,8 @@ function TurnLogEntries({ logs }: { logs: DecodedLogEntry[] }) {
       {characterIds.map(charId => {
         const charEntries = logs.filter(e => e.characterId === charId);
         const characterName = charEntries[0]?.characterName || 'Unknown';
-        const characterIconUrl = charEntries[0]?.characterIconUrl;
+        // Use fresh icon URL from map, fallback to stored URL
+        const characterIconUrl = characterIconMap.get(charId) || charEntries[0]?.characterIconUrl;
 
         return (
           <div key={charId} className="bg-gray-800/50 rounded p-2">

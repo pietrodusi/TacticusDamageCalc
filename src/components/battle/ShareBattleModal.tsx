@@ -1,17 +1,18 @@
 /**
  * ShareBattleModal - Modal for sharing battle simulation results
- * Allows adding notes and generates shareable URL
+ * Saves to Firebase and generates shareable URL with short ID
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Copy, Check, Share2, AlertCircle, Link as LinkIcon } from 'lucide-react';
+import { X, Copy, Check, Share2, AlertCircle, Link as LinkIcon, Loader2, Type } from 'lucide-react';
 import type { BattleState } from '../../types/battle';
 import type { TeamMember } from '../../types/character';
 import type { SelectedBoss } from '../../types/boss';
 import type { SelectedMachineOfWar } from '../../types/machineOfWar';
-import { encodeBattleState, generateShareUrl } from '../../services/sharing';
+import { encodeBattleState, saveToStorage } from '../../services/sharing';
 
-const MAX_NOTES_LENGTH = 500;
+const MAX_TITLE_LENGTH = 100;
+const MAX_NOTES_LENGTH = 2000;
 
 interface ShareBattleModalProps {
   isOpen: boolean;
@@ -30,59 +31,85 @@ export function ShareBattleModal({
   selectedBoss,
   selectedMachine,
 }: ShareBattleModalProps) {
+  const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [shareUrl, setShareUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Generate URL when notes change
-  useEffect(() => {
-    if (!isOpen) return;
-
-    try {
-      const encoded = encodeBattleState(
-        battleState,
-        team,
-        selectedBoss,
-        selectedMachine,
-        notes
-      );
-      const url = generateShareUrl(encoded);
-      setShareUrl(url);
-      setError(null);
-
-      // Check URL length
-      if (url.length > 4000) {
-        setError(`URL is ${url.length} characters. Some browsers may have issues with URLs over 4000 characters.`);
-      }
-    } catch (err) {
-      console.error('Error generating share URL:', err);
-      setError('Failed to generate share URL');
-      setShareUrl('');
-    }
-  }, [isOpen, battleState, team, selectedBoss, selectedMachine, notes]);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
+      // Generate default title from team composition
+      const characterNames = team.slice(0, 3).map(t => t.name).join(', ');
+      const defaultTitle = team.length > 3
+        ? `${characterNames} +${team.length - 3} more`
+        : characterNames;
+      setTitle(defaultTitle);
       setNotes('');
+      setShareUrl('');
       setCopied(false);
       setError(null);
+      setSaving(false);
+      setSaved(false);
+    }
+  }, [isOpen, team]);
+
+  // Focus title input when modal opens
+  useEffect(() => {
+    if (isOpen && titleInputRef.current) {
+      titleInputRef.current.focus();
+      titleInputRef.current.select();
     }
   }, [isOpen]);
 
-  // Focus textarea when modal opens
-  useEffect(() => {
-    if (isOpen && textareaRef.current) {
-      textareaRef.current.focus();
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value.length <= MAX_TITLE_LENGTH) {
+      setTitle(value);
     }
-  }, [isOpen]);
+  };
 
   const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     if (value.length <= MAX_NOTES_LENGTH) {
       setNotes(value);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      setError('Please enter a title for your battle');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      // Encode battle data (without notes - stored separately in Firebase)
+      const data = encodeBattleState(
+        battleState,
+        team,
+        selectedBoss,
+        selectedMachine
+      );
+
+      // Save to Firebase
+      const id = await saveToStorage(data, title.trim(), notes.trim());
+
+      // Generate short URL
+      const url = `${window.location.origin}/TacticusDamageCalc/calculator/shared/${id}`;
+      setShareUrl(url);
+      setSaved(true);
+    } catch (err) {
+      console.error('Failed to save battle:', err);
+      setError('Failed to save battle. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -146,6 +173,30 @@ export function ShareBattleModal({
             </div>
           </div>
 
+          {/* Title Input */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="share-title" className="text-sm font-medium text-gray-300 flex items-center gap-1.5">
+                <Type size={14} />
+                Battle Title
+                <span className="text-red-400">*</span>
+              </label>
+              <span className={`text-xs ${title.length >= MAX_TITLE_LENGTH ? 'text-red-400' : 'text-gray-500'}`}>
+                {title.length}/{MAX_TITLE_LENGTH}
+              </span>
+            </div>
+            <input
+              ref={titleInputRef}
+              id="share-title"
+              type="text"
+              value={title}
+              onChange={handleTitleChange}
+              disabled={saved}
+              placeholder="e.g., Ragnar 6-Turn Boss Kill"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-imperial-gold/50 focus:border-imperial-gold disabled:opacity-50"
+            />
+          </div>
+
           {/* Notes Input */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -157,64 +208,60 @@ export function ShareBattleModal({
               </span>
             </div>
             <textarea
-              ref={textareaRef}
               id="share-notes"
               value={notes}
               onChange={handleNotesChange}
-              placeholder="Add notes about your strategy, key decisions, or anything you want to share..."
-              className="w-full h-24 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-imperial-gold/50 focus:border-imperial-gold resize-none"
+              disabled={saved}
+              placeholder="Add notes about your strategy, ability rotations, gear choices, or anything you want to share..."
+              className="w-full h-32 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-imperial-gold/50 focus:border-imperial-gold resize-none disabled:opacity-50"
             />
           </div>
 
-          {/* Generated URL */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <LinkIcon size={14} className="text-gray-400" />
-              <label className="text-sm font-medium text-gray-300">
-                Shareable Link
-              </label>
+          {/* Generated URL (shown after save) */}
+          {saved && shareUrl && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <LinkIcon size={14} className="text-green-400" />
+                <label className="text-sm font-medium text-green-400">
+                  Battle Saved! Copy your link:
+                </label>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={shareUrl}
+                  readOnly
+                  className="w-full px-3 py-2 pr-20 bg-gray-800 border border-green-700 rounded-lg text-gray-300 text-sm font-mono truncate focus:outline-none"
+                />
+                <button
+                  onClick={handleCopy}
+                  className={`absolute right-1 top-1 bottom-1 px-3 rounded flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                    copied
+                      ? 'bg-green-600 text-white'
+                      : 'bg-imperial-gold hover:bg-imperial-gold/80 text-gray-900'
+                  }`}
+                >
+                  {copied ? (
+                    <>
+                      <Check size={14} />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-            <div className="relative">
-              <input
-                type="text"
-                value={shareUrl}
-                readOnly
-                className="w-full px-3 py-2 pr-20 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 text-xs font-mono truncate focus:outline-none"
-              />
-              <button
-                onClick={handleCopy}
-                disabled={!shareUrl}
-                className={`absolute right-1 top-1 bottom-1 px-3 rounded flex items-center gap-1.5 text-sm font-medium transition-colors ${
-                  copied
-                    ? 'bg-green-600 text-white'
-                    : 'bg-imperial-gold hover:bg-imperial-gold/80 text-gray-900'
-                }`}
-              >
-                {copied ? (
-                  <>
-                    <Check size={14} />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy size={14} />
-                    Copy
-                  </>
-                )}
-              </button>
-            </div>
-            {shareUrl && (
-              <p className="text-xs text-gray-500 mt-1">
-                URL length: {shareUrl.length} characters
-              </p>
-            )}
-          </div>
+          )}
 
-          {/* Warning/Error */}
+          {/* Error */}
           {error && (
-            <div className="flex items-start gap-2 p-3 bg-yellow-900/30 border border-yellow-700/50 rounded-lg">
-              <AlertCircle size={16} className="text-yellow-500 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-yellow-400">{error}</p>
+            <div className="flex items-start gap-2 p-3 bg-red-900/30 border border-red-700/50 rounded-lg">
+              <AlertCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-red-400">{error}</p>
             </div>
           )}
         </div>
@@ -226,16 +273,35 @@ export function ShareBattleModal({
               onClick={onClose}
               className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
             >
-              Cancel
+              {saved ? 'Close' : 'Cancel'}
             </button>
-            <button
-              onClick={handleCopy}
-              disabled={!shareUrl}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Copy size={16} />
-              Copy Link
-            </button>
+            {!saved ? (
+              <button
+                onClick={handleSave}
+                disabled={saving || !title.trim()}
+                className="btn-primary flex items-center gap-2 disabled:opacity-50"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Share2 size={16} />
+                    Generate Link
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={handleCopy}
+                className="btn-primary flex items-center gap-2"
+              >
+                <Copy size={16} />
+                Copy Link
+              </button>
+            )}
           </div>
         </div>
       </div>
