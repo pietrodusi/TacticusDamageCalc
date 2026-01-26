@@ -191,6 +191,33 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     }
   }
 
+  // Foehammer (Arjac) - Characters defeated counter for bonus damage
+  if (character.activeAbilities.includes('Foehammer')) {
+    const levelIndex = character.abilityLevels?.['Foehammer'] ?? 54;
+    const values = getAbilityValues('Foehammer', levelIndex);
+    const abilityName = getAbilityNameSync('Foehammer');
+
+    if (values) {
+      const extraDmg = values.extraDmg as number || 0;
+
+      // Counter for characters defeated
+      const defeatedCount = (character.abilityToggles['Foehammer_defeated'] as unknown as number) ?? 0;
+      conditions.push({
+        id: 'Foehammer_defeated',
+        label: 'Characters Defeated',
+        source: abilityName,
+        effect: defeatedCount > 0 ? `+${extraDmg * defeatedCount} dmg` : 'No bonus',
+        effectPerCount: `+${extraDmg} dmg`,
+        isActive: defeatedCount > 0,
+        category: 'self',
+        isCounter: true,
+        counterValue: defeatedCount,
+        counterMin: 0,
+        counterMax: 10,  // Reasonable max for defeated characters
+      });
+    }
+  }
+
   // Aggressive Onslaught (Mataneo) - Charging to summon Jump Pack Intercessors
   if (character.passiveAbilities.includes('AggressiveOnslaught')) {
     const levelIndex = character.abilityLevels?.['AggressiveOnslaught'] ?? 54;
@@ -232,7 +259,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     }
   }
 
-  // Lord of Tempests (Njal) - Ice coverage
+  // Lord of Tempests (Njal) - Ice coverage counter
   if (character.passiveAbilities.includes('LordOfTempests')) {
     const levelIndex = character.abilityLevels?.['LordOfTempests'] ?? 54;
     const values = getAbilityValues('LordOfTempests', levelIndex);
@@ -241,13 +268,20 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     if (values) {
       const extraDmg = values.extraDmg as number || 0;
 
+      // Counter for surrounding Ice hexes (0-6)
+      const iceHexCount = (character.abilityToggles['LordOfTempests'] as unknown as number) ?? 0;
       conditions.push({
         id: 'LordOfTempests',
-        label: 'Max Ice Coverage (6 hexes)',
+        label: 'Surrounding Ice Hexes',
         source: abilityName,
-        effect: `+${extraDmg * 6} dmg (normal attacks)`,
-        isActive: isToggleActive(character.abilityToggles['LordOfTempests']),
+        effect: iceHexCount > 0 ? `+${extraDmg * iceHexCount} dmg (normal attacks)` : 'No bonus',
+        effectPerCount: `+${extraDmg} dmg`,
+        isActive: iceHexCount > 0,
         category: 'self',
+        isCounter: true,
+        counterValue: iceHexCount,
+        counterMin: 0,
+        counterMax: 6,
       });
     }
   }

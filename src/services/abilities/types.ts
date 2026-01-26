@@ -87,6 +87,9 @@ export interface AbilityStatModifier {
   // Source ability name for display
   abilityName?: string;
 
+  // Duration in turns (undefined = lasts until end of current turn, number = lasts that many turns)
+  duration?: number;
+
   // Pre-armor damage bonuses
   baseDamageBonus?: number;        // Flat damage added to base (pre-armor)
   baseDamageMultiplier?: number;   // 1.25 = +25% damage (pre-armor)

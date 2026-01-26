@@ -1275,9 +1275,9 @@ export const DoctrinaImperativesHandler: AbilityHandler = {
 /**
  * Foehammer (Arjac)
  * Ranged Power damage attack with +extraDmg per defeated character
- * Note: Defeated character tracking not modeled - bonus displayed in description
  * Variables: minDmg, maxDmg, extraDmg
  * Constants: damageProfile: Power, range: 2, nrOfHits: 1
+ * Counter: Foehammer_defeated - number of characters defeated
  */
 export const FoehammerHandler: AbilityHandler = {
   abilityId: 'Foehammer',
@@ -1285,15 +1285,17 @@ export const FoehammerHandler: AbilityHandler = {
   category: 'damage',
   cooldown: -1,
 
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('Foehammer');
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const extraDmgPerDefeated = values.extraDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
 
-    // Note: +extraDmg per defeated character is not tracked automatically
-    // User should account for this bonus manually if applicable
+    // Get defeated character count from toggle counter
+    const defeatedCount = (context.abilityToggles?.['Foehammer_defeated'] as unknown as number) ?? 0;
+    const bonusDamage = extraDmgPerDefeated * defeatedCount;
+
     return {
       abilityId: 'Foehammer',
       abilityName,
@@ -1305,8 +1307,15 @@ export const FoehammerHandler: AbilityHandler = {
         hits: 1,
         damageProfile: 'Power' as DamageType,
       },
+      // Pass bonus damage as modifier for display in BattleLog
+      abilityModifiers: bonusDamage > 0 ? {
+        baseDamageBonus: bonusDamage,
+        abilityName: `${defeatedCount} Defeated`,  // Custom source name for display
+      } : undefined,
       attackType: 'ranged',
-      message: `${abilityName} (+${extraDmgPerDefeated}/defeated)`,
+      message: defeatedCount > 0
+        ? `${abilityName} (+${bonusDamage} from ${defeatedCount} defeated)`
+        : abilityName,
     };
   },
 };
@@ -1315,6 +1324,7 @@ export const FoehammerHandler: AbilityHandler = {
  * Stormcaller (Njal)
  * Ranged Psychic damage attack with 3 hits
  * Creates Ice hexes on enemies hit
+ * Ignores all bonuses/modifiers and cannot crit
  * Variables: minDmg, maxDmg
  * Constants: damageProfile: Psychic, range: 3, nrOfHits: 3
  */
@@ -1343,6 +1353,7 @@ export const StormcallerHandler: AbilityHandler = {
         damageProfile: 'Psychic' as DamageType,
       },
       attackType: 'ranged',
+      rawDamage: true,  // Ignores all bonuses/modifiers and cannot crit
       message: abilityName,
     };
   },

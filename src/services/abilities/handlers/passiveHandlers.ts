@@ -873,7 +873,7 @@ export const VisionsOfHeresyHandler: AbilityHandler = {
  * LordOfTempests (Njal)
  * Normal attacks deal +extraDmg damage per Ice hex surrounding Njal (up to 6).
  * The hex of each enemy hit is covered in Ice at end of attack.
- * When toggle is enabled, assumes max Ice coverage (6 hexes).
+ * Uses counter to track number of surrounding Ice hexes.
  * Variables: extraDmg
  */
 export const LordOfTempestsHandler: AbilityHandler = {
@@ -886,13 +886,12 @@ export const LordOfTempestsHandler: AbilityHandler = {
     // Only applies to normal attacks (melee or ranged)
     const isNormalAttack = context.attackCategory === 'normal';
 
-    // Toggle enables max Ice coverage (6 hexes)
-    const hasIceCoverage = isToggleActive(context.abilityToggles['LordOfTempests']);
-    const iceHexCount = hasIceCoverage ? 6 : 0;
+    // Counter tracks number of surrounding Ice hexes (0-6)
+    const iceHexCount = (context.abilityToggles['LordOfTempests'] as unknown as number) ?? 0;
     const extraDmgPerHex = values.extraDmg as number || 0;
     const totalBonus = iceHexCount * extraDmgPerHex;
 
-    const applicable = isNormalAttack && hasIceCoverage;
+    const applicable = isNormalAttack && iceHexCount > 0;
 
     return {
       abilityId: 'LordOfTempests',
@@ -902,10 +901,10 @@ export const LordOfTempestsHandler: AbilityHandler = {
       } : {},
       applicable,
       reason: isNormalAttack
-        ? (hasIceCoverage ? `+${extraDmgPerHex} × ${iceHexCount} Ice hexes = +${totalBonus} damage` : 'No Ice hexes')
+        ? (iceHexCount > 0 ? `+${extraDmgPerHex} × ${iceHexCount} Ice hexes = +${totalBonus} damage` : 'No Ice hexes')
         : 'Only applies to normal attacks',
-      requiresToggle: true,
-      toggleLabel: 'Max Ice Coverage (6 hexes)',
+      requiresToggle: false,  // Using counter instead
+      toggleLabel: 'Surrounding Ice Hexes',
     };
   },
 };
@@ -946,7 +945,8 @@ export const HuntersBeyondDeathHandler: AbilityHandler = {
 
 /**
  * SavageKiller (Ulf)
- * After normal melee attack, performs a 5x Power melee follow-up attack.
+ * After killing an enemy with a normal melee attack, performs a follow-up attack.
+ * Does NOT work on bosses (bosses can't be killed mid-attack).
  * Variables: minDmg, maxDmg
  * Constants: damageProfile: Power, nrOfHits: 5
  */
@@ -956,39 +956,15 @@ export const SavageKillerHandler: AbilityHandler = {
   category: 'passive',
   cooldown: -1,
 
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
-    // Only triggers after normal melee attacks
-    const isNormalMelee = context.attackType === 'melee' && context.attackCategory === 'normal';
-    const applicable = isNormalMelee;
-
-    const minDamage = values.minDmg as number || 0;
-    const maxDamage = values.maxDmg as number || 0;
-    const avgDamage = Math.round((minDamage + maxDamage) / 2);
-    const hits = values.nrOfHits as number || 5;
-
-    // Build follow-up attack (special attack)
-    const followUpAttack: FollowUpAttack | undefined = applicable ? {
-      abilityId: 'SavageKiller',
-      abilityName: 'Savage Killer',
-      damageProfile: 'Power',
-      minDamage,
-      maxDamage,
-      hits,
-      attackCategory: 'special',  // This is a SPECIAL attack
-      triggersOnNormalOnly: true,  // Only triggers after normal attacks
-      triggersOnMeleeOnly: true,   // Only triggers after melee attacks
-    } : undefined;
-
+  evaluatePassive: (_values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    // This ability only triggers when killing an enemy, which doesn't happen against bosses
     return {
       abilityId: 'SavageKiller',
       abilityName: getAbilityNameSync('SavageKiller'),
-      modifiers: {},  // No modifiers to main attack
-      applicable,
-      reason: applicable
-        ? `Follow-up: ${hits}x ${avgDamage} Power`
-        : 'Only triggers on normal melee attacks',
+      modifiers: {},
+      applicable: false,
+      reason: 'Does not work on bosses',
       requiresToggle: false,
-      followUpAttack,
     };
   },
 };

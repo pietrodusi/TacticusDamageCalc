@@ -16,6 +16,8 @@ import {
   SummonCard,
   InspiredToGreatnessModal,
   DarkTalonStrikeModal,
+  RitesOfMorkaiModal,
+  HealTargetModal,
 } from '../components/battle';
 import type { DarkTalonStrikeMode } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
@@ -118,6 +120,24 @@ export function CalculatorPage() {
     casterId: string;
     directDamageValues: { minDmg: number; maxDmg: number; hits: number };
     bolterValues: { minDmg: number; maxDmg: number; hits: number };
+  } | null>(null);
+
+  // RitesOfMorkai modal state (for Baldr's active ability)
+  const [ritesOfMorkaiModalOpen, setRitesOfMorkaiModalOpen] = useState(false);
+  const [ritesOfMorkaiContext, setRitesOfMorkaiContext] = useState<{
+    casterId: string;
+    extraDmg: number;
+  } | null>(null);
+
+  // Heal modal state (for Healer trait - Baldr's HealingBalms)
+  const [healModalOpen, setHealModalOpen] = useState(false);
+  const [healContext, setHealContext] = useState<{
+    healerId: string;
+    healAmount: number;
+    buffInfo?: {
+      critChanceBonus: number;
+      critDamageBonus: number;
+    };
   } | null>(null);
 
   // Get the active turn (editing turn or current turn)
@@ -349,6 +369,20 @@ export function CalculatorPage() {
           }
         }
 
+        // Special handling for RitesOfMorkai - opens target selection modal
+        if (abilityId === 'RitesOfMorkai') {
+          const romLevelIndex = character.abilityLevels?.['RitesOfMorkai'] ?? 54;
+          const romValues = getAbilityValues('RitesOfMorkai', romLevelIndex);
+          const extraDmg = (romValues?.extraDmg as number) || 0;
+
+          setRitesOfMorkaiContext({
+            casterId: characterId,
+            extraDmg,
+          });
+          setRitesOfMorkaiModalOpen(true);
+          break;
+        }
+
         // Only modify current turn flags if not editing past turn
         if (!isEditingPastTurn) {
           // Check if this ability ends the turn
@@ -421,6 +455,36 @@ export function CalculatorPage() {
           pendingAttackChoiceTargets: [],
         });
         setRepairModalOpen(true);
+        break;
+      }
+
+      case 'heal': {
+        // Open heal target modal for Healer trait
+        // Calculate heal amount: character's damage × max(meleeHits, rangedHits)
+        const maxHitsHeal = Math.max(character.meleeHits, character.rangedHits || 0);
+        const healAmountHeal = character.calculatedDamage * maxHitsHeal;
+
+        // Check if healer has HealingBalms passive (Baldr)
+        const hasHealingBalms = character.passiveAbilities?.includes('HealingBalms') ?? false;
+        let buffInfo: { critChanceBonus: number; critDamageBonus: number } | undefined;
+
+        if (hasHealingBalms) {
+          const hbLevelIndex = character.abilityLevels?.['HealingBalms'] ?? 54;
+          const hbValues = getAbilityValues('HealingBalms', hbLevelIndex);
+          if (hbValues) {
+            buffInfo = {
+              critChanceBonus: (hbValues.extraCritChance as number) || 0,
+              critDamageBonus: (hbValues.extraCritDmg as number) || 0,
+            };
+          }
+        }
+
+        setHealContext({
+          healerId: characterId,
+          healAmount: healAmountHeal,
+          buffInfo,
+        });
+        setHealModalOpen(true);
         break;
       }
     }
@@ -662,6 +726,209 @@ export function CalculatorPage() {
   const handleDarkTalonStrikeCancel = () => {
     setDarkTalonStrikeModalOpen(false);
     setDarkTalonStrikeContext(null);
+  };
+
+  // Handle Rites of Morkai target selection confirm
+  const handleRitesOfMorkaiConfirm = (targetIds: string[]) => {
+    if (!ritesOfMorkaiContext || !battleState) return;
+
+    const caster = battleState.team.find(c => c.id === ritesOfMorkaiContext.casterId);
+    if (!caster) return;
+
+    const targetTurn = activeTurn;
+    const extraDmg = ritesOfMorkaiContext.extraDmg;
+
+    // Only modify current turn flags if not editing past turn
+    if (!isEditingPastTurn) {
+      // Apply buff to caster if they have FinalJustice (and are not Mechanical - already checked in modal)
+      const casterHasFinalJustice = caster.traits?.includes('FinalJustice') ?? false;
+      if (casterHasFinalJustice) {
+        useBattleStore.setState((state) => ({
+          battleState: state.battleState ? {
+            ...state.battleState,
+            team: state.battleState.team.map((char) =>
+              char.id === caster.id
+                ? {
+                    ...char,
+                    activeBuffs: [
+                      ...char.activeBuffs,
+                      {
+                        abilityId: 'RitesOfMorkai',
+                        abilityName: 'Rites of Morkai',
+                        baseDamageBonus: extraDmg,
+                      },
+                    ],
+                  }
+                : char
+            ),
+          } : null,
+        }));
+      }
+
+      // Apply buff to selected targets
+      if (targetIds.length > 0) {
+        useBattleStore.setState((state) => ({
+          battleState: state.battleState ? {
+            ...state.battleState,
+            team: state.battleState.team.map((char) =>
+              targetIds.includes(char.id)
+                ? {
+                    ...char,
+                    activeBuffs: [
+                      ...char.activeBuffs,
+                      {
+                        abilityId: 'RitesOfMorkai',
+                        abilityName: 'Rites of Morkai',
+                        baseDamageBonus: extraDmg,
+                      },
+                    ],
+                  }
+                : char
+            ),
+          } : null,
+        }));
+      }
+
+      // Mark ability as used (one-time per battle)
+      markAbilityUsed(ritesOfMorkaiContext.casterId, 'RitesOfMorkai');
+      // Ability does NOT end turn - Baldr can still attack
+    }
+
+    // Build target names for log message
+    const buffedTargetNames = targetIds.map(id => {
+      const target = battleState.team.find(c => c.id === id);
+      return target?.name || 'Unknown';
+    });
+    const casterHasFinalJustice = caster.traits?.includes('FinalJustice') ?? false;
+    if (casterHasFinalJustice) {
+      buffedTargetNames.unshift(caster.name);
+    }
+
+    // Log the Rites of Morkai action
+    setBattleLog((prev) => [
+      ...prev,
+      {
+        timestamp: Date.now(),
+        characterId: ritesOfMorkaiContext.casterId,
+        characterName: caster.name,
+        action: 'ability' as const,
+        message: buffedTargetNames.length > 0
+          ? `Rites of Morkai: ${buffedTargetNames.join(', ')} +${extraDmg} dmg`
+          : 'Rites of Morkai: No eligible allies',
+        turn: targetTurn,
+      },
+    ]);
+
+    // Close modal and clear context
+    setRitesOfMorkaiModalOpen(false);
+    setRitesOfMorkaiContext(null);
+  };
+
+  // Cancel Rites of Morkai action
+  const handleRitesOfMorkaiCancel = () => {
+    setRitesOfMorkaiModalOpen(false);
+    setRitesOfMorkaiContext(null);
+  };
+
+  // Handle Heal target selection confirm
+  const handleHealConfirm = (targetId: string) => {
+    if (!healContext || !battleState) return;
+
+    const healer = battleState.team.find(c => c.id === healContext.healerId);
+    const target = battleState.team.find(c => c.id === targetId);
+    if (!healer || !target) return;
+
+    const targetTurn = activeTurn;
+    const healAmount = Math.min(healContext.healAmount, target.calculatedHealth - target.currentHealth);
+
+    // Only modify current turn flags if not editing past turn
+    if (!isEditingPastTurn) {
+      setCharacterActed(healContext.healerId, true);
+      setCharacterTurnEnded(healContext.healerId, true);
+
+      // Apply healing to target
+      useBattleStore.setState((state) => ({
+        battleState: state.battleState ? {
+          ...state.battleState,
+          team: state.battleState.team.map((char) =>
+            char.id === targetId
+              ? {
+                  ...char,
+                  currentHealth: Math.min(char.currentHealth + healContext.healAmount, char.calculatedHealth),
+                }
+              : char
+          ),
+        } : null,
+      }));
+
+      // Apply HealingBalms buff if healer has it
+      if (healContext.buffInfo) {
+        useBattleStore.setState((state) => {
+          if (!state.battleState) return state;
+
+          return {
+            battleState: {
+              ...state.battleState,
+              team: state.battleState.team.map((char) => {
+                if (char.id !== targetId) return char;
+
+                // Check if target already has HealingBalms buff - if so, reset duration
+                const existingBuffIndex = char.activeBuffs.findIndex(
+                  buff => buff.abilityName === 'Healing Balms'
+                );
+
+                const newBuff = {
+                  abilityName: 'Healing Balms',
+                  critChanceBonus: healContext.buffInfo!.critChanceBonus,
+                  critDamageBonus: healContext.buffInfo!.critDamageBonus,
+                  duration: 2,  // Lasts 2 turns
+                };
+
+                if (existingBuffIndex >= 0) {
+                  // Reset duration on existing buff
+                  const updatedBuffs = [...char.activeBuffs];
+                  updatedBuffs[existingBuffIndex] = newBuff;
+                  return { ...char, activeBuffs: updatedBuffs };
+                } else {
+                  // Add new buff
+                  return {
+                    ...char,
+                    activeBuffs: [...char.activeBuffs, newBuff],
+                  };
+                }
+              }),
+            },
+          };
+        });
+      }
+    }
+
+    // Log the heal action
+    const buffText = healContext.buffInfo
+      ? ` (+${healContext.buffInfo.critChanceBonus}% crit, +${healContext.buffInfo.critDamageBonus} crit dmg for 2 turns)`
+      : '';
+    setBattleLog((prev) => [
+      ...prev,
+      {
+        timestamp: Date.now(),
+        characterId: healContext.healerId,
+        characterName: healer.name,
+        action: 'heal' as const,
+        message: `${healer.name} heals ${target.name}: +${healAmount} HP${buffText}`,
+        healing: healAmount,
+        turn: targetTurn,
+      },
+    ]);
+
+    // Close modal and clear context
+    setHealModalOpen(false);
+    setHealContext(null);
+  };
+
+  // Cancel Heal action
+  const handleHealCancel = () => {
+    setHealModalOpen(false);
+    setHealContext(null);
   };
 
   // Team setup mode
@@ -982,6 +1249,31 @@ export function CalculatorPage() {
           directDamageValues={darkTalonStrikeContext.directDamageValues}
           bolterValues={darkTalonStrikeContext.bolterValues}
           onSelect={handleDarkTalonStrikeSelect}
+        />
+      )}
+
+      {/* Rites of Morkai Modal (Baldr's ability) */}
+      {ritesOfMorkaiContext && (
+        <RitesOfMorkaiModal
+          isOpen={ritesOfMorkaiModalOpen}
+          onClose={handleRitesOfMorkaiCancel}
+          caster={battleState.team.find(c => c.id === ritesOfMorkaiContext.casterId)!}
+          team={battleState.team}
+          extraDmg={ritesOfMorkaiContext.extraDmg}
+          onConfirm={handleRitesOfMorkaiConfirm}
+        />
+      )}
+
+      {/* Heal Target Modal (Healer trait - Baldr's HealingBalms) */}
+      {healContext && (
+        <HealTargetModal
+          isOpen={healModalOpen}
+          onClose={handleHealCancel}
+          healer={battleState.team.find(c => c.id === healContext.healerId)!}
+          team={battleState.team}
+          healAmount={healContext.healAmount}
+          buffInfo={healContext.buffInfo}
+          onConfirm={handleHealConfirm}
         />
       )}
     </div>

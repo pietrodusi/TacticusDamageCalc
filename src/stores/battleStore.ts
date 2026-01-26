@@ -841,8 +841,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       attackTurnsCount: char.attacksThisTurn > 0 ? char.attackTurnsCount + 1 : char.attackTurnsCount,
       // Advance ability cooldowns
       abilityCooldowns: advanceCooldowns(char.abilityCooldowns),
-      // Clear active buffs from abilities (they last one turn)
-      activeBuffs: [],
+      // Process active buffs: remove buffs without duration, decrement and filter duration-based buffs
+      activeBuffs: char.activeBuffs
+        .filter(buff => buff.duration !== undefined && buff.duration > 0)  // Keep only buffs with duration
+        .map(buff => ({ ...buff, duration: (buff.duration || 1) - 1 }))    // Decrement duration
+        .filter(buff => (buff.duration || 0) > 0),                          // Remove expired buffs
       // Reduce buff/debuff durations
       buffs: char.buffs
         .map((b) => ({ ...b, duration: b.duration - 1 }))

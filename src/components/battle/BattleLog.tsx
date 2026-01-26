@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { BattleLogEntry, DamageBreakdown, BattleCharacter } from '../../types';
 import type { BuffSource } from '../../services/damage/types';
-import { Sword, Move, Sparkles, Clock, RotateCcw, Crosshair, Pencil, X, Zap, ChevronDown, ChevronRight, Wrench, User } from 'lucide-react';
+import { Sword, Move, Sparkles, Clock, RotateCcw, Crosshair, Pencil, X, Zap, ChevronDown, ChevronRight, Wrench, User, Heart } from 'lucide-react';
 import { getDamageTypeImageUrl } from '../../services/dataService';
 
 // Extended entry with turn number
@@ -10,26 +10,17 @@ export interface TurnLogEntry extends BattleLogEntry {
   attackType?: 'melee' | 'ranged';
 }
 
-// Helper function to format sources inline with individual values
-// valueKey specifies which property to display (e.g., 'damageBonus', 'extraHits', 'critChanceBonus')
+// Helper function to format sources inline (name only, value is already shown separately)
+// valueKey specifies which property to filter by (e.g., 'damageBonus', 'extraHits', 'critChanceBonus')
 function formatSourcesInline(sources: BuffSource[], valueKey: keyof BuffSource): string {
   if (!sources || sources.length === 0) return '';
-  const parts = sources.map(s => {
-    const value = s[valueKey] as number | undefined;
-    if (value !== undefined && value !== 0) {
-      // Format multipliers as percentages
-      if (valueKey === 'damageMultiplier') {
-        const percent = Math.round((value - 1) * 100);
-        return `${s.name} ${percent >= 0 ? '+' : ''}${percent}%`;
-      }
-      // Format crit chance as percentage
-      if (valueKey === 'critChanceBonus') {
-        return `${s.name} +${value}%`;
-      }
-      return `${s.name} +${value}`;
-    }
-    return s.name;
-  });
+  const parts = sources
+    .filter(s => {
+      const value = s[valueKey] as number | undefined;
+      return value !== undefined && value !== 0;
+    })
+    .map(s => s.name);
+  if (parts.length === 0) return '';
   return ` (${parts.join(', ')})`;
 }
 
@@ -202,6 +193,7 @@ const actionIcons = {
   ability: Sparkles,
   wait: Clock,
   repair: Wrench,
+  heal: Heart,
 };
 
 export function BattleLog({ entries, currentTurn, editingTurn, isComplete, team, onUndoCharacterTurn, onEditTurn }: BattleLogProps) {

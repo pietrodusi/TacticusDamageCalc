@@ -12,6 +12,7 @@ import {
   getRarityImageUrl,
   getDamageTypeImageUrl,
 } from '../../services/dataService';
+import { getTraitName } from '../../services/damage';
 
 interface CharacterStatsProps {
   character: Character;
@@ -274,7 +275,7 @@ export function CharacterStats({
                 key={trait}
                 className="px-3 py-1 bg-gray-700 rounded-full text-sm text-gray-200"
               >
-                {trait}
+                {getTraitName(trait)}
               </span>
             ))}
           </div>

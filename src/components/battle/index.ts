@@ -16,3 +16,5 @@ export { SummonCard } from './SummonCard';
 export { InspiredToGreatnessModal } from './InspiredToGreatnessModal';
 export { DarkTalonStrikeModal } from './DarkTalonStrikeModal';
 export type { DarkTalonStrikeMode } from './DarkTalonStrikeModal';
+export { RitesOfMorkaiModal } from './RitesOfMorkaiModal';
+export { HealTargetModal } from './HealTargetModal';

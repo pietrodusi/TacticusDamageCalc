@@ -5,7 +5,7 @@ import type { PooledBuff } from './buff';
 import type { BuffSource } from '../services/damage/types';
 import type { BattleSummon } from './summon';
 
-export type ActionType = 'move' | 'attack' | 'meleeAttack' | 'rangedAttack' | 'ability' | 'wait' | 'repair';
+export type ActionType = 'move' | 'attack' | 'meleeAttack' | 'rangedAttack' | 'ability' | 'wait' | 'repair' | 'heal';
 
 // Pending repair action state for Actus's Mechanic trait and DefendTheDivineWork ability
 export interface PendingRepairAction {

@@ -1,4 +1,4 @@
-import { Sparkles, Clock, Wrench, Crosshair } from 'lucide-react';
+import { Sparkles, Clock, Wrench, Crosshair, Heart } from 'lucide-react';
 import type { BattleCharacter, ActionType } from '../../types';
 import { getDamageTypeImageUrl } from '../../services/dataService';
 import { getAbilityNameSync, getAbilityValues, executeActiveAbility, classifyAbility, isAbilityReady, getCooldownDisplayText, getFormattedAbilityDescription } from '../../services/abilities';
@@ -15,6 +15,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
   const hasRanged = character.rangedHits !== undefined && character.rangedHits > 0;
   const hasActiveAbility = character.activeAbilities.length > 0;
   const hasMechanicTrait = character.traits.includes('Mechanic');
+  const hasHealerTrait = character.traits.includes('Healer');
   const hasTheBetrayerAbility = character.passiveAbilities?.includes('TheBetrayer') ?? false;
   const isAdjacentToBoss = character.abilityToggles?.['adjacentToBoss'] ?? false;
   // Overwatch check - available for:
@@ -257,7 +258,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
       </div>
 
       {/* Other Actions */}
-      <div className={`grid gap-2 ${hasMechanicTrait || hasTheBetrayerAbility || showOverwatchButton ? 'grid-cols-2 sm:grid-cols-2' : 'grid-cols-1'}`}>
+      <div className={`grid gap-2 ${hasMechanicTrait || hasHealerTrait || hasTheBetrayerAbility || showOverwatchButton ? 'grid-cols-2 sm:grid-cols-2' : 'grid-cols-1'}`}>
         {/* Repair (only for Mechanic trait) */}
         {hasMechanicTrait && (
           <button
@@ -270,6 +271,21 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
           >
             <Wrench size={18} />
             <span className="text-xs font-medium">Repair</span>
+          </button>
+        )}
+
+        {/* Heal (only for Healer trait) */}
+        {hasHealerTrait && (
+          <button
+            onClick={() => !isTurnEnded && !character.hasActed && onAction('heal')}
+            disabled={isTurnEnded || character.hasActed}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              isTurnEnded || character.hasActed ? disabledClasses : 'hover:bg-green-900/50 hover:border-green-600 text-green-500'
+            }`}
+            title="Heal a friendly non-Mechanical unit"
+          >
+            <Heart size={18} />
+            <span className="text-xs font-medium">Heal</span>
           </button>
         )}
 
