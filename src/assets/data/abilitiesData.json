@@ -725,7 +725,7 @@
 	
 	"HealingBalms": {
         "description": "When Baldr uses his action to heal a friendly unit, the healed unit has +{[extraCritChance]}% Crit Chance and deals +{[extraCritDmg]} Crit Damage for 2 rounds. At the start of its next turn, the affected unit is also healed for {[hpToHeal]} Health. Baldr can heal friendly units even if they are at full Health.",
-        "name": "Heal"
+        "name": "Healing Balms"
     },
 	
 	
@@ -1362,7 +1362,7 @@
     },
 	"RitesOfMorkai": {
         "description": "Baldr and all surrounding friendly non-mechanical units become Inspired for 1 round or until they are revived. The first time each inspired unit would be defeated, it is instead revived with {[hp]} Health, unless Overkilled. Inspired units with Final Vengeance deal +{[extraDmg]} Damage with all attacks. After using this ability, Baldr immediately performs a normal melee attack against an adjacent enemy.",
-        "name": "Rites of Battle"
+        "name": "Rites of Morkai"
     },
     "RitesOfRestoration": {
         "description": "<style=Healing>Heals</style> herself and all adjacent friendly units for <style=Stat_Health>{[hpToHeal]} Health</style>. Resurrects {[nrOfHeroes]} random friendly <style=Aliance_Imperial>Imperial</style> <style=Character>Character</style> and up to <style=Stat>{[nrOfSummons]}</style> random friendly <style=Aliance_Imperial>Imperial</style> <style=Summon>Summons</style> that have been defeated in this battle. Resurrected units appear in free adjacent hexes with <style=Stat_Health>{[hp]} Health</style> and are unable to act on this turn. Only affects non-<style=Mechanical>Mechanical</style> units.",
