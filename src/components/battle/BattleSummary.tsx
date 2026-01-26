@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { User, Trophy, ChevronDown, ChevronUp } from 'lucide-react';
-import type { BattleCharacter, Turn } from '../../types';
+import { User, Trophy, ChevronDown, ChevronUp, Share2 } from 'lucide-react';
+import type { BattleCharacter, Turn, BattleState } from '../../types';
+import type { TeamMember } from '../../types/character';
+import type { SelectedBoss } from '../../types/boss';
+import type { SelectedMachineOfWar } from '../../types/machineOfWar';
 import { DamagePerTurnChart } from './DamagePerTurnChart';
+import { ShareBattleModal } from './ShareBattleModal';
 import {
   analyzeDamageByAttackType,
   type CharacterDamageBreakdown,
@@ -12,11 +16,30 @@ interface BattleSummaryProps {
   totalDamage: number;
   turnHistory: Turn[];
   onReset: () => void;
+  // Props for sharing
+  battleState?: BattleState;
+  originalTeam?: TeamMember[];
+  selectedBoss?: SelectedBoss | null;
+  selectedMachine?: SelectedMachineOfWar | null;
 }
 
-export function BattleSummary({ team, totalDamage, turnHistory, onReset }: BattleSummaryProps) {
+export function BattleSummary({
+  team,
+  totalDamage,
+  turnHistory,
+  onReset,
+  battleState,
+  originalTeam,
+  selectedBoss,
+  selectedMachine,
+}: BattleSummaryProps) {
   // Track expanded characters for breakdown view
   const [expandedCharacters, setExpandedCharacters] = useState<Set<string>>(new Set());
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  // Check if sharing is available (all required props provided)
+  const canShare = battleState && originalTeam && originalTeam.length > 0;
 
   // Sort characters by damage dealt (highest first)
   const sortedTeam = [...team].sort((a, b) => b.totalDamageDealt - a.totalDamageDealt);
@@ -156,12 +179,33 @@ export function BattleSummary({ team, totalDamage, turnHistory, onReset }: Battl
         </div>
       </div>
 
-      {/* Reset Button */}
-      <div className="flex justify-center">
+      {/* Action Buttons */}
+      <div className="flex justify-center gap-4">
+        {canShare && (
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="btn-secondary px-6 py-3 flex items-center gap-2"
+          >
+            <Share2 size={18} />
+            Share Results
+          </button>
+        )}
         <button onClick={onReset} className="btn-primary px-8 py-3">
           Start New Simulation
         </button>
       </div>
+
+      {/* Share Modal */}
+      {canShare && (
+        <ShareBattleModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          battleState={battleState}
+          team={originalTeam}
+          selectedBoss={selectedBoss ?? null}
+          selectedMachine={selectedMachine ?? null}
+        />
+      )}
     </div>
   );
 }

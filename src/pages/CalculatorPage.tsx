@@ -1200,6 +1200,10 @@ export function CalculatorPage() {
             totalDamage={battleState.totalDamageDealt}
             turnHistory={battleState.turnHistory}
             onReset={handleResetBattle}
+            battleState={battleState}
+            originalTeam={team}
+            selectedBoss={selectedBoss}
+            selectedMachine={selectedMachineOfWar}
           />
         </div>
       )}

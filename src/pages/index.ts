@@ -3,3 +3,4 @@ export { CharacterListPage } from './CharacterListPage';
 export { CharacterDetailPage } from './CharacterDetailPage';
 export { CalculatorPage } from './CalculatorPage';
 export { StrategiumPage } from './StrategiumPage';
+export { SharedBattlePage } from './SharedBattlePage';
