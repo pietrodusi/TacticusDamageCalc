@@ -2148,7 +2148,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         // RapidAssault applies to follow-ups if this is the first attack turn
 
         // Build buff sources for breakdown display (iterate through applicable pool buffs)
-        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number };
+        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number; pierceRatioBonus?: number };
         const followUpBuffSources: FollowUpBuffSource[] = [];
 
         // Add each applicable pool buff as a source
@@ -2258,6 +2258,19 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           }
         }
 
+        // Supercharge (Sarquael): +pierce ratio bonus for ALL team Plasma attacks this turn
+        const followUpSuperchargeBonus = (currentBattleState.superchargePierceBonus && effectiveDamageProfile === 'Plasma')
+          ? currentBattleState.superchargePierceBonus
+          : 0;
+
+        // Add Supercharge buff source for display
+        if (followUpSuperchargeBonus > 0) {
+          followUpBuffSources.push({
+            name: 'Supercharge',
+            pierceRatioBonus: followUpSuperchargeBonus,
+          });
+        }
+
         const followUpStats: AttackerStats = {
           baseDamage: multipliedDamage,  // Just the ability base damage (avg of min/max * multiplier)
           damageType: effectiveDamageProfile,  // Use effective damage profile (may be from character's ranged)
@@ -2282,13 +2295,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           // Pass Fighting Retreat flag for RangedSpecialist override
           fightingRetreatActive: attacker.fightingRetreatActive,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
-          abilityModifiers: (lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1 || followUpCritChanceBonus > 0 || followUpCritDamageBonus > 0) ? {
+          abilityModifiers: (lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1 || followUpCritChanceBonus > 0 || followUpCritDamageBonus > 0 || followUpSuperchargeBonus > 0) ? {
             baseDamageBonus: lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus > 0 ? lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus : undefined,
             extraHits: lcExtraHits + auraHitsBonus > 0 ? lcExtraHits + auraHitsBonus : undefined,
             armorIgnored: followUpArmorIgnored > 0 ? followUpArmorIgnored : undefined,
             baseDamageMultiplier: finalFollowUpMultiplier !== 1 ? finalFollowUpMultiplier : undefined,
             critChanceBonus: followUpCritChanceBonus > 0 ? followUpCritChanceBonus : undefined,
             critDamageBonus: followUpCritDamageBonus > 0 ? followUpCritDamageBonus : undefined,
+            pierceRatioBonus: followUpSuperchargeBonus > 0 ? followUpSuperchargeBonus : undefined,
             buffSources: followUpBuffSources,
           } : undefined,
         };
@@ -3386,7 +3400,12 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const componentCritDamageBonus = componentPoolEffects.critDamageBonus || 0;
 
         // Get ability pierce ratio bonus (e.g., Supercharge)
-        const abilityPierceRatioBonus = result.abilityModifiers?.pierceRatioBonus || 0;
+        // Include team-wide Supercharge bonus for Plasma attacks
+        const abilityOwnPierceBonus = result.abilityModifiers?.pierceRatioBonus || 0;
+        const superchargeTeamBonus = (battleState.superchargePierceBonus && component.damageProfile === 'Plasma')
+          ? battleState.superchargePierceBonus
+          : 0;
+        const abilityPierceRatioBonus = abilityOwnPierceBonus + superchargeTeamBonus;
 
         // High Ground: +50% damage multiplier when toggle is enabled
         const componentHighGroundMultiplier = character.abilityToggles['HighGround'] ? 1.5 : 1;
@@ -3474,11 +3493,19 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           });
         }
 
-        // Add ability pierce ratio bonus source (e.g., Supercharge)
-        if (abilityPierceRatioBonus > 0) {
+        // Add ability's own pierce ratio bonus source (e.g., for Supercharge's own attack)
+        if (abilityOwnPierceBonus > 0) {
           componentBuffSources.push({
             name: abilityName,
-            pierceRatioBonus: abilityPierceRatioBonus,
+            pierceRatioBonus: abilityOwnPierceBonus,
+          });
+        }
+
+        // Add Supercharge team bonus source (for other abilities' Plasma attacks)
+        if (superchargeTeamBonus > 0) {
+          componentBuffSources.push({
+            name: 'Supercharge',
+            pierceRatioBonus: superchargeTeamBonus,
           });
         }
 
@@ -3766,7 +3793,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
 
       // Build buff sources for breakdown display
-      const abilityBuffSources: Array<{ name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number }> = [];
+      const abilityBuffSources: Array<{ name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number; pierceRatioBonus?: number }> = [];
 
       // Add pool buff sources (including Daughter of the Abyss multiplier, Legendary Commander, etc.)
       for (const poolBuff of singleAbilityApplicableBuffs) {
@@ -3946,8 +3973,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         });
       }
 
+      // Supercharge (Sarquael): +pierce ratio bonus for ALL team Plasma attacks this turn
+      const singleAbilitySuperchargeBonus = (battleState.superchargePierceBonus && result.damageResult.damageProfile === 'Plasma')
+        ? battleState.superchargePierceBonus
+        : 0;
+
+      // Add Supercharge buff source for display
+      if (singleAbilitySuperchargeBonus > 0) {
+        abilityBuffSources.push({
+          name: 'Supercharge',
+          pierceRatioBonus: singleAbilitySuperchargeBonus,
+        });
+      }
+
       // Check if we have any ability modifiers to pass
-      const hasModifiers = totalDmgBonus > 0 || totalHitsBonus > 0 || abilityGlobalMultiplier || result.abilityModifiers || poolDamageMultiplier !== 1 || abilityHighGroundMultiplier !== 1 || abilityWarMachineMultiplier !== 1 || mortisRoundHeavyWeaponMultiplier !== 1 || abilityCritChanceBonus > 0 || abilityCritDamageBonus > 0;
+      const hasModifiers = totalDmgBonus > 0 || totalHitsBonus > 0 || abilityGlobalMultiplier || result.abilityModifiers || poolDamageMultiplier !== 1 || abilityHighGroundMultiplier !== 1 || abilityWarMachineMultiplier !== 1 || mortisRoundHeavyWeaponMultiplier !== 1 || abilityCritChanceBonus > 0 || abilityCritDamageBonus > 0 || singleAbilitySuperchargeBonus > 0;
 
       // Merge ability-specific modifiers with LC + aura bonuses + pool multipliers + high ground + war machine
       const mergedBaseDmgBonus = totalDmgBonus + (result.abilityModifiers?.baseDamageBonus || 0);
@@ -3986,6 +4026,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           extraHits: mergedExtraHits > 0 ? mergedExtraHits : undefined,
           critChanceBonus: abilityCritChanceBonus > 0 ? abilityCritChanceBonus : undefined,
           critDamageBonus: abilityCritDamageBonus > 0 ? abilityCritDamageBonus : undefined,
+          pierceRatioBonus: singleAbilitySuperchargeBonus > 0 ? singleAbilitySuperchargeBonus : undefined,
           buffSources: abilityBuffSources,
         } : undefined,
       };
@@ -4018,6 +4059,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         targetArmor: bossArmor,
         afterArmor: abilityResult.afterArmor,
         pierceRatio: abilityResult.pierceRatio,
+        pierceRatioBonus: abilityResult.pierceRatioBonus,
+        pierceRatioBonusSources: abilityResult.pierceRatioBonusSources,
+        effectivePierceRatio: abilityResult.effectivePierceRatio,
         pierceFloor: abilityResult.pierceFloor,
         afterArmorPierce: abilityResult.afterArmorPierce,
         globalMultiplier: abilityResult.globalMultiplier,
@@ -4741,7 +4785,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const avgDamagePerHit = Math.round((followUp.minDamage + followUp.maxDamage) / 2);
 
         // Build buff sources for breakdown display (iterate through applicable pool buffs)
-        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number };
+        type FollowUpBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number; pierceRatioBonus?: number };
         const followUpBuffSources: FollowUpBuffSource[] = [];
 
         // Add each applicable pool buff as a source
@@ -4818,8 +4862,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           });
         }
 
+        // Supercharge (Sarquael): +pierce ratio bonus for ALL team Plasma attacks this turn
+        const abilityFollowUpSuperchargeBonus = (battleState.superchargePierceBonus && followUp.damageProfile === 'Plasma')
+          ? battleState.superchargePierceBonus
+          : 0;
+
+        // Add Supercharge buff source for display
+        if (abilityFollowUpSuperchargeBonus > 0) {
+          followUpBuffSources.push({
+            name: 'Supercharge',
+            pierceRatioBonus: abilityFollowUpSuperchargeBonus,
+          });
+        }
+
         // Check if we have any modifiers to pass
-        const hasFollowUpModifiers = lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpGlobalMultiplier || followUpArmorIgnored > 0 || followUpDamageMultiplier !== 1 || abilityFollowUpHighGroundMultiplier !== 1 || abilityFollowUpWarMachineMultiplier !== 1 || abilityFollowUpCritChanceBonus > 0 || abilityFollowUpCritDamageBonus > 0;
+        const hasFollowUpModifiers = lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpGlobalMultiplier || followUpArmorIgnored > 0 || followUpDamageMultiplier !== 1 || abilityFollowUpHighGroundMultiplier !== 1 || abilityFollowUpWarMachineMultiplier !== 1 || abilityFollowUpCritChanceBonus > 0 || abilityFollowUpCritDamageBonus > 0 || abilityFollowUpSuperchargeBonus > 0;
 
         // Combine ability multiplier with pool multiplier and high ground and war machine (multiplicative)
         const combinedDamageMultiplier = (followUpGlobalMultiplier || 1) * followUpDamageMultiplier * abilityFollowUpHighGroundMultiplier * abilityFollowUpWarMachineMultiplier;
@@ -4858,6 +4915,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             armorIgnored: followUpArmorIgnored > 0 ? followUpArmorIgnored : undefined,
             critChanceBonus: abilityFollowUpCritChanceBonus > 0 ? abilityFollowUpCritChanceBonus : undefined,
             critDamageBonus: abilityFollowUpCritDamageBonus > 0 ? abilityFollowUpCritDamageBonus : undefined,
+            pierceRatioBonus: abilityFollowUpSuperchargeBonus > 0 ? abilityFollowUpSuperchargeBonus : undefined,
             buffSources: followUpBuffSources,
           } : undefined,
         };
