@@ -148,7 +148,7 @@ function DamageBreakdownDisplay({ breakdown, sourceName, damageType }: { breakdo
               <img src={damageTypeIcon} alt={damageType} className="w-3 h-3" />
             )}
             Pierce {breakdown.pierceRatioBonus && breakdown.pierceRatioBonus > 0 ? (
-              <>({(breakdown.pierceRatio * 100).toFixed(0)} <span className="text-green-400">+{breakdown.pierceRatioBonus.toFixed(0)} {breakdown.pierceRatioBonusSources && breakdown.pierceRatioBonusSources.length > 0 ? `(${breakdown.pierceRatioBonusSources.map(s => s.name).join(', ')})` : ''}</span>%):</>
+              <>{((breakdown.effectivePierceRatio ?? breakdown.pierceRatio) * 100).toFixed(0)}% ({(breakdown.pierceRatio * 100).toFixed(0)}% <span className="text-green-400">+{breakdown.pierceRatioBonus.toFixed(0)}%{breakdown.pierceRatioBonusSources && breakdown.pierceRatioBonusSources.length > 0 ? ` (${breakdown.pierceRatioBonusSources.map(s => s.name).join(', ')})` : ''}</span>):</>
             ) : (
               <>({(breakdown.pierceRatio * 100).toFixed(0)}%):</>
             )}

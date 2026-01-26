@@ -10,6 +10,11 @@ import { getTeamRequiredToggles } from './buffs/buffRegistry';
 import { getMachineOfWarDamageBonus, getMachineOfWarDisplayName } from './dataService';
 
 /**
+ * Helper to check if a toggle is active (for boolean toggles in abilityToggles that can also contain numbers for counters)
+ */
+const isToggleActive = (value: boolean | number | undefined): boolean => value === true;
+
+/**
  * A toggleable buff condition
  */
 export interface BuffCondition {
@@ -21,6 +26,12 @@ export interface BuffCondition {
   isActive: boolean;       // Current toggle state
   category: 'self' | 'aura'; // Whether it's from own ability or teammate
   dependsOn?: string;      // ID of another condition this depends on (must be active to enable this)
+  // Counter support (for abilities like EnmityForTheUnworthy)
+  isCounter?: boolean;     // If true, this is a counter instead of a toggle
+  counterValue?: number;   // Current counter value
+  counterMin?: number;     // Minimum counter value (default 0)
+  counterMax?: number;     // Maximum counter value (e.g., 6 for adjacent units)
+  effectPerCount?: string; // Effect per count (e.g., "+5% dmg per unit")
 }
 
 /**
@@ -51,7 +62,7 @@ export function getCharacterBuffConditions(
     label: 'High Ground',
     source: 'Position',
     effect: '+50% damage',
-    isActive: character.abilityToggles['HighGround'] ?? false,
+    isActive: isToggleActive(character.abilityToggles['HighGround']),
     category: 'self',
   });
 
@@ -68,7 +79,7 @@ export function getCharacterBuffConditions(
       label: 'Machine of War',
       source: machineName,
       effect: `+${extraDmgPct}% damage`,
-      isActive: character.abilityToggles['WarMachine'] ?? false,
+      isActive: isToggleActive(character.abilityToggles['WarMachine']),
       category: 'self',
     });
   }
@@ -116,32 +127,35 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Charging',
         source: abilityName,
         effect: effectParts.join(', ') || 'Passive bonus',
-        isActive: character.abilityToggles['SagaOfTheWarriorBorn'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['SagaOfTheWarriorBorn']),
         category: 'self',
       });
     }
   }
 
-  // Crushing Strike trait - Has not moved condition
-  if (character.traits.includes('CrushingStrike')) {
-    conditions.push({
-      id: 'CrushingStrike_notMoved',
-      label: 'Has not moved',
-      source: 'Crushing Strike',
-      effect: '+50% melee dmg',
-      isActive: character.abilityToggles['CrushingStrike_notMoved'] ?? false,
-      category: 'self',
-    });
-  }
+  // "Has not moved" condition - consolidate CrushingStrike and HeavyWeapon into one toggle
+  const hasCrushingStrike = character.traits.includes('CrushingStrike');
+  const hasHeavyWeapon = character.traits.includes('HeavyWeapon');
 
-  // Heavy Weapon trait - Has not moved condition
-  if (character.traits.includes('HeavyWeapon')) {
+  if (hasCrushingStrike || hasHeavyWeapon) {
+    const effects: string[] = [];
+    const sources: string[] = [];
+
+    if (hasCrushingStrike) {
+      effects.push('+50% melee dmg');
+      sources.push('Crushing Strike');
+    }
+    if (hasHeavyWeapon) {
+      effects.push('+25% ranged dmg');
+      sources.push('Heavy Weapon');
+    }
+
     conditions.push({
-      id: 'HeavyWeapon_notMoved',
+      id: 'hasNotMoved',
       label: 'Has not moved',
-      source: 'Heavy Weapon',
-      effect: '+25% ranged dmg',
-      isActive: character.abilityToggles['HeavyWeapon_notMoved'] ?? false,
+      source: sources.join(', '),
+      effect: effects.join(', '),
+      isActive: isToggleActive(character.abilityToggles['hasNotMoved']),
       category: 'self',
     });
   }
@@ -153,7 +167,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
       label: 'Started turn adjacent to enemy',
       source: 'Ranged Specialist',
       effect: 'Enables positional bonuses (Position)',
-      isActive: character.abilityToggles['RangedSpecialist_adjacentToEnemy'] ?? false,
+      isActive: isToggleActive(character.abilityToggles['RangedSpecialist_adjacentToEnemy']),
       category: 'self',
     });
   }
@@ -171,7 +185,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Charging',
         source: abilityName,
         effect: `1x Bolter, 100% crit, +${extraCritDmg} crit dmg`,
-        isActive: character.abilityToggles['TacticalPrecision_charging'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['TacticalPrecision_charging']),
         category: 'self',
       });
     }
@@ -191,7 +205,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Charging',
         source: abilityName,
         effect: `2x Jump Pack Intercessors attack (2x ${summonDmg} Physical)`,
-        isActive: character.abilityToggles['AggressiveOnslaught'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['AggressiveOnslaught']),
         category: 'self',
       });
     }
@@ -212,7 +226,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: `Below ${healthPct}% HP`,
         source: abilityName,
         effect: `+${extraPierceRatio}% pierce ratio`,
-        isActive: character.abilityToggles['VisionsOfHeresy_lowHealth'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['VisionsOfHeresy_lowHealth']),
         category: 'self',
       });
     }
@@ -232,33 +246,15 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Max Ice Coverage (6 hexes)',
         source: abilityName,
         effect: `+${extraDmg * 6} dmg (normal attacks)`,
-        isActive: character.abilityToggles['LordOfTempests'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['LordOfTempests']),
         category: 'self',
       });
     }
   }
 
-  // Feared Interrogator (Asmodai) - Target condition
-  if (character.passiveAbilities.includes('FearedInterrogator')) {
-    const levelIndex = character.abilityLevels?.['FearedInterrogator'] ?? 54;
-    const values = getAbilityValues('FearedInterrogator', levelIndex);
-    const abilityName = getAbilityNameSync('FearedInterrogator');
+  // FearedInterrogator toggle removed - now uses "Adjacent to Boss" on Dark Angels teammates
 
-    if (values) {
-      const extraDmg = values.extraDmg as number || 0;
-
-      conditions.push({
-        id: 'FearedInterrogator',
-        label: 'Target Suppressed/Stunned/adj. to DA',
-        source: abilityName,
-        effect: `+${extraDmg} dmg`,
-        isActive: character.abilityToggles['FearedInterrogator'] ?? false,
-        category: 'self',
-      });
-    }
-  }
-
-  // Enmity for the Unworthy (Forcas) - Adjacent units
+  // Enmity for the Unworthy (Forcas) - Adjacent units (counter-based)
   if (character.passiveAbilities.includes('EnmityForTheUnworthy')) {
     const levelIndex = character.abilityLevels?.['EnmityForTheUnworthy'] ?? 54;
     const values = getAbilityValues('EnmityForTheUnworthy', levelIndex);
@@ -268,23 +264,36 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
       const extraDmgPct = values.extraDmgPct as number || 0;
       const extraDmg = values.extraDmg as number || 0;
 
+      // Counter for adjacent units (+extraDmgPct% damage per unit)
+      const adjacentUnitsCount = (character.abilityToggles['EnmityForTheUnworthy_units'] as unknown as number) ?? 0;
       conditions.push({
-        id: 'EnmityForTheUnworthy',
-        label: 'Max Adjacent Units (6)',
+        id: 'EnmityForTheUnworthy_units',
+        label: 'Adjacent Units',
         source: abilityName,
-        effect: `+${extraDmgPct * 6}% dmg`,
-        isActive: character.abilityToggles['EnmityForTheUnworthy'] ?? false,
+        effect: adjacentUnitsCount > 0 ? `+${extraDmgPct * adjacentUnitsCount}% dmg` : 'No bonus',
+        effectPerCount: `+${extraDmgPct}% dmg`,
+        isActive: adjacentUnitsCount > 0,
         category: 'self',
+        isCounter: true,
+        counterValue: adjacentUnitsCount,
+        counterMin: 0,
+        counterMax: 6,
       });
 
+      // Counter for adjacent Dark Angels (+extraDmg damage per DA)
+      const adjacentDACount = (character.abilityToggles['EnmityForTheUnworthy_DA'] as unknown as number) ?? 0;
       conditions.push({
         id: 'EnmityForTheUnworthy_DA',
-        label: 'Max Adjacent Dark Angels (6)',
+        label: 'Adjacent Dark Angels',
         source: abilityName,
-        effect: `+${extraDmg * 6} dmg`,
-        isActive: character.abilityToggles['EnmityForTheUnworthy_DA'] ?? false,
+        effect: adjacentDACount > 0 ? `+${extraDmg * adjacentDACount} dmg` : 'No bonus',
+        effectPerCount: `+${extraDmg} dmg`,
+        isActive: adjacentDACount > 0,
         category: 'self',
-        dependsOn: 'EnmityForTheUnworthy',
+        isCounter: true,
+        counterValue: adjacentDACount,
+        counterMin: 0,
+        counterMax: 6,
       });
     }
   }
@@ -303,7 +312,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Target is Psyker',
         source: abilityName,
         effect: `+${extraDmg} dmg`,
-        isActive: character.abilityToggles['CondemnorStake'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['CondemnorStake']),
         category: 'self',
       });
     }
@@ -323,7 +332,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Charging',
         source: abilityName,
         effect: `+${extraDmg} dmg`,
-        isActive: character.abilityToggles['AvalancheOfMuscle'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['AvalancheOfMuscle']),
         category: 'self',
       });
     }
@@ -344,7 +353,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Has Battle Fatigue',
         source: abilityName,
         effect: `+${extraDmg} dmg`,
-        isActive: character.abilityToggles['SummaryExecution'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['SummaryExecution']),
         category: 'self',
       });
 
@@ -353,7 +362,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Execution happened',
         source: abilityName,
         effect: `+${extraDmg2} additional dmg`,
-        isActive: character.abilityToggles['SummaryExecution_Executed'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['SummaryExecution_Executed']),
         category: 'self',
         dependsOn: 'SummaryExecution',
       });
@@ -375,7 +384,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Did not move',
         source: abilityName,
         effect: `+${extraCritChance}% crit, +${extraCritDmg} crit dmg`,
-        isActive: character.abilityToggles['InescapableAccuracy'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['InescapableAccuracy']),
         category: 'self',
       });
     }
@@ -396,7 +405,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Has moved',
         source: abilityName,
         effect: `1x ${minDmg}-${maxDmg} DirectDamage`,
-        isActive: character.abilityToggles['LivingLightning'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['LivingLightning']),
         category: 'self',
       });
     }
@@ -416,7 +425,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'At full Health',
         source: abilityName,
         effect: `+1 hit, ignores ${armorIgnored} armor`,
-        isActive: character.abilityToggles['PowerTrip'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['PowerTrip']),
         category: 'self',
       });
     }
@@ -436,7 +445,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Moved 2+ hexes',
         source: abilityName,
         effect: `+${extraDmg} dmg (normal attacks)`,
-        isActive: character.abilityToggles['SmashaEad'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['SmashaEad']),
         category: 'self',
       });
     }
@@ -456,7 +465,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Has kills',
         source: abilityName,
         effect: `+${extraDmg} dmg per kill`,
-        isActive: character.abilityToggles['HeadClaimer_Kills'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['HeadClaimer_Kills']),
         category: 'self',
       });
 
@@ -465,7 +474,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Killed Character',
         source: abilityName,
         effect: '+1 hit per Character kill',
-        isActive: character.abilityToggles['HeadClaimer'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['HeadClaimer']),
         category: 'self',
       });
     }
@@ -485,7 +494,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Been attacked',
         source: abilityName,
         effect: `+${extraDmg} dmg per attack (max 8)`,
-        isActive: character.abilityToggles['BeaconOfRage'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['BeaconOfRage']),
         category: 'self',
       });
     }
@@ -505,7 +514,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Missing HP (10%)',
         source: abilityName,
         effect: `+${extraDmg} dmg per 10% HP missing`,
-        isActive: character.abilityToggles['Skullsmasher'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['Skullsmasher']),
         category: 'self',
       });
     }
@@ -526,7 +535,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Target at/below 50% HP',
         source: abilityName,
         effect: `+${extraDmg} dmg, +${extraCritDmg} crit dmg`,
-        isActive: character.abilityToggles['TrophyTaker'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['TrophyTaker']),
         category: 'self',
       });
     }
@@ -546,7 +555,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Target on Fire',
         source: abilityName,
         effect: `+${extraDmgPct}% dmg (Flame/Psychic)`,
-        isActive: character.abilityToggles['PsychicStalk'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['PsychicStalk']),
         category: 'self',
       });
     }
@@ -566,7 +575,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Enemies hit by Psychic',
         source: abilityName,
         effect: `+${extraMaxDmg} max dmg per enemy hit`,
-        isActive: character.abilityToggles['RealityUnbound'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['RealityUnbound']),
         category: 'self',
       });
     }
@@ -586,7 +595,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Has Crescendo stacks',
         source: abilityName,
         effect: `+${extraDmg} dmg per overkill/suppress (max 6)`,
-        isActive: character.abilityToggles['TerrifyingCrescendo'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['TerrifyingCrescendo']),
         category: 'self',
       });
     }
@@ -607,7 +616,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Affected by Twisted Science',
         source: abilityName,
         effect: `+${hp} max HP, +${extraDmg} dmg (GSC only)`,
-        isActive: character.abilityToggles['TwistedScience'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['TwistedScience']),
         category: 'self',
       });
     }
@@ -627,7 +636,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Moved onto decoy',
         source: abilityName,
         effect: `+${extraDmg} dmg this turn`,
-        isActive: character.abilityToggles['DecoysAndMisdirection'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['DecoysAndMisdirection']),
         category: 'self',
       });
     }
@@ -647,7 +656,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Has Cosmic Horror stacks',
         source: abilityName,
         effect: `+${extraDmg} dmg`,
-        isActive: character.abilityToggles['CosmicHorror'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['CosmicHorror']),
         category: 'self',
       });
     }
@@ -668,8 +677,43 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         label: 'Target is Gravis/Terminator/Mechanical',
         source: abilityName,
         effect: `+${extraDmg} dmg, +${extraPierceRatio}% pierce`,
-        isActive: character.abilityToggles['HeavyGravCannon'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['HeavyGravCannon']),
         category: 'self',
+      });
+    }
+  }
+
+  // Lion Helm (Azrael) - Azrael's own bonus is always active (no toggle needed)
+  // The bonus is automatically applied in executeOverwatchAttack
+
+  // Deathwing (Baraqiel) - Damage blocked bonus
+  if (character.passiveAbilities.includes('Deathwing')) {
+    const levelIndex = character.abilityLevels?.['Deathwing'] ?? 54;
+    const values = getAbilityValues('Deathwing', levelIndex);
+    const abilityName = getAbilityNameSync('Deathwing');
+
+    if (values) {
+      const extraDmg = values.extraDmg as number || 0;
+      const isDamageBlockedActive = isToggleActive(character.abilityToggles['Deathwing_damageBlocked']);
+
+      conditions.push({
+        id: 'Deathwing_damageBlocked',
+        label: 'Damage Blocked',
+        source: abilityName,
+        effect: `+${extraDmg} dmg (melee & PlasmaCannon)`,
+        isActive: isDamageBlockedActive,
+        category: 'self',
+      });
+
+      // Adjacent to another Dark Angel - doubles the bonus (x2)
+      conditions.push({
+        id: 'Deathwing_adjacentDA',
+        label: 'Adjacent to Another Dark Angel',
+        source: abilityName,
+        effect: `x2 bonus (+${extraDmg * 2} total)`,
+        isActive: isToggleActive(character.abilityToggles['Deathwing_adjacentDA']),
+        category: 'self',
+        dependsOn: 'Deathwing_damageBlocked',
       });
     }
   }
@@ -703,7 +747,7 @@ function getAtlacoyaConditions(character: BattleCharacter, team: BattleCharacter
         label: 'Adjacent to Adeptus Custodes',
         source: 'Talons of the Emperor',
         effect: 'Converts to DirectDamage',
-        isActive: character.abilityToggles['TalonsOfTheEmperor_adjacentToCustodes'] ?? false,
+        isActive: isToggleActive(character.abilityToggles['TalonsOfTheEmperor_adjacentToCustodes']),
         category: 'self',
       });
     }
@@ -724,7 +768,7 @@ function getAtlacoyaConditions(character: BattleCharacter, team: BattleCharacter
         label: 'Range 2 from Boss',
         source: abilityName,
         effect: `Team: +${extraDmgPct}% dmg (vs Psyker)`,
-        isActive: character.abilityToggles[toggleId] ?? false,
+        isActive: isToggleActive(character.abilityToggles[toggleId]),
         category: 'self',
       });
     }
@@ -763,7 +807,7 @@ function getAuraConditions(
 
           // Damage bonus condition - "In Range of [Dante]"
           const dmgToggleId = `LordOfTheHost_${teammate.id}_damage`;
-          const isDmgActive = character.abilityToggles[dmgToggleId] ?? false;
+          const isDmgActive = isToggleActive(character.abilityToggles[dmgToggleId]);
           conditions.push({
             id: dmgToggleId,
             label: `In Range of ${teammate.name}`,
@@ -777,7 +821,7 @@ function getAuraConditions(
           // Extra melee hit condition - "Low HP (≤50%)"
           // Can only be enabled if In Range is active
           const hitsToggleId = `LordOfTheHost_${teammate.id}_hits`;
-          const isHitsActive = isDmgActive && (character.abilityToggles[hitsToggleId] ?? false);
+          const isHitsActive = isDmgActive && isToggleActive(character.abilityToggles[hitsToggleId]);
           conditions.push({
             id: hitsToggleId,
             label: 'Low HP (≤50%)',
@@ -806,7 +850,7 @@ function getAuraConditions(
 
           // Damage bonus condition - "In Range of [Abaddon]"
           const dmgToggleId = `FirstAmongTraitors_${teammate.id}_damage`;
-          const isDmgActive = character.abilityToggles[dmgToggleId] ?? false;
+          const isDmgActive = isToggleActive(character.abilityToggles[dmgToggleId]);
           conditions.push({
             id: dmgToggleId,
             label: `In Range of ${teammate.name}`,
@@ -837,7 +881,7 @@ function getAuraConditions(
         if (hasRangedAttack && isNotPsychic) {
           // Ranged buff condition - "Within range 2 of adjacent enemy"
           const rangeToggleId = `WayOfTheShortBlade_${teammate.id}_range2`;
-          const isRangeActive = character.abilityToggles[rangeToggleId] ?? false;
+          const isRangeActive = isToggleActive(character.abilityToggles[rangeToggleId]);
           conditions.push({
             id: rangeToggleId,
             label: 'Range 2 from Boss',
@@ -857,7 +901,7 @@ function getAuraConditions(
         if (isTauEmpire && hasMeleeAttack && hasRangedAttack) {
           // Melee follow-up condition - "Range 2 from Farsight"
           const meleeToggleId = `WayOfTheShortBlade_${teammate.id}_melee`;
-          const isMeleeActive = character.abilityToggles[meleeToggleId] ?? false;
+          const isMeleeActive = isToggleActive(character.abilityToggles[meleeToggleId]);
           conditions.push({
             id: meleeToggleId,
             label: `Range 2 from ${teammate.name}`,
@@ -894,7 +938,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmg} ranged dmg (vs Markerlight)`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         } else if (hasRangedAttack) {
@@ -906,7 +950,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmg} ranged dmg (vs Markerlight)`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
@@ -931,7 +975,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmg} melee dmg (vs Psyker)`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
@@ -956,7 +1000,7 @@ function getAuraConditions(
           source: abilityName,
           sourceCharacter: teammate.name,
           effect: `+${extraDmg} dmg, +${extraPierceRatio}% pierce (melee)`,
-          isActive: character.abilityToggles[toggleId] ?? false,
+          isActive: isToggleActive(character.abilityToggles[toggleId]),
           category: 'aura',
         });
       }
@@ -982,7 +1026,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmg} dmg, +${extraHit} hit (normal attacks)`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
@@ -1013,7 +1057,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmgPct}% dmg (Special Attacks)`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
@@ -1042,7 +1086,7 @@ function getAuraConditions(
             source: `${abilityName} (Protector)`,
             sourceCharacter: teammate.name,
             effect: `+${extraArmor} armor`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
@@ -1082,33 +1126,41 @@ function getAuraConditions(
             source: `${abilityName} (${phaseName})`,
             sourceCharacter: teammate.name,
             effect,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
       }
     }
 
-    // Lion Helm (Azrael) - armor and damage bonus to Dark Angels
+    // Lion Helm (Azrael) - +extraDmg to Overwatch attacks for friendly units that can perform Overwatch
+    // Note: This is in getAuraConditions which skips self, so Azrael's self-toggle is in getOwnPassiveConditions
     if (teammate.passiveAbilities.includes('LionHelm')) {
-      // Check if character is Dark Angels faction
-      if (character.faction === 'Dark Angels' && character.id !== teammate.id) {
+      // Show for characters that can perform Overwatch attacks:
+      // 1. Characters with Overwatch trait (Azrael's self-toggle handled separately in getOwnPassiveConditions)
+      // 2. Re'vas (has EarlyWarningOverride ability)
+      // 3. Forcas (has CalibaniteGreatsword ability - Strike Stance enables Overwatch)
+      const hasOverwatchTrait = character.traits.includes('Overwatch');
+      const hasEarlyWarningOverride = character.activeAbilities?.includes('EarlyWarningOverride') ?? false;
+      const hasCalibaniteGreatsword = character.activeAbilities?.includes('CalibaniteGreatsword') ?? false;
+      const canPerformOverwatch = hasOverwatchTrait || hasEarlyWarningOverride || hasCalibaniteGreatsword;
+
+      if (canPerformOverwatch) {
         const levelIndex = teammate.abilityLevels?.['LionHelm'] ?? 54;
         const values = getAbilityValues('LionHelm', levelIndex);
         const abilityName = getAbilityNameSync('LionHelm');
 
         if (values) {
           const extraDmg = values.extraDmg as number || 0;
-          const extraArmor = values.extraArmor as number || 0;
-          const toggleId = `LionHelm_${teammate.id}_adjacent`;
+          const toggleId = `LionHelm_${teammate.id}_overwatch`;
 
           conditions.push({
             id: toggleId,
-            label: `Adjacent to ${teammate.name}`,
+            label: `Range 2 from ${teammate.name}`,
             source: abilityName,
             sourceCharacter: teammate.name,
-            effect: `+${extraDmg} dmg, +${extraArmor} armor`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            effect: `+${extraDmg} Overwatch dmg`,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
@@ -1132,7 +1184,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmg} dmg (cap 500)`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
@@ -1160,7 +1212,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmg} ranged dmg`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
 
@@ -1171,7 +1223,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmgHeavy - extraDmg} additional dmg`,
-            isActive: character.abilityToggles[heavyToggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[heavyToggleId]),
             category: 'aura',
             dependsOn: toggleId,
           });
@@ -1196,7 +1248,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+1x ${extraDmg} Blast on ranged (Chaos: also melee)`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
@@ -1222,7 +1274,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+1x ${minDmg}-${maxDmg} Psychic on ranged (Daemons: also melee)`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
@@ -1248,7 +1300,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmg} dmg (ranged)`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
@@ -1276,7 +1328,7 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${dmgBonus} dmg${isImperial ? ' (Imperial)' : ''}`,
-            isActive: character.abilityToggles[toggleId] ?? false,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
         }
@@ -1289,7 +1341,8 @@ function getAuraConditions(
 
 /**
  * Get "Adjacent to Boss" condition for characters
- * Only shows if team has buffs that require this toggle (e.g., Legendary Commander, Way of the Short Blade)
+ * Only shows if team has buffs that require this toggle
+ * Displays all abilities that use this toggle in the effect description
  */
 function getAdjacentToBossCondition(
   character: BattleCharacter,
@@ -1303,14 +1356,52 @@ function getAdjacentToBossCondition(
     return conditions;
   }
 
-  // Add "Adjacent to Boss" toggle
   const toggleId = 'adjacentToBoss';
+  const effectParts: string[] = [];
+
+  // Check for LegendaryCommander (Trajann)
+  const trajann = team.find(c => c.passiveAbilities.includes('LegendaryCommander'));
+  if (trajann) {
+    effectParts.push('Legendary Commander');
+  }
+
+  // Check for WayOfTheShortBlade (Farsight)
+  const farsight = team.find(c => c.passiveAbilities.includes('WayOfTheShortBlade'));
+  if (farsight) {
+    effectParts.push('Way of the Short Blade');
+  }
+
+  // Check for OptimizedGait (Exitor-Rho)
+  const exitorRho = team.find(c => c.passiveAbilities.includes('OptimizedGait'));
+  if (exitorRho) {
+    effectParts.push('Optimized Gait');
+  }
+
+  // Check for FearedInterrogator (Asmodai) - DA teammates show bonus value
+  const asmodai = team.find(c => c.passiveAbilities.includes('FearedInterrogator'));
+  if (asmodai) {
+    // For Dark Angels teammates (not Asmodai), show the actual bonus value
+    if (character.id !== asmodai.id && character.faction === 'DarkAngels') {
+      const levelIndex = asmodai.abilityLevels?.['FearedInterrogator'] ?? 54;
+      const values = getAbilityValues('FearedInterrogator', levelIndex);
+      if (values) {
+        const extraDmg = values.extraDmg as number || 0;
+        effectParts.push(`Feared Interrogator (+${extraDmg} dmg)`);
+      } else {
+        effectParts.push('Feared Interrogator');
+      }
+    } else {
+      // For Asmodai himself or non-DA characters, just list the ability name
+      effectParts.push('Feared Interrogator');
+    }
+  }
+
   conditions.push({
     id: toggleId,
     label: 'Adjacent to Boss',
     source: 'Position',
-    effect: 'Enables positional bonuses',
-    isActive: character.abilityToggles[toggleId] ?? false,
+    effect: effectParts.join(', '),
+    isActive: isToggleActive(character.abilityToggles[toggleId]),
     category: 'self',
   });
 
@@ -1355,7 +1446,7 @@ function getBossRange2FromEldryonCondition(
       label: 'Boss at Range 2',
       source: abilityName,
       effect: `Allies: +${extraDmg} normal dmg, Aeldari: +${extraDmg_2} all dmg`,
-      isActive: character.abilityToggles[toggleId] ?? false,
+      isActive: isToggleActive(character.abilityToggles[toggleId]),
       category: 'self',
     });
   }
@@ -1402,7 +1493,7 @@ export function getSummonBuffConditions(
     label: 'High Ground',
     source: 'Position',
     effect: '+50% damage',
-    isActive: toggles['HighGround'] ?? false,
+    isActive: isToggleActive(toggles['HighGround']),
     category: 'self',
   });
 
@@ -1419,7 +1510,7 @@ export function getSummonBuffConditions(
       label: 'Machine of War',
       source: machineName,
       effect: `+${extraDmgPct}% damage`,
-      isActive: toggles['WarMachine'] ?? false,
+      isActive: isToggleActive(toggles['WarMachine']),
       category: 'self',
     });
   }
@@ -1446,7 +1537,7 @@ export function getSummonBuffConditions(
           source: abilityName,
           sourceCharacter: sourceCharacter.name,
           effect: `+${extraDmg} dmg, +${extraHit} hit (normal attacks)`,
-          isActive: toggles[toggleId] ?? false,
+          isActive: isToggleActive(toggles[toggleId]),
           category: 'aura',
         });
       }
@@ -1470,7 +1561,7 @@ export function getSummonBuffConditions(
         source: abilityName,
         sourceCharacter: sourceCharacter.name,
         effect: `+${extraDmg} dmg`,
-        isActive: toggles[toggleId] ?? false,
+        isActive: isToggleActive(toggles[toggleId]),
         category: 'aura',
       });
     }
@@ -1507,7 +1598,7 @@ export function getSummonBuffConditions(
           source: `${abilityName} (${phaseName})`,
           sourceCharacter: teammate.name,
           effect,
-          isActive: toggles[toggleId] ?? false,
+          isActive: isToggleActive(toggles[toggleId]),
           category: 'aura',
         });
       }
@@ -1534,7 +1625,7 @@ export function getSummonBuffConditions(
             source: `${abilityName} (Protector)`,
             sourceCharacter: teammate.name,
             effect: `+${extraArmor} armor`,
-            isActive: toggles[toggleId] ?? false,
+            isActive: isToggleActive(toggles[toggleId]),
             category: 'aura',
           });
         }

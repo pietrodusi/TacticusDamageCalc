@@ -43,7 +43,7 @@ export interface BattleCharacter extends TeamMember {
   hasUsedFirstSpecialAttackThisTurn: boolean;  // Per-character: for LC +2 hits (only first special attack gets bonus)
   // Ability state
   abilityCooldowns: Record<string, AbilityCooldownState>;  // Track ability cooldowns
-  abilityToggles: Record<string, boolean>;  // User-controlled toggles for conditional passives
+  abilityToggles: Record<string, boolean | number>;  // User-controlled toggles for conditional passives (includes counters)
   activeBuffs: AbilityStatModifier[];  // Active ability buffs (from abilities like WarHowl)
   // Laviscus's Refusal to be Outdone passive tracking
   outrage?: number;  // Accumulated outrage value from ally attacks
@@ -70,6 +70,10 @@ export interface BattleCharacter extends TeamMember {
   // Tan Gi'da's Doctrina Imperatives stance tracking
   doctrinaImperativeStance?: 'protector' | 'conqueror' | null;  // null = not yet activated
   hasUsedDoctrinaThisBattle?: boolean;  // Track if ability was used this battle (for LC qualification - only first use counts)
+  // Forcas's Calibanite Greatsword stance tracking
+  calibaniteGreatswordStance?: 'strike' | 'sweep';  // 'strike' = enables Overwatch, 'sweep' = no effect. Defaults to 'strike'
+  hasUsedCalibaniteThisTurn?: boolean;  // Track if ability was used this turn (once per turn)
+  hasUsedCalibaniteThisBattle?: boolean;  // Track if ability was used this battle (for LC - only first use counts)
 }
 
 export interface Buff {
@@ -256,6 +260,8 @@ export interface BattleState {
   };
   // Summoned units in battle (e.g., Ork Boyz from Waaagh!)
   summons: BattleSummon[];
+  // Sarquael's Supercharge ability - pierce ratio bonus for ALL team Plasma attacks this turn
+  superchargePierceBonus?: number;
 }
 
 export interface BattleSimulationConfig {

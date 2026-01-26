@@ -371,8 +371,21 @@ export function isModifierAbility(abilityId: string): boolean {
  * Get the cooldown for an ability
  * Returns -1 for one-time abilities (no cooldownTurns in constants)
  * Returns positive number for reusable abilities (from constants.cooldownTurns)
+ * Returns 0 for stance-switching abilities that can be used every turn
  */
+// Hardcoded cooldown overrides for abilities missing cooldownTurns in JSON
+// These are stance-switching abilities that can be used once per turn
+const COOLDOWN_OVERRIDES: Record<string, number> = {
+  'CalibaniteGreatsword': 0,  // Forcas: Strike/Sweep stance switching
+  // 'DoctrinaImperatives': 0,  // Tan Gi'da: Already has cooldownTurns: 0 in JSON
+};
+
 export function getAbilityCooldown(abilityId: string): number {
+  // Check for hardcoded overrides first
+  if (abilityId in COOLDOWN_OVERRIDES) {
+    return COOLDOWN_OVERRIDES[abilityId];
+  }
+
   const stats = abilitiesStats[abilityId];
   if (!stats?.constants) return -1;
 

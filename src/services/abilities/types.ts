@@ -144,9 +144,10 @@ export interface AbilityContext {
 
   // Team state (for auras like Legendary Commander)
   trajannIsAdjacentToBoss: boolean;
+  darkAngelsAdjacentToBoss?: boolean;  // For FearedInterrogator: any Dark Angels teammate adjacent to boss
 
-  // Ability-specific toggles (user-controlled for conditional abilities)
-  abilityToggles: Record<string, boolean>;
+  // Ability-specific toggles (user-controlled for conditional abilities, includes counters)
+  abilityToggles: Record<string, boolean | number>;
 
   // Laviscus's Refusal to be Outdone passive
   outrage?: number;  // Accumulated outrage value from ally attacks
@@ -308,6 +309,9 @@ export interface ActiveAbilityResult {
   overwatchResult?: {
     extraDmg: number;  // Extra damage for Overwatch ranged attack
   };
+
+  // Supercharge (Sarquael) - pierce ratio bonus for Plasma attacks for rest of turn
+  superchargePierceBonus?: number;
 
   // Log message
   message: string;

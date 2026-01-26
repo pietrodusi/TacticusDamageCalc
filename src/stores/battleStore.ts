@@ -8,6 +8,11 @@ import { hasMechanicalTrait } from '../utils/traitUtils';
 
 const MAX_TURNS = 6;
 
+/**
+ * Helper to check if a toggle is active (for boolean toggles in abilityToggles that can also contain numbers for counters)
+ */
+const isToggleActive = (value: boolean | number | undefined): boolean => value === true;
+
 // Safe deep clone function - uses structuredClone with JSON fallback
 function deepClone<T>(obj: T): T {
   try {
@@ -18,6 +23,12 @@ function deepClone<T>(obj: T): T {
   }
 }
 
+// Individual damage bonus source for tracking (e.g., EarlyWarningOverride, LionHelm)
+interface DamageBonusSource {
+  name: string;
+  bonus: number;
+}
+
 // Options for executeAttack to support Galvanic Field triggered attacks
 interface ExecuteAttackOptions {
   damageMultiplier?: number;    // GalvanicField dmgPct (e.g., 0.80 for 80%)
@@ -25,9 +36,11 @@ interface ExecuteAttackOptions {
   baseDamageCap?: number;        // NEW: Cap 1 - "Its Own Damage" (e.g., Galvanic Field)
   preArmorCap?: number;          // NEW: Cap 2 - "Pre-Armour Damage" (e.g., Psychic Stalk)
   finalDamageCap?: number;       // NEW: Cap 3 - "The Hit" (e.g., Astartes Banner)
-  baseDamageBonus?: number;     // Extra flat damage bonus (e.g., Overwatch +extraDmg)
+  baseDamageBonus?: number;     // Extra flat damage bonus (e.g., Overwatch +extraDmg) - DEPRECATED: use damageBonusSources
+  damageBonusSources?: DamageBonusSource[];  // Individual damage bonus sources for detailed display
   skipStateUpdates?: boolean;   // Don't update hasActed, hasAttackedThisBattle, etc.
   abilityName?: string;         // For log display (e.g., "Galvanic Field")
+  isOverwatchAttack?: boolean;  // Flag for Overwatch attack (for follow-ups like CyclicIonBlaster)
 }
 
 // Result from triggerOptimisedGait helper
@@ -573,7 +586,7 @@ interface BattleStore {
   executeAttack: (attackerId: string, targetId: string, attackType?: 'melee' | 'ranged', options?: ExecuteAttackOptions) => BattleLogEntry;
 
   // Ability management
-  toggleAbility: (characterId: string, abilityId: string) => void;
+  toggleAbility: (characterId: string, abilityId: string, counterValue?: number) => void;
   isAbilityReady: (characterId: string, abilityId: string) => boolean;
   executeAbility: (characterId: string, abilityId: string) => BattleLogEntry;
   markAbilityUsed: (characterId: string, abilityId: string) => void;
@@ -822,6 +835,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       hasUsedTheBetrayerThisTurn: false,
       // Reset Overwatch usage for new turn (trait users can use once per turn)
       hasUsedOverwatchThisTurn: false,
+      // Reset Calibanite Greatsword usage for new turn (once per turn ability)
+      hasUsedCalibaniteThisTurn: false,
       // Increment attackTurnsCount if character attacked this turn (for LegacyOfCombat bonus)
       attackTurnsCount: char.attacksThisTurn > 0 ? char.attackTurnsCount + 1 : char.attackTurnsCount,
       // Advance ability cooldowns
@@ -875,6 +890,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       bossAttacksReceivedThisTurn: 0,
       // Reset Custodes ability usage for new turn (Stand Vigil range extension)
       custodedUsedAbilityThisTurn: false,
+      // Reset Supercharge pierce bonus (only lasts for rest of turn)
+      superchargePierceBonus: undefined,
     };
 
     set({
@@ -1231,7 +1248,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Find Trajann for LC +2 hits check
     const trajann = battleState.team.find(c => c.passiveAbilities.includes('LegendaryCommander'));
-    const trajannIsAdjacentToBoss = trajann?.abilityToggles['adjacentToBoss'] ?? false;
+    const trajannIsAdjacentToBoss = isToggleActive(trajann?.abilityToggles['adjacentToBoss']);
+
+    // Check if any Dark Angels teammate (not Asmodai) is adjacent to boss (for FearedInterrogator)
+    const asmodai = battleState.team.find(c => c.passiveAbilities.includes('FearedInterrogator'));
+    const darkAngelsAdjacentToBoss = asmodai ? battleState.team.some(c =>
+      c.id !== asmodai.id && c.faction === 'DarkAngels' && c.abilityToggles['adjacentToBoss']
+    ) : false;
 
     // Evaluate passive abilities for preview
     const passiveResult = evaluatePassiveAbilities(
@@ -1253,6 +1276,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         attackCategory: 'normal',  // Normal attack
         isFirstSpecialAttackOfTurn: !attacker.hasUsedFirstSpecialAttackThisTurn,  // Per-character LC tracking
         trajannIsAdjacentToBoss,
+        darkAngelsAdjacentToBoss,
         abilityToggles: attacker.abilityToggles,
         bossTraits: battleState.boss?.traits,
         bossDebuffs: battleState.bossHasMarkerlight ? ['Markerlight'] : [],
@@ -1401,7 +1425,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const poolExtraHits = poolBuffEffects.extraHits || 0;
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
     const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
-    const poolPierceRatioBonus = poolBuffEffects.pierceRatioBonus || 0;
+    // Supercharge (Sarquael): +pierce ratio bonus for ALL team Plasma attacks this turn
+    const superchargePierceBonus = (battleState.superchargePierceBonus && damageType === 'Plasma')
+      ? battleState.superchargePierceBonus
+      : 0;
+    const poolPierceRatioBonus = (poolBuffEffects.pierceRatioBonus || 0) + superchargePierceBonus;
 
     // Markerlight debuff: T'au Empire ranged attacks deal +15% damage
     const isTauEmpire = attacker.faction === "T'au Empire" || attacker.faction === 'Tau';
@@ -1471,7 +1499,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Find Trajann for LC +2 hits check
     const trajann = battleState.team.find(c => c.passiveAbilities.includes('LegendaryCommander'));
-    const trajannIsAdjacentToBoss = trajann?.abilityToggles['adjacentToBoss'] ?? false;
+    const trajannIsAdjacentToBoss = isToggleActive(trajann?.abilityToggles['adjacentToBoss']);
+
+    // Check if any Dark Angels teammate (not Asmodai) is adjacent to boss (for FearedInterrogator)
+    const asmodai = battleState.team.find(c => c.passiveAbilities.includes('FearedInterrogator'));
+    const darkAngelsAdjacentToBoss = asmodai ? battleState.team.some(c =>
+      c.id !== asmodai.id && c.faction === 'DarkAngels' && c.abilityToggles['adjacentToBoss']
+    ) : false;
 
     // Evaluate passive abilities
     const passiveResult = evaluatePassiveAbilities(
@@ -1493,6 +1527,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         attackCategory: 'normal',  // Normal attack
         isFirstSpecialAttackOfTurn: !attacker.hasUsedFirstSpecialAttackThisTurn,  // Per-character LC tracking
         trajannIsAdjacentToBoss,
+        darkAngelsAdjacentToBoss,
         abilityToggles: attacker.abilityToggles,
         // Laviscus's Refusal to be Outdone passive
         outrage: attacker.outrage,
@@ -1682,11 +1717,24 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Combine damage multipliers: passive mods + active buff multiplier + markerlight + high ground + war machine
     const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * markerlightMultiplier * highGroundMultiplier * warMachineMultiplier;
     // Combine flat damage bonuses: passive mods + active buff bonus + options bonus (Overwatch) + RitesOfBattle
-    const optionsDamageBonus = options?.baseDamageBonus || 0;
+    // Support both legacy baseDamageBonus and new damageBonusSources array
+    const optionsDamageBonusSources = options?.damageBonusSources || [];
+    const optionsDamageBonus = optionsDamageBonusSources.length > 0
+      ? optionsDamageBonusSources.reduce((sum, src) => sum + src.bonus, 0)
+      : (options?.baseDamageBonus || 0);
     const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus + optionsDamageBonus + ritesOfBattleDmgBonus;
 
-    // Add options damage bonus source for display (Overwatch)
-    if (optionsDamageBonus > 0) {
+    // Add options damage bonus sources for display (Overwatch with detailed breakdown)
+    if (optionsDamageBonusSources.length > 0) {
+      // Add individual sources from damageBonusSources
+      for (const source of optionsDamageBonusSources) {
+        buffSources.push({
+          name: source.name,
+          damageBonus: source.bonus,
+        });
+      }
+    } else if (optionsDamageBonus > 0) {
+      // Legacy fallback: single source
       buffSources.push({
         name: options?.abilityName || 'Overwatch',
         damageBonus: optionsDamageBonus,
@@ -1714,6 +1762,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       buffSources.push({
         name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
         damageMultiplier: warMachineMultiplier,
+      });
+    }
+
+    // Add Supercharge buff source for display (pierce ratio bonus for Plasma)
+    if (superchargePierceBonus > 0) {
+      buffSources.push({
+        name: 'Supercharge',
+        pierceRatioBonus: superchargePierceBonus,
       });
     }
 
@@ -1882,9 +1938,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         if (farsight && farsight.id !== attacker.id) {
           // Check if this T'au character has the toggle checked
           const meleeToggleId = `WayOfTheShortBlade_${farsight.id}_melee`;
-          const isToggleActive = attacker.abilityToggles[meleeToggleId] ?? false;
+          const meleeToggleIsActive = isToggleActive(attacker.abilityToggles[meleeToggleId]);
 
-          if (isToggleActive) {
+          if (meleeToggleIsActive) {
             // Add ranged follow-up attack from WayOfTheShortBlade aura
             allFollowUps.push({
               abilityId: 'WayOfTheShortBlade',
@@ -2189,6 +2245,19 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           });
         }
 
+        // Add Overwatch bonus inheritance for follow-up attacks (e.g., CyclicIonBlaster triggered by Overwatch)
+        // Only applies to Additional Attacks (sharesCritChain) which are considered part of the source attack
+        let overwatchDmgBonus = 0;
+        if (options?.isOverwatchAttack && followUp.sharesCritChain && options?.damageBonusSources) {
+          for (const source of options.damageBonusSources) {
+            followUpBuffSources.push({
+              name: source.name,
+              damageBonus: source.bonus,
+            });
+            overwatchDmgBonus += source.bonus;
+          }
+        }
+
         const followUpStats: AttackerStats = {
           baseDamage: multipliedDamage,  // Just the ability base damage (avg of min/max * multiplier)
           damageType: effectiveDamageProfile,  // Use effective damage profile (may be from character's ranged)
@@ -2213,8 +2282,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           // Pass Fighting Retreat flag for RangedSpecialist override
           fightingRetreatActive: attacker.fightingRetreatActive,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
-          abilityModifiers: (lcExtraDmg + auraDmgBonus + conditionalDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1 || followUpCritChanceBonus > 0 || followUpCritDamageBonus > 0) ? {
-            baseDamageBonus: lcExtraDmg + auraDmgBonus + conditionalDmgBonus > 0 ? lcExtraDmg + auraDmgBonus + conditionalDmgBonus : undefined,
+          abilityModifiers: (lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1 || followUpCritChanceBonus > 0 || followUpCritDamageBonus > 0) ? {
+            baseDamageBonus: lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus > 0 ? lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus : undefined,
             extraHits: lcExtraHits + auraHitsBonus > 0 ? lcExtraHits + auraHitsBonus : undefined,
             armorIgnored: followUpArmorIgnored > 0 ? followUpArmorIgnored : undefined,
             baseDamageMultiplier: finalFollowUpMultiplier !== 1 ? finalFollowUpMultiplier : undefined,
@@ -3071,8 +3140,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     };
   },
 
-  // Toggle a passive ability on/off for a character
-  toggleAbility: (characterId, abilityId) => {
+  // Toggle a passive ability on/off for a character, or set a counter value
+  toggleAbility: (characterId, abilityId, counterValue) => {
     const { battleState } = get();
     if (!battleState) return;
 
@@ -3085,7 +3154,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 ...char,
                 abilityToggles: {
                   ...char.abilityToggles,
-                  [abilityId]: !char.abilityToggles[abilityId],
+                  // If counterValue is provided, use it; otherwise toggle boolean
+                  [abilityId]: counterValue !== undefined ? counterValue : !char.abilityToggles[abilityId],
                 },
               }
             : char
@@ -3176,7 +3246,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Find Trajann for LC +2 hits check
     const trajann = battleState.team.find(c => c.passiveAbilities.includes('LegendaryCommander'));
-    const trajannIsAdjacentToBoss = trajann?.abilityToggles['adjacentToBoss'] ?? false;
+    const trajannIsAdjacentToBoss = isToggleActive(trajann?.abilityToggles['adjacentToBoss']);
+
+    // Check if any Dark Angels teammate (not Asmodai) is adjacent to boss (for FearedInterrogator)
+    const asmodai = battleState.team.find(c => c.passiveAbilities.includes('FearedInterrogator'));
+    const darkAngelsAdjacentToBoss = asmodai ? battleState.team.some(c =>
+      c.id !== asmodai.id && c.faction === 'DarkAngels' && c.abilityToggles['adjacentToBoss']
+    ) : false;
 
     // Build ability context
     const context = {
@@ -3195,6 +3271,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       attackCategory: 'ability' as const,
       isFirstSpecialAttackOfTurn: !character.hasUsedFirstSpecialAttackThisTurn,  // Per-character LC tracking
       trajannIsAdjacentToBoss,
+      darkAngelsAdjacentToBoss,
       abilityToggles: character.abilityToggles,
       bossTraits: battleState.boss?.traits,
     };
@@ -3242,6 +3319,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     let maxPerHitDamage = 0;
     // Check if attacker is Chaos alliance (for Laviscus outrage contributor tracking)
     const isAbilityUserChaos = character.alliance === 'Chaos';
+    // Track attack type for damage abilities (for display in battle log)
+    let abilityAttackType: 'melee' | 'ranged' | undefined;
 
     // Handle damage abilities
     const ignoreCrit = battleState.ignoreCrit;
@@ -3250,12 +3329,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // Each component is treated as a separate special attack with independent buff evaluation
       // Each component is displayed as a follow-up attack with purple shading
       const equipmentStats = calculateEquipmentStats(character.equipment);
+      abilityAttackType = result.attackType || 'melee';
 
       console.group(`=== TURN ${battleState.turn}: ${character.name} uses ${abilityName} ===`);
 
       // Track effective character state for sequential buff evaluations
       let effectiveCharacter: BattleCharacter = { ...character };
-      const isAdjacentToBoss = character.abilityToggles['adjacentToBoss'] ?? false;
+      const isAdjacentToBoss = isToggleActive(character.abilityToggles['adjacentToBoss']);
       let componentIndex = 0;
 
       // Use boss armor if available, accounting for armor reduction
@@ -3305,6 +3385,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const componentCritChanceBonus = componentPoolEffects.critChanceBonus || 0;
         const componentCritDamageBonus = componentPoolEffects.critDamageBonus || 0;
 
+        // Get ability pierce ratio bonus (e.g., Supercharge)
+        const abilityPierceRatioBonus = result.abilityModifiers?.pierceRatioBonus || 0;
+
         // High Ground: +50% damage multiplier when toggle is enabled
         const componentHighGroundMultiplier = character.abilityToggles['HighGround'] ? 1.5 : 1;
 
@@ -3344,7 +3427,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         }
 
         // Build buff sources for breakdown display
-        const componentBuffSources: Array<{ name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number }> = [];
+        const componentBuffSources: Array<{ name: string; sourceName?: string; damageBonus?: number; extraHits?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number; pierceRatioBonus?: number }> = [];
 
         // Add pool buff sources (including Daughter of the Abyss multiplier, Euphoric Strikes crit)
         for (const poolBuff of componentApplicableBuffs) {
@@ -3391,6 +3474,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           });
         }
 
+        // Add ability pierce ratio bonus source (e.g., Supercharge)
+        if (abilityPierceRatioBonus > 0) {
+          componentBuffSources.push({
+            name: abilityName,
+            pierceRatioBonus: abilityPierceRatioBonus,
+          });
+        }
+
         // Calculate total damage and hit bonuses (LC + aura)
         const componentTotalDmgBonus = lcExtraDmg + componentAuraDmgBonus;
         const componentTotalHitsBonus = lcExtraHits + componentAuraHitsBonus;
@@ -3419,12 +3510,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           abilityToggles: character.abilityToggles,
           fightingRetreatActive: character.fightingRetreatActive,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
-          abilityModifiers: (componentTotalDmgBonus > 0 || componentTotalHitsBonus > 0 || componentDamageMultiplier !== 1 || componentCritChanceBonus > 0 || componentCritDamageBonus > 0) ? {
+          abilityModifiers: (componentTotalDmgBonus > 0 || componentTotalHitsBonus > 0 || componentDamageMultiplier !== 1 || componentCritChanceBonus > 0 || componentCritDamageBonus > 0 || abilityPierceRatioBonus > 0) ? {
             baseDamageBonus: componentTotalDmgBonus > 0 ? componentTotalDmgBonus : undefined,
             baseDamageMultiplier: componentDamageMultiplier !== 1 ? componentDamageMultiplier : undefined,
             extraHits: componentTotalHitsBonus > 0 ? componentTotalHitsBonus : undefined,
             critChanceBonus: componentCritChanceBonus > 0 ? componentCritChanceBonus : undefined,
             critDamageBonus: componentCritDamageBonus > 0 ? componentCritDamageBonus : undefined,
+            pierceRatioBonus: abilityPierceRatioBonus > 0 ? abilityPierceRatioBonus : undefined,
             buffSources: componentBuffSources,
           } : undefined,
         };
@@ -3456,6 +3548,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           targetArmor: bossArmor,
           afterArmor: componentResult.afterArmor,
           pierceRatio: componentResult.pierceRatio,
+          pierceRatioBonus: componentResult.pierceRatioBonus,
+          pierceRatioBonusSources: componentResult.pierceRatioBonusSources,
+          effectivePierceRatio: componentResult.effectivePierceRatio,
           pierceFloor: componentResult.pierceFloor,
           afterArmorPierce: componentResult.afterArmorPierce,
           globalMultiplier: componentResult.globalMultiplier,
@@ -3522,6 +3617,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     } else if (result.damageResult && result.rawDamage) {
       // Raw damage ability (like RadBombardment) - bypasses all bonuses/modifiers and cannot crit
       // This ability explicitly ignores character bonuses, elevation, and crit
+      abilityAttackType = result.attackType || 'ranged';
       console.group(`=== TURN ${battleState.turn}: ${character.name} uses ${abilityName} (RAW DAMAGE) ===`);
       console.log('[Raw Damage: ignores all bonuses/modifiers, cannot crit]');
 
@@ -3646,7 +3742,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
       // Get Lord of the Host aura bonuses for ability attacks
       // Use the ability's attack type for filtering (melee or ranged)
-      const abilityAttackType = result.attackType || 'melee';
+      abilityAttackType = result.attackType || 'melee';
       const abilityAuraBonuses = getCharacterAuraBonuses(character, battleState.team);
       const activeAbilityAuras = abilityAuraBonuses.filter(a => {
         if (!a.isActive) return false;
@@ -3749,8 +3845,46 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         }
       }
 
-      // Calculate total damage and hit bonuses (LC + aura + FuelledByFury)
-      const totalDmgBonus = lcExtraDmg + auraDmgBonus + fuelledByFuryBonus;
+      // Evaluate passive abilities for ability attacks (e.g., Deathwing for PlasmaCannon)
+      const abilityPassiveResult = evaluatePassiveAbilities(
+        character.passiveAbilities,
+        character.abilityLevels || {},
+        {
+          characterId: character.id,
+          hasMoved: character.hasMoved,
+          hasActedThisBattle: character.hasAttackedThisBattle,
+          attacksThisTurn: character.attacksThisTurn,
+          attackTurnsCount: character.attackTurnsCount,
+          hasUsedAbilityThisTurn: character.hasUsedAbilityThisTurn,
+          hasQualifiedForLCDamage: character.hasQualifiedForLCDamage,
+          currentHealth: character.currentHealth,
+          maxHealth: character.calculatedHealth,
+          currentTurn: battleState.turn,
+          activeAbilitiesUsedCount: battleState.activeAbilitiesUsedCount,
+          attackType: abilityAttackType,
+          attackCategory: 'ability',
+          isFirstSpecialAttackOfTurn: !character.hasUsedFirstSpecialAttackThisTurn,
+          trajannIsAdjacentToBoss: isToggleActive(battleState.team.find(c => c.passiveAbilities.includes('LegendaryCommander'))?.abilityToggles['adjacentToBoss']),
+          abilityToggles: character.abilityToggles,
+          bossTraits: battleState.boss?.traits,
+        }
+      );
+
+      // Get passive ability damage bonus (e.g., Deathwing)
+      let passiveDmgBonus = 0;
+      for (const evaluation of abilityPassiveResult.evaluations) {
+        if (evaluation.applicable && evaluation.modifiers?.baseDamageBonus) {
+          passiveDmgBonus += evaluation.modifiers.baseDamageBonus;
+          abilityBuffSources.push({
+            name: evaluation.abilityName,
+            damageBonus: evaluation.modifiers.baseDamageBonus,
+          });
+          console.log(`[${evaluation.abilityName} applied to ability: +${evaluation.modifiers.baseDamageBonus} dmg]`);
+        }
+      }
+
+      // Calculate total damage and hit bonuses (LC + aura + FuelledByFury + passive)
+      const totalDmgBonus = lcExtraDmg + auraDmgBonus + fuelledByFuryBonus + passiveDmgBonus;
       const totalHitsBonus = lcExtraHits + auraHitsBonus;
 
       // Add ability-specific modifiers to buff sources (e.g., Talons of the Emperor scaling)
@@ -3788,7 +3922,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // MortisRound: applies HeavyWeapon bonus twice (extra 1.25x on top of trait bonus)
       const mortisRoundHeavyWeaponMultiplier = abilityId === 'MortisRound' &&
         character.traits.includes('HeavyWeapon') &&
-        character.abilityToggles['HeavyWeapon_notMoved']
+        character.abilityToggles['hasNotMoved']
         ? 1.25 : 1;
 
       // Add MortisRound extra HeavyWeapon buff source for display
@@ -3914,7 +4048,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Update totals if damage was dealt
     if (totalDamage > 0) {
       // Check if character is adjacent to boss for LC qualification
-      const isAdjacentToBoss = character.abilityToggles['adjacentToBoss'] ?? false;
+      const isAdjacentToBoss = isToggleActive(character.abilityToggles['adjacentToBoss']);
 
       // Get applicable buffs that were used (for consumption)
       // Single-component abilities use singleAbilityApplicableBuffs (if defined)
@@ -3966,6 +4100,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 totalDamageDealt: state.battleState.totalDamageDealt + totalDamage,
                 buffPool: newBuffPool,
                 activeAbilitiesUsedCount: state.battleState.activeAbilitiesUsedCount + 1,
+                // Supercharge: Store pierce bonus for ALL team Plasma attacks rest of turn
+                ...(result.superchargePierceBonus ? { superchargePierceBonus: result.superchargePierceBonus } : {}),
                 team: state.battleState.team.map((char) => {
                   if (char.id === characterId) {
                     // Update ability user
@@ -4013,7 +4149,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const buffTemplate = getBuffTemplate(abilityId);
 
       // Check if character is adjacent to boss for LC qualification
-      const isAdjacentToBoss = character.abilityToggles['adjacentToBoss'] ?? false;
+      const isAdjacentToBoss = isToggleActive(character.abilityToggles['adjacentToBoss']);
 
       // Special handling for Drachnyen (Abaddon)
       if (abilityId === 'Drachnyen') {
@@ -4163,6 +4299,52 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           name: abilityName,
           effect: newStance === 'protector' ? `${stanceName}: +${extraArmor} Armor` : `${stanceName}: No combat effect`,
         });
+      } else if (abilityId === 'CalibaniteGreatsword') {
+        // Special handling for Calibanite Greatsword (Forcas)
+        // Toggles between Strike (enables Overwatch) and Sweep stances
+        // Only first use counts for LC qualification
+        // Can be used once per turn
+
+        // Determine new stance based on current stance (default is Strike)
+        const currentStance = character.calibaniteGreatswordStance ?? 'strike';
+        const newStance: 'strike' | 'sweep' = currentStance === 'strike' ? 'sweep' : 'strike';
+
+        // Check if this is the first use this battle (for LC qualification)
+        const isFirstUse = !character.hasUsedCalibaniteThisBattle;
+
+        set((state) => ({
+          battleState: state.battleState
+            ? {
+                ...state.battleState,
+                activeAbilitiesUsedCount: isFirstUse
+                  ? state.battleState.activeAbilitiesUsedCount + 1
+                  : state.battleState.activeAbilitiesUsedCount,
+                team: state.battleState.team.map((char) =>
+                  char.id === characterId
+                    ? {
+                        ...char,
+                        hasUsedAbilityThisTurn: true,
+                        // LC: Only first use counts for qualification
+                        hasQualifiedForLCDamage: isFirstUse ? isAdjacentToBoss : char.hasQualifiedForLCDamage,
+                        // Track stance and usage
+                        calibaniteGreatswordStance: newStance,
+                        hasUsedCalibaniteThisTurn: true,
+                        hasUsedCalibaniteThisBattle: true,
+                      }
+                    : char
+                ),
+              }
+            : null,
+        }));
+
+        const stanceDisplayName = newStance === 'strike' ? 'Strike Stance' : 'Sweep Stance';
+        console.log(`[Calibanite Greatsword: switched to ${stanceDisplayName}${newStance === 'strike' ? ' (Overwatch enabled)' : ''}]`);
+
+        // Add to appliedBuffs for BattleLog display
+        appliedBuffs.push({
+          name: abilityName,
+          effect: newStance === 'strike' ? `${stanceDisplayName}: Overwatch enabled` : `${stanceDisplayName}: No combat effect`,
+        });
       } else if (buffTemplate) {
         // Use new buff pool system
         const abilityValues = getAbilityValues(abilityId, levelIndex) || {};
@@ -4297,7 +4479,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     } else if (result.summonResult) {
       // Summon ability (like EarlyWarningOverride) - create summons and handle special effects
       // Check if character is adjacent to boss for LC qualification
-      const isAdjacentToBoss = character.abilityToggles['adjacentToBoss'] ?? false;
+      const isAdjacentToBoss = isToggleActive(character.abilityToggles['adjacentToBoss']);
 
       // Create summons
       const summonData = getSummonUnitData(result.summonResult.unitId);
@@ -4373,7 +4555,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     } else {
       // Other non-damage ability (e.g., healing without buff, summon) - mark ability as used
       // Check if character is adjacent to boss for LC qualification
-      const isAdjacentToBoss = character.abilityToggles['adjacentToBoss'] ?? false;
+      const isAdjacentToBoss = isToggleActive(character.abilityToggles['adjacentToBoss']);
 
       // Check for Overwatch activation (e.g., Early Warning Override summon ability)
       const overwatchExtraDmg = result.overwatchResult?.extraDmg || 0;
@@ -4433,7 +4615,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       attackType: 'ability' as const,
       attackCategory: 'ability' as const,  // LC attack category
       isFirstSpecialAttackOfTurn: !updatedCharacter.hasUsedFirstSpecialAttackThisTurn,  // Per-character LC +2 hits
-      trajannIsAdjacentToBoss: trajann?.abilityToggles['adjacentToBoss'] ?? false,  // LC Trajann check
+      trajannIsAdjacentToBoss: isToggleActive(trajann?.abilityToggles['adjacentToBoss']),  // LC Trajann check
+      darkAngelsAdjacentToBoss,  // For FearedInterrogator
       abilityToggles: updatedCharacter.abilityToggles,
       bossTraits: battleState.boss?.traits,
       bossDebuffs: battleState.bossHasMarkerlight ? ['Markerlight'] : [],
@@ -4799,18 +4982,25 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // This ensures maxPerHitDamage includes the highest perHitDamage from ability + all follow-ups
     if (totalDamage > 0 || maxPerHitDamage > 0) {
       const finalMaxPerHitForOutrage = maxPerHitDamage;
+      // Check if the ability user is Laviscus (has RefusalToBeOutdone)
+      const isAbilityUserLaviscus = character.passiveAbilities.includes('RefusalToBeOutdone');
 
       set((state) => ({
         battleState: state.battleState
           ? {
               ...state.battleState,
               team: state.battleState.team.map((char) => {
-                // For other characters: track outrage for Laviscus
-                if (char.id !== characterId && char.passiveAbilities.includes('RefusalToBeOutdone')) {
-                  // Accumulate outrage from ally ability attacks (uses max perHitDamage from ability + follow-ups)
+                // Track outrage for characters with RefusalToBeOutdone (Laviscus)
+                // Include the ability user if they are Laviscus (e.g., EuphoricStrikes increases own outrage)
+                const isLaviscusTrackingOwnAttack = char.id === characterId && isAbilityUserLaviscus;
+                const isLaviscusTrackingAllyAttack = char.id !== characterId && char.passiveAbilities.includes('RefusalToBeOutdone');
+
+                if (isLaviscusTrackingOwnAttack || isLaviscusTrackingAllyAttack) {
+                  // Accumulate outrage from ability attacks (uses max perHitDamage from ability + follow-ups)
                   const newOutrage = (char.outrage || 0) + finalMaxPerHitForOutrage;
                   const contributors = char.outrageContributors || [];
                   // Add to contributors if attacker is Chaos and not already in list
+                  // This applies to both own attacks (Laviscus is Chaos) and ally attacks
                   const newContributors = isAbilityUserChaos && !contributors.includes(characterId)
                     ? [...contributors, characterId]
                     : contributors;
@@ -4837,6 +5027,12 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }));
     }
 
+    // Build message with attack type label for damage abilities
+    const attackTypeLabel = abilityAttackType ? ` [${abilityAttackType.toUpperCase()}]` : '';
+    const baseMessage = result.message || `${character.name} uses ${abilityName}`;
+    // Always append attack type for damage abilities
+    const finalMessage = abilityAttackType ? `${baseMessage}${attackTypeLabel}` : baseMessage;
+
     return {
       timestamp: Date.now(),
       characterId,
@@ -4845,7 +5041,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       action: 'ability' as const,
       damage: totalDamage > 0 ? totalDamage : undefined,
       damageBreakdown,
-      message: result.message || `${character.name} uses ${abilityName}`,
+      attackType: abilityAttackType,
+      message: finalMessage,
       followUpAttacks: followUpAttackLogs.length > 0 ? followUpAttackLogs : undefined,
       appliedBuffs: appliedBuffs.length > 0 ? appliedBuffs : undefined,
     };
@@ -5534,7 +5731,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Find Trajann for LC +2 hits check
     const trajann = battleState.team.find(c => c.passiveAbilities.includes('LegendaryCommander'));
-    const trajannIsAdjacentToBoss = trajann?.abilityToggles['adjacentToBoss'] ?? false;
+    const trajannIsAdjacentToBoss = isToggleActive(trajann?.abilityToggles['adjacentToBoss']);
+
+    // Check if any Dark Angels teammate (not Asmodai) is adjacent to boss (for FearedInterrogator)
+    const asmodai = battleState.team.find(c => c.passiveAbilities.includes('FearedInterrogator'));
+    const darkAngelsAdjacentToBoss = asmodai ? battleState.team.some(c =>
+      c.id !== asmodai.id && c.faction === 'DarkAngels' && c.abilityToggles['adjacentToBoss']
+    ) : false;
 
     // Evaluate passive abilities
     const passiveResult = evaluatePassiveAbilities(
@@ -5555,6 +5758,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         attackCategory: 'special',
         isFirstSpecialAttackOfTurn: !character.hasUsedFirstSpecialAttackThisTurn,
         trajannIsAdjacentToBoss,
+        darkAngelsAdjacentToBoss,
         abilityToggles: character.abilityToggles,
         bossTraits: battleState.boss?.traits,
         bossDebuffs: battleState.bossHasMarkerlight ? ['Markerlight'] : [],
@@ -5747,6 +5951,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
    * Execute Overwatch attack
    * Available for characters with Overwatch trait (once per turn) or after Early Warning Override (+extraDmg)
    * Attack type depends on adjacency: melee if adjacent to boss, ranged otherwise
+   * LionHelm (Azrael) provides +extraDmg to Overwatch attacks for characters in range 2
    */
   executeOverwatchAttack: (characterId) => {
     const { battleState, executeAttack } = get();
@@ -5772,20 +5977,58 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     // Determine attack type based on adjacency
+    // Exception: CalibaniteGreatsword Strike Stance always uses melee attack
     const isAdjacentToBoss = character.abilityToggles?.['adjacentToBoss'] ?? false;
-    const attackType = isAdjacentToBoss ? 'melee' : 'ranged';
+    const hasCalibaniteGreatsword = character.activeAbilities?.includes('CalibaniteGreatsword') ?? false;
+    const calibaniteStance = character.calibaniteGreatswordStance ?? 'strike';
+    const isCalibaniteStrikeStance = hasCalibaniteGreatsword && calibaniteStance === 'strike';
+    const attackType = isCalibaniteStrikeStance ? 'melee' : (isAdjacentToBoss ? 'melee' : 'ranged');
 
-    // Get Overwatch extra damage (only if overwatchActive from Early Warning Override)
+    // Build array of damage bonus sources for detailed breakdown
+    const damageBonusSources: DamageBonusSource[] = [];
+
+    // Get Overwatch extra damage from Early Warning Override (Re'vas)
     const hasOverwatchActive = character.overwatchActive ?? false;
-    const overwatchExtraDmg = hasOverwatchActive ? (character.overwatchExtraDmg || 0) : 0;
+    const ewoExtraDmg = hasOverwatchActive ? (character.overwatchExtraDmg || 0) : 0;
+    if (ewoExtraDmg > 0) {
+      damageBonusSources.push({
+        name: 'Early Warning Override',
+        bonus: ewoExtraDmg,
+      });
+    }
 
-    // Execute attack with optional extra damage modifier
-    const result = executeAttack(characterId, 'boss', attackType, overwatchExtraDmg > 0 ? {
-      baseDamageBonus: overwatchExtraDmg,
-      abilityName: 'Overwatch',
-    } : undefined);
+    // Check for LionHelm (Azrael) bonus - adds extraDmg to Overwatch attacks
+    // For Azrael himself: always active (no toggle needed)
+    // For other characters: requires "Range 2 from Azrael" toggle
+    const azrael = battleState.team.find((c) => c.passiveAbilities.includes('LionHelm'));
+    if (azrael) {
+      const isAzrael = character.id === azrael.id;
+      const lionHelmToggleId = `LionHelm_${azrael.id}_overwatch`;
+      const hasLionHelmBonus = isAzrael || (character.abilityToggles?.[lionHelmToggleId] ?? false);
 
-    // Mark Overwatch as used this turn and deactivate ability bonus
+      if (hasLionHelmBonus) {
+        const lionHelmLevelIndex = azrael.abilityLevels?.['LionHelm'] ?? 54;
+        const lionHelmValues = getAbilityValues('LionHelm', lionHelmLevelIndex);
+        const lionHelmExtraDmg = (lionHelmValues?.extraDmg as number) || 0;
+        if (lionHelmExtraDmg > 0) {
+          damageBonusSources.push({
+            name: 'Lion Helm',
+            bonus: lionHelmExtraDmg,
+          });
+        }
+      }
+    }
+
+    // Calculate total bonus for display
+    const totalOverwatchBonus = damageBonusSources.reduce((sum, src) => sum + src.bonus, 0);
+
+    // Execute attack with damage bonus sources and Overwatch flag
+    const result = executeAttack(characterId, 'boss', attackType, damageBonusSources.length > 0 ? {
+      damageBonusSources,
+      isOverwatchAttack: true,
+    } : { isOverwatchAttack: true });
+
+    // Mark Overwatch as used this turn and deactivate ability bonus (EWO bonus only)
     set((state) => ({
       battleState: state.battleState
         ? {
@@ -5799,7 +6042,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         : null,
     }));
 
-    const bonusText = overwatchExtraDmg > 0 ? ` (+${overwatchExtraDmg} bonus)` : '';
+    const bonusText = totalOverwatchBonus > 0 ? ` (+${totalOverwatchBonus} bonus)` : '';
     console.log(`[Overwatch ${attackType} attack${bonusText}]`);
 
     return {

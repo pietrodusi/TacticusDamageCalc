@@ -12,6 +12,11 @@ import { getCooldownDisplayText } from '../cooldownManager';
 import { getAuraHandler } from '../handlers/auraHandlers';
 
 /**
+ * Helper to check if a toggle is active (for boolean toggles in abilityToggles that can also contain numbers for counters)
+ */
+const isToggleActive = (value: boolean | number | undefined): boolean => value === true;
+
+/**
  * Get displayable passive ability bonuses for a battle character
  * @param character The battle character to check
  * @returns Array of displayable passive ability bonuses
@@ -229,7 +234,7 @@ export function getCharacterAuraBonuses(
 
         // Check if toggle is enabled
         const toggleKey = aura.auraId;
-        const isToggled = character.abilityToggles[toggleKey] ?? false;
+        const isToggled = isToggleActive(character.abilityToggles[toggleKey]);
 
         // Calculate scaled modifiers if scaling context exists
         let modifiers = aura.modifiers;
@@ -354,7 +359,7 @@ export function getLegendaryCommanderBuffs(
 
   // Damage buff - available to all characters (except Trajann)
   const dmgToggleKey = 'LegendaryCommander_damage';
-  const dmgIsActive = character.abilityToggles[dmgToggleKey] ?? false;
+  const dmgIsActive = isToggleActive(character.abilityToggles[dmgToggleKey]);
 
   buffs.push({
     abilityId: dmgToggleKey,
@@ -372,7 +377,7 @@ export function getLegendaryCommanderBuffs(
   // Hits buff - only for characters with special attacks
   if (isEligibleForLcHitsBuff(character)) {
     const hitsToggleKey = 'LegendaryCommander_hits';
-    const hitsIsActive = character.abilityToggles[hitsToggleKey] ?? false;
+    const hitsIsActive = isToggleActive(character.abilityToggles[hitsToggleKey]);
 
     buffs.push({
       abilityId: hitsToggleKey,

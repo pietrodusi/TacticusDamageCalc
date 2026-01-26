@@ -61,7 +61,8 @@ export interface BattleSummon {
   totalDamageDealt: number;
 
   // Buff condition toggles (like character abilityToggles)
-  abilityToggles?: Record<string, boolean>;
+  // Can be boolean for toggles or number for counters
+  abilityToggles?: Record<string, boolean | number>;
 }
 
 /**

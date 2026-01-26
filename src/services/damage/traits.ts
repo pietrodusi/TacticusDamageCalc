@@ -33,7 +33,7 @@ export interface TraitContext {
   firstAttackTurn: number | null | undefined;  // Turn when character first attacked (for RapidAssault)
   currentTurn: number | undefined;              // Current battle turn (for RapidAssault)
   targetTraits?: string[];                      // Target's traits (e.g., BigTarget, Vehicle)
-  abilityToggles?: Record<string, boolean>;     // User-controlled toggles for trait conditions
+  abilityToggles?: Record<string, boolean | number>;  // User-controlled toggles for trait conditions (numbers for counters)
   fightingRetreatActive?: boolean;              // Darkstrider's Fighting Retreat override for RangedSpecialist
 }
 
@@ -52,7 +52,7 @@ const TRAIT_EFFECTS: Record<string, TraitEffect> = {
         return { applicable: false, multiplier: 1, reason: 'Only applies to melee attacks' };
       }
       // Only active when the "Has not moved" toggle is checked
-      const isActive = ctx.abilityToggles?.['CrushingStrike_notMoved'] ?? false;
+      const isActive = ctx.abilityToggles?.['hasNotMoved'] ?? false;
       if (!isActive) {
         return { applicable: false, multiplier: 1, reason: 'Has not moved condition not checked' };
       }
@@ -65,7 +65,7 @@ const TRAIT_EFFECTS: Record<string, TraitEffect> = {
         return { applicable: false, multiplier: 1, reason: 'Only applies to ranged attacks' };
       }
       // Only active when the "Has not moved" toggle is checked
-      const isActive = ctx.abilityToggles?.['HeavyWeapon_notMoved'] ?? false;
+      const isActive = ctx.abilityToggles?.['hasNotMoved'] ?? false;
       if (!isActive) {
         return { applicable: false, multiplier: 1, reason: 'Has not moved condition not checked' };
       }

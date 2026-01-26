@@ -5,24 +5,66 @@ import { getAbilityNameSync, getAbilityValues, executeActiveAbility, classifyAbi
 
 interface ActionPanelProps {
   character: BattleCharacter;
+  team?: BattleCharacter[];
   onAction: (type: ActionType) => void;
   onExecuteBetrayer?: () => void;
   onExecuteOverwatch?: () => void;
 }
 
-export function ActionPanel({ character, onAction, onExecuteBetrayer, onExecuteOverwatch }: ActionPanelProps) {
+export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onExecuteOverwatch }: ActionPanelProps) {
   const hasRanged = character.rangedHits !== undefined && character.rangedHits > 0;
   const hasActiveAbility = character.activeAbilities.length > 0;
   const hasMechanicTrait = character.traits.includes('Mechanic');
   const hasTheBetrayerAbility = character.passiveAbilities?.includes('TheBetrayer') ?? false;
   const isAdjacentToBoss = character.abilityToggles?.['adjacentToBoss'] ?? false;
-  // Overwatch check - available for Re'vas (has EarlyWarningOverride ability)
+  // Overwatch check - available for:
+  // 1. Characters with Overwatch trait (e.g., Azrael) - always available once per turn
+  // 2. Re'vas (has EarlyWarningOverride) - available after EWO is used
+  // 3. Forcas (has CalibaniteGreatsword) - available when in Strike Stance
+  const hasOverwatchTrait = character.traits.includes('Overwatch');
   const hasEarlyWarningOverride = character.activeAbilities?.includes('EarlyWarningOverride') ?? false;
-  const hasOverwatchActive = character.overwatchActive ?? false;  // Activated by Early Warning Override (has +extraDmg)
+  const hasCalibaniteGreatsword = character.activeAbilities?.includes('CalibaniteGreatsword') ?? false;
+  const hasOverwatchActive = character.overwatchActive ?? false;  // Activated by Early Warning Override (has +extraDmg from EWO)
   const hasUsedOverwatchThisTurn = character.hasUsedOverwatchThisTurn ?? false;
-  // Show for Re'vas (has EWO ability), enable only when EWO was used this turn
-  const showOverwatchButton = hasEarlyWarningOverride;
-  const canUseOverwatch = hasOverwatchActive && !hasUsedOverwatchThisTurn;
+  // Forcas's CalibaniteGreatsword stance: 'strike' enables Overwatch, 'sweep' disables it. Default is 'strike'.
+  const calibaniteStance = character.calibaniteGreatswordStance ?? 'strike';
+  const isInStrikeStance = hasCalibaniteGreatsword && calibaniteStance === 'strike';
+  // Show for characters with Overwatch trait OR Re'vas (has EWO) OR Forcas (has CalibaniteGreatsword)
+  const showOverwatchButton = hasOverwatchTrait || hasEarlyWarningOverride || hasCalibaniteGreatsword;
+  // For Re'vas: enabled after EWO is used (overwatchActive)
+  // For Overwatch trait characters: always available once per turn
+  // For Forcas: available when in Strike Stance
+  const canUseOverwatch = !hasUsedOverwatchThisTurn && (
+    (hasOverwatchTrait && !hasEarlyWarningOverride && !hasCalibaniteGreatsword) ||  // Overwatch trait only: always available
+    (hasEarlyWarningOverride && hasOverwatchActive) ||  // Re'vas with EWO: only after activating EWO
+    isInStrikeStance  // Forcas with CalibaniteGreatsword: only in Strike Stance
+  );
+
+  // Calculate total Overwatch bonus (EWO + LionHelm)
+  const getOverwatchBonus = (): number => {
+    let bonus = hasOverwatchActive ? (character.overwatchExtraDmg || 0) : 0;
+
+    // Check for LionHelm bonus from Azrael
+    // For Azrael himself: always active (no toggle needed)
+    // For other characters: requires "Range 2 from Azrael" toggle
+    if (team) {
+      const azrael = team.find((c) => c.passiveAbilities.includes('LionHelm'));
+      if (azrael) {
+        const isAzrael = character.id === azrael.id;
+        const lionHelmToggleId = `LionHelm_${azrael.id}_overwatch`;
+        const hasLionHelmBonus = isAzrael || (character.abilityToggles?.[lionHelmToggleId] ?? false);
+
+        if (hasLionHelmBonus) {
+          const lionHelmLevelIndex = azrael.abilityLevels?.['LionHelm'] ?? 54;
+          const lionHelmValues = getAbilityValues('LionHelm', lionHelmLevelIndex);
+          bonus += (lionHelmValues?.extraDmg as number) || 0;
+        }
+      }
+    }
+
+    return bonus;
+  };
+  const overwatchBonus = getOverwatchBonus();
 
   // Get active ability info
   const activeAbilityId = character.activeAbilities[0];
@@ -139,6 +181,14 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer, onExecuteO
   };
   const doctrinaStance = getDoctrinaStanceDisplay();
 
+  // Get Calibanite Greatsword stance for display
+  const getCalibaniteStanceDisplay = (): 'Strike' | 'Sweep' | null => {
+    if (activeAbilityId !== 'CalibaniteGreatsword') return null;
+    const stance = character.calibaniteGreatswordStance ?? 'strike';  // Default to strike
+    return stance === 'strike' ? 'Strike' : 'Sweep';
+  };
+  const calibaniteStanceDisplay = getCalibaniteStanceDisplay();
+
   const colorClasses = {
     green: 'hover:bg-green-900/50 hover:border-green-600 text-green-500',
     red: 'hover:bg-red-900/50 hover:border-red-600 text-red-500',
@@ -244,6 +294,10 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer, onExecuteO
             <span className={`text-[10px] ${doctrinaStance === 'Protector' ? 'text-green-400' : 'text-red-400'}`}>
               {doctrinaStance} Imperative
             </span>
+          ) : calibaniteStanceDisplay ? (
+            <span className={`text-[10px] ${calibaniteStanceDisplay === 'Strike' ? 'text-green-400' : 'text-red-400'}`}>
+              {calibaniteStanceDisplay} Stance
+            </span>
           ) : !abilityReady ? (
             <span className="text-[10px] text-red-400">
               {cooldownText}
@@ -296,8 +350,9 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer, onExecuteO
           </button>
         )}
 
-        {/* Overwatch (visible for Re'vas, enabled only after Early Warning Override) */}
-        {/* Can be used even after turn ends (EWO ends turn but enables Overwatch). */}
+        {/* Overwatch (visible for all characters with Overwatch trait) */}
+        {/* For Re'vas: requires Early Warning Override to be used first */}
+        {/* For others: available once per turn, may have LionHelm bonus */}
         {showOverwatchButton && onExecuteOverwatch && (
           <button
             onClick={() => canUseOverwatch && onExecuteOverwatch()}
@@ -305,14 +360,14 @@ export function ActionPanel({ character, onAction, onExecuteBetrayer, onExecuteO
             className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
               !canUseOverwatch ? disabledClasses : 'hover:bg-cyan-900/50 hover:border-cyan-600 text-cyan-500'
             }`}
-            title={`Overwatch: ${isAdjacentToBoss ? 'Melee' : 'Ranged'} attack with +${character.overwatchExtraDmg || 0} damage (requires Early Warning Override)`}
+            title={`Overwatch: ${isInStrikeStance ? 'Melee' : (isAdjacentToBoss ? 'Melee' : 'Ranged')} attack${overwatchBonus > 0 ? ` with +${overwatchBonus} damage` : ''}${hasEarlyWarningOverride && !hasOverwatchActive ? ' (requires Early Warning Override)' : ''}${hasCalibaniteGreatsword && calibaniteStance === 'sweep' ? ' (requires Strike Stance)' : ''}`}
           >
             <div className="flex items-center gap-1">
               <Crosshair size={18} />
               <span className="text-xs font-medium">Overwatch</span>
             </div>
             <span className="text-[10px] text-gray-400">
-              {isAdjacentToBoss ? 'Melee' : 'Ranged'} +{character.overwatchExtraDmg || 0}
+              {isInStrikeStance ? 'Melee' : (isAdjacentToBoss ? 'Melee' : 'Ranged')}{overwatchBonus > 0 ? ` +${overwatchBonus}` : ''}
             </span>
           </button>
         )}

@@ -17,7 +17,7 @@ interface BattleCharacterCardProps {
   onSelect: () => void;
   onAction: (type: ActionType) => void;
   onUndo: () => void;
-  onToggleAbility?: (abilityId: string) => void;
+  onToggleAbility?: (abilityId: string, counterValue?: number) => void;
   onExecuteBetrayer?: () => void;  // For Kharn's The Betrayer bonus attack
   onExecuteOverwatch?: () => void;  // For Re'vas's Overwatch attack
 }
@@ -39,7 +39,7 @@ export function BattleCharacterCard({
 }: BattleCharacterCardProps) {
   const [hoveredPassive, setHoveredPassive] = useState<string | null>(null);
   const hasActedThisTurn = character.hasMoved && character.hasActed;
-  const hasAnyAction = character.hasMoved || character.hasActed || character.hasUsedTheBetrayerThisTurn || character.hasUsedAbilityThisTurn;
+  const hasAnyAction = character.hasMoved || character.hasActed || character.hasUsedTheBetrayerThisTurn || character.hasUsedAbilityThisTurn || character.hasUsedOverwatchThisTurn;
 
   // Helper to get passive ability display name (with phase for Serene Unifier)
   const getPassiveDisplayName = (passiveId: string): string => {
@@ -221,6 +221,63 @@ export function BattleCharacterCard({
                 : null;
               const isDisabled = parentCondition ? !parentCondition.isActive : false;
 
+              // Counter-based condition
+              if (condition.isCounter) {
+                const currentValue = condition.counterValue ?? 0;
+                const minValue = condition.counterMin ?? 0;
+                const maxValue = condition.counterMax ?? 6;
+
+                return (
+                  <div
+                    key={condition.id}
+                    className="flex items-start gap-2 group"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <button
+                        onClick={() => currentValue > minValue && onToggleAbility?.(condition.id, currentValue - 1)}
+                        disabled={currentValue <= minValue}
+                        className={`w-5 h-5 flex items-center justify-center rounded text-xs font-bold ${
+                          currentValue <= minValue
+                            ? 'bg-gray-700 text-gray-600 cursor-not-allowed'
+                            : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                        }`}
+                      >
+                        -
+                      </button>
+                      <span className={`w-4 text-center text-xs font-medium ${
+                        currentValue > 0 ? 'text-purple-300' : 'text-gray-500'
+                      }`}>
+                        {currentValue}
+                      </span>
+                      <button
+                        onClick={() => currentValue < maxValue && onToggleAbility?.(condition.id, currentValue + 1)}
+                        disabled={currentValue >= maxValue}
+                        className={`w-5 h-5 flex items-center justify-center rounded text-xs font-bold ${
+                          currentValue >= maxValue
+                            ? 'bg-gray-700 text-gray-600 cursor-not-allowed'
+                            : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                        }`}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`text-xs font-medium ${
+                        currentValue > 0 ? 'text-purple-300' : 'text-gray-500'
+                      }`}>
+                        {condition.label}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        <span className={currentValue > 0 ? 'text-green-400' : ''}>{condition.effect}</span>
+                        <span className="ml-1">({condition.effectPerCount}/unit)</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Standard checkbox-based condition
               return (
                 <label
                   key={condition.id}
@@ -271,7 +328,7 @@ export function BattleCharacterCard({
       {/* Action Panel (only if selected) */}
       {isSelected && (
         <div className="mt-3 pt-3 border-t border-gray-700">
-          <ActionPanel character={character} onAction={onAction} onExecuteBetrayer={onExecuteBetrayer} onExecuteOverwatch={onExecuteOverwatch} />
+          <ActionPanel character={character} team={team} onAction={onAction} onExecuteBetrayer={onExecuteBetrayer} onExecuteOverwatch={onExecuteOverwatch} />
         </div>
       )}
     </div>

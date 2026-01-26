@@ -14,3 +14,5 @@ export { RepairTargetModal } from './RepairTargetModal';
 export { AttackTypeModal } from './AttackTypeModal';
 export { SummonCard } from './SummonCard';
 export { InspiredToGreatnessModal } from './InspiredToGreatnessModal';
+export { DarkTalonStrikeModal } from './DarkTalonStrikeModal';
+export type { DarkTalonStrikeMode } from './DarkTalonStrikeModal';

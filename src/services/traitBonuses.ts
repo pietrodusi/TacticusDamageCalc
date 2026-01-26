@@ -7,6 +7,11 @@
 import traitsData from '../assets/data/traits.json';
 import type { BattleCharacter } from '../types';
 
+/**
+ * Helper to check if a toggle is active (for boolean toggles in abilityToggles that can also contain numbers for counters)
+ */
+const isToggleActive = (value: boolean | number | undefined): boolean => value === true;
+
 // Type for traits data structure
 interface TraitData {
   name: string;
@@ -49,7 +54,7 @@ const TRAIT_BONUS_DEFINITIONS: Record<string, TraitBonusDefinition> = {
   CrushingStrike: {
     compute: (character) => {
       // Only active when the "Has not moved" toggle is checked
-      const isActive = character.abilityToggles['CrushingStrike_notMoved'] ?? false;
+      const isActive = isToggleActive(character.abilityToggles['hasNotMoved']);
       return {
         traitId: 'CrushingStrike',
         traitName: getTraitName('CrushingStrike'),
@@ -62,15 +67,14 @@ const TRAIT_BONUS_DEFINITIONS: Record<string, TraitBonusDefinition> = {
   },
   HeavyWeapon: {
     compute: (character) => {
-      // Only show if character has ranged attack
-      if (!character.rangedHits) return null;
-
+      // Show for characters with HeavyWeapon trait (regardless of ranged attacks)
+      // The bonus applies to ranged attacks including ability-based ones like PlasmaCannon
       // Only active when the "Has not moved" toggle is checked
-      const isActive = character.abilityToggles['HeavyWeapon_notMoved'] ?? false;
+      const isActive = isToggleActive(character.abilityToggles['hasNotMoved']);
       return {
         traitId: 'HeavyWeapon',
         traitName: getTraitName('HeavyWeapon'),
-        bonusText: '+25% ranged',
+        bonusText: '+25% ranged (HeavyWeapon)',
         isActive,
         reason: isActive ? 'Has not moved' : 'Has not moved condition not checked',
         colorClass: isActive ? 'text-green-400' : 'text-gray-500',
@@ -161,7 +165,7 @@ const TRAIT_BONUS_DEFINITIONS: Record<string, TraitBonusDefinition> = {
 
       // RangedSpecialist: +33% ranged damage when NOT adjacent to enemy
       // Active when the "Started turn adjacent to enemy" toggle is NOT checked
-      const isAdjacentToEnemy = character.abilityToggles['RangedSpecialist_adjacentToEnemy'] ?? false;
+      const isAdjacentToEnemy = isToggleActive(character.abilityToggles['RangedSpecialist_adjacentToEnemy']);
       const isActive = !isAdjacentToEnemy;
 
       return {

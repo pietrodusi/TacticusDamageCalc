@@ -1423,7 +1423,8 @@ export const GreatFrostAxeHandler: AbilityHandler = {
 
 /**
  * DarkTalonStrike (Azrael)
- * Ranged multi-component attack: 1x DirectDamage + 6x Bolter
+ * User chooses between: 1x DirectDamage OR 6x Bolter
+ * Toggle: Bolter Mode - when checked uses 6x Bolter, otherwise 1x DirectDamage
  * Variables: minDmg, maxDmg, minDmg_2, maxDmg_2
  * Constants: damageProfile: DirectDamage, damageProfile_2: Bolter, nrOfHits: 1, nrOfHits_2: 6
  */
@@ -1433,52 +1434,62 @@ export const DarkTalonStrikeHandler: AbilityHandler = {
   category: 'damage',
   cooldown: -1,
 
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('DarkTalonStrike');
+    const isBolterMode = context.abilityToggles?.['DarkTalonStrike_bolterMode'] ?? false;
 
-    // Primary damage: 1x DirectDamage
-    const minDmg1 = values.minDmg as number || 0;
-    const maxDmg1 = values.maxDmg as number || 0;
-    const avgDmg1 = Math.round((minDmg1 + maxDmg1) / 2);
-    const hits1 = values.nrOfHits as number || 1;
+    if (isBolterMode) {
+      // Bolter Mode: 6x Bolter
+      const minDmg = values.minDmg_2 as number || 0;
+      const maxDmg = values.maxDmg_2 as number || 0;
+      const avgDmg = Math.round((minDmg + maxDmg) / 2);
+      const hits = values.nrOfHits_2 as number || 6;
 
-    // Secondary damage: 6x Bolter
-    const minDmg2 = values.minDmg_2 as number || 0;
-    const maxDmg2 = values.maxDmg_2 as number || 0;
-    const avgDmg2 = Math.round((minDmg2 + maxDmg2) / 2);
-    const hits2 = values.nrOfHits_2 as number || 6;
-
-    return {
-      abilityId: 'DarkTalonStrike',
-      abilityName,
-      category: 'damage',
-      damageComponents: [
-        {
-          minDamage: minDmg1,
-          maxDamage: maxDmg1,
-          averageDamage: avgDmg1,
-          hits: hits1,
-          damageProfile: 'DirectDamage' as DamageType,
-        },
-        {
-          minDamage: minDmg2,
-          maxDamage: maxDmg2,
-          averageDamage: avgDmg2,
-          hits: hits2,
+      return {
+        abilityId: 'DarkTalonStrike',
+        abilityName,
+        category: 'damage',
+        damageResult: {
+          minDamage: minDmg,
+          maxDamage: maxDmg,
+          averageDamage: avgDmg,
+          hits,
           damageProfile: 'Bolter' as DamageType,
         },
-      ],
-      attackType: 'ranged',
-      message: abilityName,
-    };
+        attackType: 'ranged',
+        message: `${abilityName} (Bolter)`,
+      };
+    } else {
+      // DirectDamage Mode: 1x DirectDamage
+      const minDmg = values.minDmg as number || 0;
+      const maxDmg = values.maxDmg as number || 0;
+      const avgDmg = Math.round((minDmg + maxDmg) / 2);
+      const hits = values.nrOfHits as number || 1;
+
+      return {
+        abilityId: 'DarkTalonStrike',
+        abilityName,
+        category: 'damage',
+        damageResult: {
+          minDamage: minDmg,
+          maxDamage: maxDmg,
+          averageDamage: avgDmg,
+          hits,
+          damageProfile: 'DirectDamage' as DamageType,
+        },
+        attackType: 'ranged',
+        message: `${abilityName} (DirectDamage)`,
+      };
+    }
   },
 };
 
 /**
  * Supercharge (Sarquael)
- * Ranged multi-component attack: 1x Plasma + 1x additional shot with pierce bonus
- * Variables: minDmg, maxDmg, minDmg_2, maxDmg_2, extraPierceRatio
- * Constants: damageProfile: Plasma, nrOfHits: 1, nrOfHits_2: 1
+ * Special Ranged attack: 1x Plasma damage with +extraPierceRatio pierce ratio
+ * For the rest of the turn, all Plasma damage attacks get +extraPierceRatio pierce ratio
+ * Variables: minDmg, maxDmg, extraPierceRatio
+ * Constants: damageProfile: Plasma, nrOfHits: 1
  */
 export const SuperchargeHandler: AbilityHandler = {
   abilityId: 'Supercharge',
@@ -1489,15 +1500,10 @@ export const SuperchargeHandler: AbilityHandler = {
   executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('Supercharge');
 
-    // Primary damage: 1x Plasma
-    const minDmg1 = values.minDmg as number || 0;
-    const maxDmg1 = values.maxDmg as number || 0;
-    const avgDmg1 = Math.round((minDmg1 + maxDmg1) / 2);
-
-    // Secondary damage: 1x additional shot
-    const minDmg2 = values.minDmg_2 as number || 0;
-    const maxDmg2 = values.maxDmg_2 as number || 0;
-    const avgDmg2 = Math.round((minDmg2 + maxDmg2) / 2);
+    // Single damage component: 1x Plasma with pierce bonus
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
 
     const extraPierceRatio = values.extraPierceRatio as number || 0;
 
@@ -1507,16 +1513,9 @@ export const SuperchargeHandler: AbilityHandler = {
       category: 'damage',
       damageComponents: [
         {
-          minDamage: minDmg1,
-          maxDamage: maxDmg1,
-          averageDamage: avgDmg1,
-          hits: 1,
-          damageProfile: 'Plasma' as DamageType,
-        },
-        {
-          minDamage: minDmg2,
-          maxDamage: maxDmg2,
-          averageDamage: avgDmg2,
+          minDamage: minDmg,
+          maxDamage: maxDmg,
+          averageDamage: avgDmg,
           hits: 1,
           damageProfile: 'Plasma' as DamageType,
         },
@@ -1524,8 +1523,10 @@ export const SuperchargeHandler: AbilityHandler = {
       abilityModifiers: {
         pierceRatioBonus: extraPierceRatio,
       },
+      // Store the pierce bonus so battleStore can apply it for rest of turn
+      superchargePierceBonus: extraPierceRatio,
       attackType: 'ranged',
-      message: `${abilityName} (+${extraPierceRatio}% pierce)`,
+      message: `${abilityName} (+${extraPierceRatio}% pierce for Plasma this turn)`,
     };
   },
 };
@@ -1568,57 +1569,54 @@ export const PlasmaCannonHandler: AbilityHandler = {
 
 /**
  * CalibaniteGreatsword (Forcas)
- * Melee Power damage attack with variable hits (3 at low level, 1 at high level)
- * Variables: nrOfHits (3→1), minDmg, maxDmg
- * Constants: damageProfile: Power
+ * Stance-switching ability that toggles between Strike and Sweep stances.
+ * - Strike Stance (initial): Enables Overwatch attack
+ * - Sweep Stance: No effect in battle simulation
+ * Can be used once per turn (cooldown: 0), doesn't end turn.
+ * Only first use counts for "ability used" condition (Legendary Commander).
  */
 export const CalibaniteGreatswordHandler: AbilityHandler = {
   abilityId: 'CalibaniteGreatsword',
   abilityName: 'Calibanite Greatsword',
-  category: 'damage',
-  cooldown: -1,
+  category: 'buff',
+  cooldown: 0,  // Once per turn (resets at turn start)
+  endsTurn: false,  // Can attack after using
 
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (_values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('CalibaniteGreatsword');
-    const minDmg = values.minDmg as number || 0;
-    const maxDmg = values.maxDmg as number || 0;
-    const avgDmg = Math.round((minDmg + maxDmg) / 2);
-    const hits = values.nrOfHits as number || 1;
 
+    // Note: Stance switching logic is handled in battleStore.ts
+    // This handler returns a result for display purposes
+    // The battleStore decides which stance to switch to based on current state
     return {
       abilityId: 'CalibaniteGreatsword',
       abilityName,
-      category: 'damage',
-      damageResult: {
-        minDamage: minDmg,
-        maxDamage: maxDmg,
-        averageDamage: avgDmg,
-        hits,
-        damageProfile: 'Power' as DamageType,
+      category: 'buff',
+      buffResult: {
+        effect: {},  // No direct stat effect, stance enables/disables Overwatch
+        duration: -1,  // Permanent until stance switches
       },
-      attackType: 'melee',
-      message: abilityName,
+      message: `${abilityName}: Stance switched`,
     };
   },
 };
 
 /**
  * ExemplarOfHate (Asmodai)
- * Buff ability that grants +extraDmg damage and dmgPct% multiplier to normal attack
- * Damage capped at maxDmg
- * Variables: extraDmg, maxDmg, dmgPct
+ * Team-wide buff that grants +extraDmg damage for melee and Overwatch attacks
+ * Duration: 2 rounds (this round and next)
+ * Variables: extraDmg
  */
 export const ExemplarOfHateHandler: AbilityHandler = {
   abilityId: 'ExemplarOfHate',
   abilityName: 'Exemplar of Hate',
   category: 'buff',
   cooldown: -1,
-  endsTurn: false,
+  endsTurn: true,  // Using this ability ends Asmodai's turn
 
   executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('ExemplarOfHate');
     const extraDmg = values.extraDmg as number || 0;
-    const dmgPct = values.dmgPct as number || 100;
 
     return {
       abilityId: 'ExemplarOfHate',
@@ -1627,11 +1625,10 @@ export const ExemplarOfHateHandler: AbilityHandler = {
       buffResult: {
         effect: {
           baseDamageBonus: extraDmg,
-          baseDamageMultiplier: dmgPct / 100,
         },
-        duration: 1,
+        duration: 2, // This turn and next
       },
-      message: `${abilityName}: +${extraDmg} dmg, ×${dmgPct}%`,
+      message: `${abilityName}: Team +${extraDmg} dmg (melee/Overwatch)`,
     };
   },
 };

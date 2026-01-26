@@ -15,7 +15,9 @@ import {
   AttackTypeModal,
   SummonCard,
   InspiredToGreatnessModal,
+  DarkTalonStrikeModal,
 } from '../components/battle';
+import type { DarkTalonStrikeMode } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
 import { abilityEndsTurn, getAbilityValues } from '../services/abilities';
 import { getBossAtRank, getMachineOfWarDamageBonus } from '../services/dataService';
@@ -108,6 +110,14 @@ export function CalculatorPage() {
     casterId: string;
     hpToHeal: number;
     hpToHeal_2: number;
+  } | null>(null);
+
+  // DarkTalonStrike modal state (for Azrael's active ability)
+  const [darkTalonStrikeModalOpen, setDarkTalonStrikeModalOpen] = useState(false);
+  const [darkTalonStrikeContext, setDarkTalonStrikeContext] = useState<{
+    casterId: string;
+    directDamageValues: { minDmg: number; maxDmg: number; hits: number };
+    bolterValues: { minDmg: number; maxDmg: number; hits: number };
   } | null>(null);
 
   // Get the active turn (editing turn or current turn)
@@ -313,6 +323,30 @@ export function CalculatorPage() {
           });
           setInspiredToGreatnessModalOpen(true);
           break;
+        }
+
+        // Special handling for DarkTalonStrike - opens attack type selection modal
+        if (abilityId === 'DarkTalonStrike') {
+          const dtsLevelIndex = character.abilityLevels?.['DarkTalonStrike'] ?? 54;
+          const dtsValues = getAbilityValues('DarkTalonStrike', dtsLevelIndex);
+
+          if (dtsValues) {
+            setDarkTalonStrikeContext({
+              casterId: characterId,
+              directDamageValues: {
+                minDmg: (dtsValues.minDmg as number) || 0,
+                maxDmg: (dtsValues.maxDmg as number) || 0,
+                hits: (dtsValues.nrOfHits as number) || 1,
+              },
+              bolterValues: {
+                minDmg: (dtsValues.minDmg_2 as number) || 0,
+                maxDmg: (dtsValues.maxDmg_2 as number) || 0,
+                hits: (dtsValues.nrOfHits_2 as number) || 6,
+              },
+            });
+            setDarkTalonStrikeModalOpen(true);
+            break;
+          }
         }
 
         // Only modify current turn flags if not editing past turn
@@ -590,6 +624,46 @@ export function CalculatorPage() {
     setInspiredToGreatnessContext(null);
   };
 
+  // Handle DarkTalonStrike attack type selection
+  const handleDarkTalonStrikeSelect = (mode: DarkTalonStrikeMode) => {
+    if (!darkTalonStrikeContext || !battleState) return;
+
+    const caster = battleState.team.find(c => c.id === darkTalonStrikeContext.casterId);
+    if (!caster) return;
+
+    const targetTurn = activeTurn;
+
+    // Set the toggle based on user's choice before executing
+    // toggleAbility flips the boolean, so we need to check current state
+    const currentBolterMode = caster.abilityToggles['DarkTalonStrike_bolterMode'] ?? false;
+    const wantBolterMode = mode === 'bolter';
+
+    if (currentBolterMode !== wantBolterMode) {
+      toggleAbility(darkTalonStrikeContext.casterId, 'DarkTalonStrike_bolterMode');
+    }
+
+    // Only modify current turn flags if not editing past turn
+    if (!isEditingPastTurn) {
+      setCharacterActed(darkTalonStrikeContext.casterId, true);
+      setCharacterTurnEnded(darkTalonStrikeContext.casterId, true);
+    }
+    addAction(darkTalonStrikeContext.casterId, { type: 'ability', characterId: darkTalonStrikeContext.casterId });
+
+    // Execute the ability
+    const abilityLog = executeAbility(darkTalonStrikeContext.casterId, 'DarkTalonStrike');
+    setBattleLog((prev) => [...prev, { ...abilityLog, turn: targetTurn }]);
+
+    // Close modal and clear context
+    setDarkTalonStrikeModalOpen(false);
+    setDarkTalonStrikeContext(null);
+  };
+
+  // Cancel DarkTalonStrike action
+  const handleDarkTalonStrikeCancel = () => {
+    setDarkTalonStrikeModalOpen(false);
+    setDarkTalonStrikeContext(null);
+  };
+
   // Team setup mode
   if (!battleState) {
     return (
@@ -770,7 +844,7 @@ export function CalculatorPage() {
                   }
                   onAction={(type) => handleAction(character.id, type)}
                   onUndo={() => handleUndoActions(character.id)}
-                  onToggleAbility={(abilityId) => toggleAbility(character.id, abilityId)}
+                  onToggleAbility={(abilityId, counterValue) => toggleAbility(character.id, abilityId, counterValue)}
                   onExecuteBetrayer={() => handleExecuteBetrayer(character.id)}
                   onExecuteOverwatch={() => handleExecuteOverwatch(character.id)}
                 />
@@ -896,6 +970,18 @@ export function CalculatorPage() {
           hpToHeal={inspiredToGreatnessContext.hpToHeal}
           hpToHeal_2={inspiredToGreatnessContext.hpToHeal_2}
           onConfirm={handleInspiredToGreatnessConfirm}
+        />
+      )}
+
+      {/* Dark Talon Strike Modal (Azrael's ability) */}
+      {darkTalonStrikeContext && (
+        <DarkTalonStrikeModal
+          isOpen={darkTalonStrikeModalOpen}
+          onClose={handleDarkTalonStrikeCancel}
+          characterName={battleState.team.find(c => c.id === darkTalonStrikeContext.casterId)?.name || 'Azrael'}
+          directDamageValues={darkTalonStrikeContext.directDamageValues}
+          bolterValues={darkTalonStrikeContext.bolterValues}
+          onSelect={handleDarkTalonStrikeSelect}
         />
       )}
     </div>

@@ -78,7 +78,8 @@ export interface AttackerStats {
   // Ability modifiers from passive abilities
   abilityModifiers?: AbilityModifiers;
   // User-controlled toggles for trait conditions (e.g., CrushingStrike "has not moved")
-  abilityToggles?: Record<string, boolean>;
+  // Can be boolean for toggles or number for counters (e.g., EnmityForTheUnworthy)
+  abilityToggles?: Record<string, boolean | number>;
   // Fighting Retreat override for RangedSpecialist trait
   fightingRetreatActive?: boolean;
   // Damage caps applied at different calculation stages

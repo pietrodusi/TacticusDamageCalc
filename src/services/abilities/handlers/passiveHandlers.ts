@@ -9,6 +9,11 @@ import { getAbilityNameSync } from '../abilityDataLoader';
 import { hasMechanicalTrait } from '../../../utils/traitUtils';
 
 /**
+ * Helper to check if a toggle is active (for boolean toggles in abilityToggles that can also contain numbers for counters)
+ */
+const isToggleActive = (value: boolean | number | undefined): boolean => value === true;
+
+/**
  * SagaOfTheWarriorBorn (Ragnar)
  * Grants extra hits and crit damage when charging
  * Variables: extraHits (1-3), extraCritDmg
@@ -20,7 +25,7 @@ export const SagaOfTheWarriorBornHandler: AbilityHandler = {
   cooldown: -1,
 
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
-    const isCharging = context.abilityToggles['SagaOfTheWarriorBorn'] ?? false;
+    const isCharging = isToggleActive(context.abilityToggles['SagaOfTheWarriorBorn']);
 
     return {
       abilityId: 'SagaOfTheWarriorBorn',
@@ -293,7 +298,7 @@ export const LegendaryCommanderHandler: AbilityHandler = {
     const LC_EXTRA_HITS = 2;  // Fixed +2 hits for first special attack
 
     // Check if character is adjacent to boss
-    const isAdjacentToBoss = context.abilityToggles['adjacentToBoss'] ?? false;
+    const isAdjacentToBoss = isToggleActive(context.abilityToggles['adjacentToBoss']);
 
     // Buff 1 (Damage): Adjacent to boss + has qualified for LC damage (ability "used")
     const damageBonusActive = isAdjacentToBoss && context.hasQualifiedForLCDamage;
@@ -753,7 +758,7 @@ export const OptimizedGaitHandler: AbilityHandler = {
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
 
     // Check if Exitor-Rho is adjacent to boss
-    const isAdjacentToBoss = context.abilityToggles['adjacentToBoss'] ?? false;
+    const isAdjacentToBoss = isToggleActive(context.abilityToggles['adjacentToBoss']);
 
     // This passive provides metadata - the actual reaction trigger is in battleStore
     // when another Mechanical unit attacks
@@ -838,7 +843,7 @@ export const VisionsOfHeresyHandler: AbilityHandler = {
     const healthPct = values.healthPct as number || 50;
 
     // Check if at or below health threshold for pierce bonus
-    const belowHealthThreshold = context.abilityToggles['VisionsOfHeresy_lowHealth'] ?? false;
+    const belowHealthThreshold = isToggleActive(context.abilityToggles['VisionsOfHeresy_lowHealth']);
 
     return {
       abilityId: 'VisionsOfHeresy',
@@ -882,7 +887,7 @@ export const LordOfTempestsHandler: AbilityHandler = {
     const isNormalAttack = context.attackCategory === 'normal';
 
     // Toggle enables max Ice coverage (6 hexes)
-    const hasIceCoverage = context.abilityToggles['LordOfTempests'] ?? false;
+    const hasIceCoverage = isToggleActive(context.abilityToggles['LordOfTempests']);
     const iceHexCount = hasIceCoverage ? 6 : 0;
     const extraDmgPerHex = values.extraDmg as number || 0;
     const totalBonus = iceHexCount * extraDmgPerHex;
@@ -1004,7 +1009,7 @@ export const LionHelmHandler: AbilityHandler = {
     const extraDmg = values.extraDmg as number || 0;
 
     // Toggle for whether character is adjacent to Azrael
-    const adjacentToAzrael = context.abilityToggles['LionHelm'] ?? false;
+    const adjacentToAzrael = isToggleActive(context.abilityToggles['LionHelm']);
     const applicable = adjacentToAzrael;
 
     return {
@@ -1025,7 +1030,7 @@ export const LionHelmHandler: AbilityHandler = {
 
 /**
  * FearedInterrogator (Asmodai)
- * +extraDmg against suppressed/stunned enemies or enemies adjacent to Dark Angels
+ * +extraDmg when any Dark Angels teammate is adjacent to boss
  * +extraHits against Chaos enemies (based on boss grand alliance)
  * Variables: extraDmg, extraHits
  */
@@ -1039,36 +1044,36 @@ export const FearedInterrogatorHandler: AbilityHandler = {
     const extraDmg = values.extraDmg as number || 0;
     const extraHits = values.extraHits as number || 0;
 
-    // Toggle for whether target meets bonus damage condition
-    const targetConditionMet = context.abilityToggles['FearedInterrogator'] ?? false;
+    // Bonus damage when any Dark Angels teammate is adjacent to boss
+    const darkAngelsAdjacentToBoss = context.darkAngelsAdjacentToBoss ?? false;
 
     // Check if boss is Chaos (for extra hits)
     const bossIsChaos = context.bossTraits?.includes('Chaos') ?? false;
 
-    const applicable = targetConditionMet || bossIsChaos;
+    const applicable = darkAngelsAdjacentToBoss || bossIsChaos;
 
     return {
       abilityId: 'FearedInterrogator',
       abilityName: getAbilityNameSync('FearedInterrogator'),
       modifiers: {
-        baseDamageBonus: targetConditionMet ? extraDmg : 0,
+        baseDamageBonus: darkAngelsAdjacentToBoss ? extraDmg : 0,
         extraHits: bossIsChaos ? extraHits : 0,
       },
       applicable,
       reason: [
-        targetConditionMet ? `+${extraDmg} damage` : null,
+        darkAngelsAdjacentToBoss ? `+${extraDmg} damage (DA adj. to boss)` : null,
         bossIsChaos ? `+${extraHits} hits vs Chaos` : null,
       ].filter(Boolean).join(', ') || 'Conditions not met',
-      requiresToggle: true,
-      toggleLabel: 'Target Suppressed/Stunned/adj. to DA',
+      requiresToggle: false,  // No longer requires own toggle - uses teammates' adjacentToBoss
     };
   },
 };
 
 /**
  * Deathwing (Baraqiel)
- * Grants +extraDmg damage on all attacks
- * Also provides damage reduction (defensive, not modeled)
+ * Grants +extraDmg damage when damage is blocked (toggle)
+ * If adjacent to another Dark Angel, bonus is doubled (x2)
+ * Applies to melee attacks and PlasmaCannon ability
  * Variables: extraDmg, dmgReduction
  */
 export const DeathwingHandler: AbilityHandler = {
@@ -1077,18 +1082,37 @@ export const DeathwingHandler: AbilityHandler = {
   category: 'passive',
   cooldown: -1,
 
-  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
+
+    // Check if "Damage Blocked" toggle is active
+    const isDamageBlocked = isToggleActive(context.abilityToggles['Deathwing_damageBlocked']);
+    // Check if "Adjacent to Another Dark Angel" toggle is active (doubles the bonus)
+    const isAdjacentDA = isToggleActive(context.abilityToggles['Deathwing_adjacentDA']);
+
+    // Only applies to melee attacks and PlasmaCannon ability
+    const isMeleeAttack = context.attackType === 'melee';
+    const isPlasmaCannonAbility = context.attackCategory === 'ability'; // PlasmaCannon is an ability
+
+    const applicable = isDamageBlocked && (isMeleeAttack || isPlasmaCannonAbility);
+
+    // Calculate bonus: base extraDmg, doubled if adjacent to DA
+    const multiplier = isAdjacentDA ? 2 : 1;
+    const totalBonus = extraDmg * multiplier;
 
     return {
       abilityId: 'Deathwing',
       abilityName: getAbilityNameSync('Deathwing'),
-      modifiers: {
-        baseDamageBonus: extraDmg,
-      },
-      applicable: true,
-      reason: `+${extraDmg} damage`,
-      requiresToggle: false,
+      modifiers: applicable ? {
+        baseDamageBonus: totalBonus,
+      } : {},
+      applicable,
+      reason: applicable
+        ? `+${totalBonus} damage${isAdjacentDA ? ' (x2 adjacent DA)' : ''}`
+        : isDamageBlocked
+          ? 'Only applies to melee and PlasmaCannon'
+          : 'Damage Blocked not active',
+      requiresToggle: true,
     };
   },
 };
@@ -1096,7 +1120,7 @@ export const DeathwingHandler: AbilityHandler = {
 /**
  * EnmityForTheUnworthy (Forcas)
  * +extraDmgPct% per adjacent unit, +extraDmg per adjacent Dark Angel
- * Max 6 adjacent units
+ * Max 6 adjacent units (counter-based)
  * Variables: extraDmgPct, extraDmg
  */
 export const EnmityForTheUnworthyHandler: AbilityHandler = {
@@ -1109,13 +1133,10 @@ export const EnmityForTheUnworthyHandler: AbilityHandler = {
     const extraDmgPct = values.extraDmgPct as number || 0;
     const extraDmg = values.extraDmg as number || 0;
 
-    // Toggle for max adjacent units (assume 6 when enabled)
-    const hasAdjacentUnits = context.abilityToggles['EnmityForTheUnworthy'] ?? false;
-    // Toggle for adjacent Dark Angels (assume 6 when enabled)
-    const hasAdjacentDA = context.abilityToggles['EnmityForTheUnworthy_DA'] ?? false;
-
-    const adjacentCount = hasAdjacentUnits ? 6 : 0;
-    const adjacentDACount = hasAdjacentDA ? 6 : 0;
+    // Counter for adjacent units (0-6)
+    const adjacentCount = (context.abilityToggles['EnmityForTheUnworthy_units'] as unknown as number) ?? 0;
+    // Counter for adjacent Dark Angels (0-6)
+    const adjacentDACount = (context.abilityToggles['EnmityForTheUnworthy_DA'] as unknown as number) ?? 0;
 
     const dmgPctBonus = adjacentCount * extraDmgPct;
     const flatDmgBonus = adjacentDACount * extraDmg;
@@ -1134,8 +1155,7 @@ export const EnmityForTheUnworthyHandler: AbilityHandler = {
         dmgPctBonus > 0 ? `+${dmgPctBonus}% dmg (${adjacentCount} adj.)` : null,
         flatDmgBonus > 0 ? `+${flatDmgBonus} dmg (${adjacentDACount} DA)` : null,
       ].filter(Boolean).join(', ') || 'No adjacent units',
-      requiresToggle: true,
-      toggleLabel: 'Max Adjacent Units (6)',
+      requiresToggle: false,
     };
   },
 };
@@ -1266,7 +1286,7 @@ export const AstartesBannerHandler: AbilityHandler = {
     // Only applies to melee attacks
     const isMelee = context.attackType === 'melee';
     // Toggle for whether character is within 2 hexes of Thoread
-    const adjacentToThoread = context.abilityToggles['AstartesBanner'] ?? false;
+    const adjacentToThoread = isToggleActive(context.abilityToggles['AstartesBanner']);
     const applicable = isMelee && adjacentToThoread;
 
     return {
@@ -1417,7 +1437,7 @@ export const CondemnorStakeHandler: AbilityHandler = {
 
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
-    const targetIsPsyker = context.abilityToggles?.['CondemnorStake'] ?? false;
+    const targetIsPsyker = isToggleActive(context.abilityToggles?.['CondemnorStake']);
 
     return {
       abilityId: 'CondemnorStake',
@@ -1529,7 +1549,7 @@ export const AvalancheOfMuscleHandler: AbilityHandler = {
 
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
-    const isCharging = context.abilityToggles?.['AvalancheOfMuscle'] ?? false;
+    const isCharging = isToggleActive(context.abilityToggles?.['AvalancheOfMuscle']);
 
     return {
       abilityId: 'AvalancheOfMuscle',
@@ -1585,8 +1605,8 @@ export const SpotterReworkedHandler: AbilityHandler = {
     const extraDmg = values.extraDmg as number || 0;
     const extraDmgHeavy = values.extraDmg_2 as number || 0;
     const isRanged = context.attackType === 'ranged';
-    const withinRange = context.abilityToggles?.['SpotterReworked'] ?? false;
-    const hasHeavyWeapon = context.abilityToggles?.['SpotterReworked_Heavy'] ?? false;
+    const withinRange = isToggleActive(context.abilityToggles?.['SpotterReworked']);
+    const hasHeavyWeapon = isToggleActive(context.abilityToggles?.['SpotterReworked_Heavy']);
     const applicable = isRanged && withinRange;
     const damageBonus = hasHeavyWeapon ? extraDmgHeavy : extraDmg;
 
@@ -1618,8 +1638,8 @@ export const SummaryExecutionHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
     const extraDmg2 = values.extraDmg_2 as number || 0;
-    const hasBattleFatigue = context.abilityToggles?.['SummaryExecution'] ?? false;
-    const executionHappened = context.abilityToggles?.['SummaryExecution_Executed'] ?? false;
+    const hasBattleFatigue = isToggleActive(context.abilityToggles?.['SummaryExecution']);
+    const executionHappened = isToggleActive(context.abilityToggles?.['SummaryExecution_Executed']);
     const totalBonus = hasBattleFatigue ? extraDmg + (executionHappened ? extraDmg2 : 0) : 0;
 
     return {
@@ -1763,7 +1783,7 @@ export const InescapableAccuracyHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraCritChance = values.extraCritChance as number || 0;
     const extraCritDmg = values.extraCritDmg as number || 0;
-    const didNotMove = context.abilityToggles?.['InescapableAccuracy'] ?? false;
+    const didNotMove = isToggleActive(context.abilityToggles?.['InescapableAccuracy']);
 
     return {
       abilityId: 'InescapableAccuracy',
@@ -1902,7 +1922,7 @@ export const LivingLightningHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
-    const hasMoved = context.abilityToggles?.['LivingLightning'] ?? false;
+    const hasMoved = isToggleActive(context.abilityToggles?.['LivingLightning']);
 
     return {
       abilityId: 'LivingLightning',
@@ -2084,7 +2104,7 @@ export const PowerTripHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const armorIgnored = values.armorIgnored as number || 0;
     const armorReduction = values.armorReduction as number || 0;
-    const atFullHealth = context.abilityToggles?.['PowerTrip'] ?? false;
+    const atFullHealth = isToggleActive(context.abilityToggles?.['PowerTrip']);
     return {
       abilityId: 'PowerTrip',
       abilityName: getAbilityNameSync('PowerTrip'),
@@ -2150,7 +2170,7 @@ export const SmashaEadHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
     const dmgReductionPct = values.dmgReductionPct as number || 25;
-    const hasMoved2Hexes = context.abilityToggles?.['SmashaEad'] ?? false;
+    const hasMoved2Hexes = isToggleActive(context.abilityToggles?.['SmashaEad']);
     return {
       abilityId: 'SmashaEad',
       abilityName: getAbilityNameSync('SmashaEad'),
@@ -2362,7 +2382,7 @@ export const TrophyTakerHandler: AbilityHandler = {
     const extraDmg = values.extraDmg as number || 0;
     const extraCritDmg = values.extraCritDmg as number || 0;
     const extraCritChance = values.extraCritChance as number || 8;
-    const targetLowHP = context.abilityToggles?.['TrophyTaker'] ?? false;
+    const targetLowHP = isToggleActive(context.abilityToggles?.['TrophyTaker']);
     return {
       abilityId: 'TrophyTaker',
       abilityName: getAbilityNameSync('TrophyTaker'),
@@ -2490,7 +2510,7 @@ export const ExplosiveMaladiesHandler: AbilityHandler = {
   cooldown: -1,
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
-    const adjacentToPestillian = context.abilityToggles?.['ExplosiveMaladies'] ?? false;
+    const adjacentToPestillian = isToggleActive(context.abilityToggles?.['ExplosiveMaladies']);
 
     const followUp: FollowUpAttack | undefined = adjacentToPestillian ? {
       abilityId: 'ExplosiveMaladies',
@@ -2560,7 +2580,7 @@ export const InfernalPactsHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
-    const adjacentToAbraxas = context.abilityToggles?.['InfernalPacts'] ?? false;
+    const adjacentToAbraxas = isToggleActive(context.abilityToggles?.['InfernalPacts']);
 
     const followUp: FollowUpAttack | undefined = adjacentToAbraxas ? {
       abilityId: 'InfernalPacts',
@@ -2602,7 +2622,7 @@ export const PsychicStalkHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmgPct = values.extraDmgPct as number || 25;
     const extraDmg = values.extraDmg as number || 0;
-    const targetOnFire = context.abilityToggles?.['PsychicStalk'] ?? false;
+    const targetOnFire = isToggleActive(context.abilityToggles?.['PsychicStalk']);
 
     return {
       abilityId: 'PsychicStalk',
@@ -2682,7 +2702,7 @@ export const RealityUnboundHandler: AbilityHandler = {
   cooldown: -1,
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraMaxDmg = values.extraMaxDmg as number || 0;
-    const enemiesHit = context.abilityToggles?.['RealityUnbound'] ?? false;
+    const enemiesHit = isToggleActive(context.abilityToggles?.['RealityUnbound']);
 
     return {
       abilityId: 'RealityUnbound',
@@ -2718,7 +2738,7 @@ export const ObsessiveAnnunciationHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
     const extraCritDmg = values.extraCritDmg as number || 0;
-    const adjacentToAdamatar = context.abilityToggles?.['ObsessiveAnnunciation'] ?? false;
+    const adjacentToAdamatar = isToggleActive(context.abilityToggles?.['ObsessiveAnnunciation']);
 
     return {
       abilityId: 'ObsessiveAnnunciation',
@@ -2798,7 +2818,7 @@ export const TerrifyingCrescendoHandler: AbilityHandler = {
   cooldown: -1,
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
-    const stacks = context.abilityToggles?.['TerrifyingCrescendo'] ?? false;
+    const stacks = isToggleActive(context.abilityToggles?.['TerrifyingCrescendo']);
 
     return {
       abilityId: 'TerrifyingCrescendo',
@@ -2832,7 +2852,7 @@ export const TwistedScienceHandler: AbilityHandler = {
     const hp = values.hp as number || 0;
     const extraDmg = values.extraDmg as number || 0;
     // Toggle indicates the unit has been affected by Twisted Science buff
-    const isAffected = context.abilityToggles?.['TwistedScience'] ?? false;
+    const isAffected = isToggleActive(context.abilityToggles?.['TwistedScience']);
 
     return {
       abilityId: 'TwistedScience',
@@ -2866,7 +2886,7 @@ export const DecoysAndMisdirectionHandler: AbilityHandler = {
     const maxDmg = values.maxDmg as number || 0;
     const extraDmg = values.extraDmg as number || 0;
     // Toggle indicates friendly unit moved onto a decoy
-    const onDecoy = context.abilityToggles?.['DecoysAndMisdirection'] ?? false;
+    const onDecoy = isToggleActive(context.abilityToggles?.['DecoysAndMisdirection']);
 
     return {
       abilityId: 'DecoysAndMisdirection',
@@ -2930,7 +2950,7 @@ export const CosmicHorrorHandler: AbilityHandler = {
     const hp = values.hp as number || 0;
     const extraDmg = values.extraDmg as number || 0;
     // Toggle indicates Patermine defeated an enemy this battle (has stacks for bonus)
-    const hasStacks = context.abilityToggles?.['CosmicHorror'] ?? false;
+    const hasStacks = isToggleActive(context.abilityToggles?.['CosmicHorror']);
 
     return {
       abilityId: 'CosmicHorror',
@@ -3051,7 +3071,7 @@ export const HeavyGravCannonHandler: AbilityHandler = {
     const extraDmg = values.extraDmg as number || 0;
     const extraPierceRatio = values.extraPierceRatio as number || 40;
     // Toggle indicates target is Gravis, Terminator, or Mechanical
-    const validTarget = context.abilityToggles?.['HeavyGravCannon'] ?? false;
+    const validTarget = isToggleActive(context.abilityToggles?.['HeavyGravCannon']);
 
     return {
       abilityId: 'HeavyGravCannon',
@@ -3085,7 +3105,7 @@ export const AggressiveOnslaughtHandler: AbilityHandler = {
 
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     // Only triggers when charging (toggle)
-    const isCharging = context.abilityToggles['AggressiveOnslaught'] ?? false;
+    const isCharging = isToggleActive(context.abilityToggles['AggressiveOnslaught']);
     const applicable = isCharging && (context.attackType === 'melee' || context.attackType === 'ranged');
 
     // Get summon damage values

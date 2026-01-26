@@ -4,6 +4,11 @@ import type { BuffTemplate } from '../../types/buff';
 import type { BattleCharacter } from '../../types';
 
 /**
+ * Helper to check if a toggle is active (for boolean toggles in abilityToggles that can also contain numbers for counters)
+ */
+const isToggleActive = (value: boolean | number | undefined): boolean => value === true;
+
+/**
  * WarHowl buff template (Ragnar)
  * Adds crit chance and flat damage bonus to melee attacks
  * Target: self + all teammates without ranged attacks (melee-only characters)
@@ -198,7 +203,7 @@ export const wayOfTheShortBladeAuraBuffTemplate: BuffTemplate = {
       // Check condition: within range 2 of adjacent enemy
       // This is controlled by a toggle on the character
       const toggleId = `WayOfTheShortBlade_${buff.sourceCharacterId}_range2`;
-      const isInRange = context.attacker.abilityToggles?.[toggleId] ?? false;
+      const isInRange = isToggleActive(context.attacker.abilityToggles?.[toggleId]);
       if (!isInRange) return false;
 
       // Check condition: enemy is adjacent to a friendly character
@@ -316,11 +321,11 @@ export const structuralAnalyserBuffTemplate: BuffTemplate = {
       if (isTauEmpire) {
         // T'au Empire: check Range 2 toggle
         const toggleId = `StructuralAnalyser_${buff.sourceCharacterId}_range2`;
-        return context.attacker.abilityToggles?.[toggleId] ?? false;
+        return isToggleActive(context.attacker.abilityToggles?.[toggleId]);
       } else {
         // Non-Tau: check Adjacent toggle
         const toggleId = `StructuralAnalyser_${buff.sourceCharacterId}_adjacent`;
-        return context.attacker.abilityToggles?.[toggleId] ?? false;
+        return isToggleActive(context.attacker.abilityToggles?.[toggleId]);
       }
     },
   },
@@ -349,7 +354,7 @@ export const crusadeOfWrathBuffTemplate: BuffTemplate = {
 
       // Check if character is within range 2 of Helbrecht (toggle)
       const toggleId = `CrusadeOfWrath_${buff.sourceCharacterId}_range2`;
-      return context.attacker.abilityToggles?.[toggleId] ?? false;
+      return isToggleActive(context.attacker.abilityToggles?.[toggleId]);
     },
   },
   getEffects: (values) => ({
@@ -385,7 +390,7 @@ export const destroyTheWitchBuffTemplate: BuffTemplate = {
 
       // Applies to characters adjacent to Helbrecht (toggle)
       const toggleId = `DestroyTheWitch_${buff.sourceCharacterId}_adjacent`;
-      return context.attacker.abilityToggles?.[toggleId] ?? false;
+      return isToggleActive(context.attacker.abilityToggles?.[toggleId]);
     },
   },
   getEffects: (values) => ({
@@ -393,6 +398,34 @@ export const destroyTheWitchBuffTemplate: BuffTemplate = {
   }),
   // No duration - permanent aura-style buff (evaluated each attack)
   // No requiredToggles since the toggle is dynamic (based on Helbrecht's ID)
+};
+
+/**
+ * Exemplar of Hate buff template (Asmodai active)
+ * All friendly units gain +extraDmg damage for melee attacks OR Overwatch attacks
+ * Duration: 2 rounds (this round and next)
+ * Variables: extraDmg
+ */
+export const exemplarOfHateBuffTemplate: BuffTemplate = {
+  buffId: 'exemplar_of_hate',
+  name: 'Exemplar of Hate',
+  sourceAbilityId: 'ExemplarOfHate',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, _buff) => {
+      // Applies to melee attacks
+      if (context.attackType === 'melee') return true;
+
+      // Applies to Overwatch attacks (ranged or melee while overwatchActive)
+      if (context.attacker.overwatchActive) return true;
+
+      return false;
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg as number) || 0,
+  }),
+  duration: 2, // Lasts this round and next
 };
 
 /**
@@ -417,7 +450,7 @@ export const daughterOfTheAbyssBuffTemplate: BuffTemplate = {
       // Check if Atlacoya is within range 2 of boss (toggle)
       const atlacoyaRange2Toggle = `DaughterOfTheAbyss_${buff.sourceCharacterId}_range2FromBoss`;
       const atlacoya = context.battleState.team.find(c => c.id === buff.sourceCharacterId);
-      return atlacoya?.abilityToggles?.[atlacoyaRange2Toggle] ?? false;
+      return isToggleActive(atlacoya?.abilityToggles?.[atlacoyaRange2Toggle]);
     },
   },
   getEffects: (values) => ({
@@ -452,7 +485,7 @@ export const waaaghBuffTemplate: BuffTemplate = {
 
       // Non-Orks need the "Adjacent to Gulgortz" toggle
       const toggleId = `Waaagh_${buff.sourceCharacterId}_adjacent`;
-      return context.attacker.abilityToggles?.[toggleId] ?? false;
+      return isToggleActive(context.attacker.abilityToggles?.[toggleId]);
     },
   },
   getEffects: (values) => ({
@@ -487,7 +520,7 @@ export const standVigilBuffTemplate: BuffTemplate = {
 
       // Check toggle (same toggle ID whether adjacent or range 2)
       const toggleId = `StandVigil_${buff.sourceCharacterId}`;
-      return context.attacker.abilityToggles?.[toggleId] ?? false;
+      return isToggleActive(context.attacker.abilityToggles?.[toggleId]);
     },
   },
   getEffects: (values) => ({
@@ -525,7 +558,7 @@ export const sereneUnifierStormOfFireBuffTemplate: BuffTemplate = {
       const isTau = context.attacker.faction === "T'au Empire" || context.attacker.faction === 'Tau';
       const rangeType = isTau ? 'range2' : 'adjacent';
       const toggleId = `SereneUnifier_${buff.sourceCharacterId}_${rangeType}`;
-      return context.attacker.abilityToggles?.[toggleId] ?? false;
+      return isToggleActive(context.attacker.abilityToggles?.[toggleId]);
     },
   },
   getEffects: (values) => ({
@@ -589,6 +622,8 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   // Helbrecht abilities
   CrusadeOfWrath: crusadeOfWrathBuffTemplate,
   destroy_the_witch: destroyTheWitchBuffTemplate,
+  // Asmodai abilities
+  ExemplarOfHate: exemplarOfHateBuffTemplate,
   // Atlacoya abilities
   daughter_of_the_abyss: daughterOfTheAbyssBuffTemplate,
   // Gulgortz abilities
@@ -639,6 +674,11 @@ export function getTeamRequiredToggles(team: BattleCharacter[]): Set<string> {
 
   // Special case: OptimizedGait (Exitor-Rho) requires adjacentToBoss for reaction trigger
   if (team.some(c => c.passiveAbilities.includes('OptimizedGait'))) {
+    toggles.add('adjacentToBoss');
+  }
+
+  // Special case: FearedInterrogator (Asmodai) requires adjacentToBoss for Dark Angels teammates
+  if (team.some(c => c.passiveAbilities.includes('FearedInterrogator'))) {
     toggles.add('adjacentToBoss');
   }
 
