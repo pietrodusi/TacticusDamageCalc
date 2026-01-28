@@ -107,6 +107,9 @@ export interface AbilityStatModifier {
   // Pierce bonus
   pierceRatioBonus?: number;       // Bonus pierce ratio percentage (e.g., 10 for +10%)
 
+  // Attack type restrictions
+  meleeOnly?: boolean;             // If true, bonus only applies to melee attacks
+
   // Armor bonus (for defensive buffs like DoctrinaImperatives Protector)
   armorBonus?: number;             // Increases character's armor (defensive, doesn't affect damage calc)
 
@@ -214,6 +217,18 @@ export interface SummonTriggerData {
 }
 
 /**
+ * Request to create summons when passive triggers
+ */
+export interface SummonRequest {
+  unitId: string;       // Summon unit ID (e.g., 'bloodSmnIntercessor')
+  count: number;        // Number of summons to create
+  hp: number;           // Summon HP
+  damage: number;       // Summon damage
+  armor: number;        // Summon armor
+  ifNotPresent?: boolean;  // Only create if summons of this type don't exist
+}
+
+/**
  * Result of passive ability evaluation
  */
 export interface PassiveAbilityEvaluation {
@@ -226,6 +241,7 @@ export interface PassiveAbilityEvaluation {
   toggleLabel?: string;  // Label for the toggle (e.g., "Killed enemy")
   followUpAttack?: FollowUpAttack;  // Additional attack triggered after main attack
   triggerData?: SummonTriggerData;  // For passives that trigger summon attacks
+  summonRequest?: SummonRequest;    // Request to create summons when passive triggers
 }
 
 /**

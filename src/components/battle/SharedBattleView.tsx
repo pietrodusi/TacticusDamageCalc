@@ -410,6 +410,162 @@ function SharedTeamMemberCard({ char, setup }: { char: Character; setup: Decoded
   );
 }
 
+// Damage breakdown interface for shared view
+interface SharedCharacterDamageBreakdown {
+  characterId: string;
+  characterName: string;
+  iconUrl?: string;
+  totalDamage: number;
+  byAttackType: {
+    normalMelee: number;
+    normalRanged: number;
+  };
+  byAbility: Record<string, number>;
+}
+
+// Analyze decoded turns to get damage breakdown (similar to damageAnalyzer.ts)
+function analyzeDecodedTurns(turns: DecodedTurn[], characterIconMap: Map<string, string>): Map<string, SharedCharacterDamageBreakdown> {
+  const breakdowns = new Map<string, SharedCharacterDamageBreakdown>();
+
+  const getOrCreateBreakdown = (characterId: string, characterName: string, iconUrl?: string): SharedCharacterDamageBreakdown => {
+    if (!breakdowns.has(characterId)) {
+      breakdowns.set(characterId, {
+        characterId,
+        characterName,
+        iconUrl: characterIconMap.get(characterId) || iconUrl,
+        totalDamage: 0,
+        byAttackType: { normalMelee: 0, normalRanged: 0 },
+        byAbility: {},
+      });
+    }
+    return breakdowns.get(characterId)!;
+  };
+
+  for (const turn of turns) {
+    for (const entry of turn.logs) {
+      const mainDamage = entry.damageBreakdown?.damage || entry.damage || 0;
+      if (mainDamage <= 0 && (!entry.followUpAttacks || entry.followUpAttacks.length === 0)) continue;
+
+      const breakdown = getOrCreateBreakdown(entry.characterId, entry.characterName, entry.characterIconUrl);
+
+      // Calculate follow-up damage
+      let followUpDamageTotal = 0;
+      if (entry.followUpAttacks && entry.followUpAttacks.length > 0) {
+        for (const followUp of entry.followUpAttacks) {
+          const followUpDamage = followUp.breakdown?.damage || followUp.damage || 0;
+          if (followUpDamage > 0) {
+            // Check if this follow-up should be attributed to a different character
+            if (followUp.sourceCharacterId && followUp.sourceCharacterId !== entry.characterId) {
+              const sourceBreakdown = getOrCreateBreakdown(
+                followUp.sourceCharacterId,
+                followUp.sourceCharacterName || 'Unknown'
+              );
+              sourceBreakdown.totalDamage += followUpDamage;
+              if (followUp.abilityName) {
+                const abilityName = followUp.abilityName.replace(/\s*\([^)]+\)\s*$/, '');
+                sourceBreakdown.byAbility[abilityName] = (sourceBreakdown.byAbility[abilityName] || 0) + followUpDamage;
+              }
+            } else {
+              followUpDamageTotal += followUpDamage;
+              if (followUp.abilityName) {
+                const abilityName = followUp.abilityName.replace(/\s*\([^)]+\)\s*$/, '');
+                breakdown.byAbility[abilityName] = (breakdown.byAbility[abilityName] || 0) + followUpDamage;
+              }
+            }
+          }
+        }
+      }
+
+      // Main attack damage
+      // For damage abilities, entry.damageBreakdown is undefined but follow-ups contain the actual breakdown
+      // In this case, entry.damage duplicates the follow-up damage, so skip main damage attribution
+      const isMainDamageInFollowUps = !entry.damageBreakdown && entry.followUpAttacks && entry.followUpAttacks.length > 0;
+      const actualMainDamage = isMainDamageInFollowUps ? 0 : mainDamage;
+
+      // Categorize main attack (only if not already counted in follow-ups)
+      if (actualMainDamage > 0) {
+        if (entry.action === 'meleeAttack' || (entry.action === 'attack' && entry.attackType === 'melee')) {
+          breakdown.byAttackType.normalMelee += actualMainDamage;
+        } else if (entry.action === 'rangedAttack' || (entry.action === 'attack' && entry.attackType === 'ranged')) {
+          breakdown.byAttackType.normalRanged += actualMainDamage;
+        } else if (entry.action === 'ability') {
+          // Extract ability name from message using multiple patterns
+          let abilityName = 'Special Attack';
+          // Pattern 1: "X deals Y" format
+          let match = entry.message.match(/^(.+?)\s+deals?\s+/i);
+          if (match) {
+            abilityName = match[1].trim();
+          } else {
+            // Pattern 2: "X [MELEE]" or "X [RANGED]" format (ability name before bracket)
+            match = entry.message.match(/^(.+?)\s*\[(MELEE|RANGED)\]/i);
+            if (match) {
+              abilityName = match[1].trim();
+            }
+          }
+          breakdown.byAbility[abilityName] = (breakdown.byAbility[abilityName] || 0) + actualMainDamage;
+        }
+      }
+
+      breakdown.totalDamage += actualMainDamage + followUpDamageTotal;
+    }
+  }
+
+  return breakdowns;
+}
+
+// Attack type breakdown component for shared view
+function SharedAttackTypeBreakdown({ breakdown }: { breakdown: SharedCharacterDamageBreakdown }) {
+  const { byAttackType, byAbility, totalDamage } = breakdown;
+
+  type DamageSource = { name: string; damage: number; color: string };
+  const sources: DamageSource[] = [];
+
+  // Normal attacks first
+  if (byAttackType.normalMelee > 0) {
+    sources.push({ name: 'Normal Melee', damage: byAttackType.normalMelee, color: 'bg-red-500' });
+  }
+  if (byAttackType.normalRanged > 0) {
+    sources.push({ name: 'Normal Ranged', damage: byAttackType.normalRanged, color: 'bg-blue-500' });
+  }
+
+  // Abilities sorted by damage
+  const abilities = Object.entries(byAbility)
+    .filter(([, damage]) => damage > 0)
+    .sort(([, a], [, b]) => b - a);
+
+  for (const [name, damage] of abilities) {
+    sources.push({ name, damage, color: 'bg-purple-500' });
+  }
+
+  if (sources.length === 0) return null;
+
+  return (
+    <div className="px-4 pb-4 pt-2 border-t border-gray-700/50">
+      <div className="space-y-2">
+        {sources.map((source) => {
+          const percent = totalDamage > 0 ? (source.damage / totalDamage) * 100 : 0;
+          return (
+            <div key={source.name} className="flex items-center gap-2">
+              <div className="w-28 text-xs text-gray-300 truncate" title={source.name}>
+                {source.name}
+              </div>
+              <div className="flex-1 h-4 bg-gray-700 rounded overflow-hidden">
+                <div
+                  className={`h-full ${source.color} rounded`}
+                  style={{ width: `${percent}%` }}
+                />
+              </div>
+              <div className="w-24 text-xs text-gray-300 text-right">
+                {source.damage.toLocaleString()} ({percent.toFixed(1)}%)
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Helper function to format sources inline
 function formatSourcesInline(sources: BuffSource[], valueKey: keyof BuffSource): string {
   if (!sources || sources.length === 0) return '';
@@ -581,6 +737,7 @@ const actionIcons: Record<string, React.ComponentType<{ size: number; className?
 
 export function SharedBattleView({ data, characters, boss, machine, title, notes }: SharedBattleViewProps) {
   const [expandedTurns, setExpandedTurns] = useState<Set<number>>(() => new Set());
+  const [expandedCharacters, setExpandedCharacters] = useState<Set<string>>(() => new Set());
 
   const toggleTurn = (turn: number) => {
     setExpandedTurns(prev => {
@@ -589,6 +746,18 @@ export function SharedBattleView({ data, characters, boss, machine, title, notes
         next.delete(turn);
       } else {
         next.add(turn);
+      }
+      return next;
+    });
+  };
+
+  const toggleCharacterExpanded = (characterId: string) => {
+    setExpandedCharacters(prev => {
+      const next = new Set(prev);
+      if (next.has(characterId)) {
+        next.delete(characterId);
+      } else {
+        next.add(characterId);
       }
       return next;
     });
@@ -603,6 +772,12 @@ export function SharedBattleView({ data, characters, boss, machine, title, notes
       characterIconMap.set(member.characterId, char.iconUrl);
     }
   });
+
+  // Analyze damage breakdowns
+  const damageBreakdowns = useMemo(
+    () => analyzeDecodedTurns(data.results.turns, characterIconMap),
+    [data.results.turns, characterIconMap]
+  );
 
   // Helper to get icon URL - prefer fresh data, fall back to stored
   const getIconUrl = (characterId: string, storedIconUrl?: string): string | undefined => {
@@ -762,43 +937,72 @@ export function SharedBattleView({ data, characters, boss, machine, title, notes
 
       {/* Character Damage Breakdown */}
       <div className="card p-4">
-        <h3 className="text-sm font-semibold text-gray-100 mb-3">Damage by Character</h3>
-        <div className="space-y-2">
+        <h3 className="text-lg font-semibold text-gray-100 mb-4">Damage Breakdown</h3>
+        <div className="space-y-3">
           {sortedCharacterDamage.map(([charId, info], idx) => {
             const percent = data.results.totalDamage > 0
               ? (info.damage / data.results.totalDamage) * 100
               : 0;
             const barWidth = maxCharDamage > 0 ? (info.damage / maxCharDamage) * 100 : 0;
+            const breakdown = damageBreakdowns.get(charId);
+            const isExpanded = expandedCharacters.has(charId);
 
             return (
-              <div key={charId} className="flex items-center gap-3 bg-gray-800/50 rounded p-2">
-                <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gray-700 text-gray-300 font-bold text-xs">
-                  {idx + 1}
-                </div>
-                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  {info.iconUrl ? (
-                    <img src={info.iconUrl} alt={info.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <User size={16} className="text-gray-500" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-gray-100 truncate">{info.name}</span>
-                    <span className="text-xs text-gray-400">{percent.toFixed(1)}%</span>
+              <div key={charId} className="bg-gray-800/50 rounded-lg overflow-hidden">
+                {/* Main row - clickable */}
+                <div
+                  className="flex items-center gap-4 p-3 cursor-pointer hover:bg-gray-700/30 transition-colors"
+                  onClick={() => toggleCharacterExpanded(charId)}
+                >
+                  {/* Rank */}
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-700 text-gray-300 font-bold text-sm">
+                    {idx + 1}
                   </div>
-                  <div className="relative h-5 bg-gray-700 rounded overflow-hidden">
-                    <div
-                      className="h-full bg-amber-500 rounded"
-                      style={{ width: `${barWidth}%` }}
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs font-medium text-white drop-shadow-md">
-                        {info.damage.toLocaleString()}
-                      </span>
+
+                  {/* Portrait */}
+                  <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ring-gray-600">
+                    {info.iconUrl ? (
+                      <img src={info.iconUrl} alt={info.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <User size={24} className="text-gray-500" />
+                    )}
+                  </div>
+
+                  {/* Name and Damage Bar */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-gray-100 truncate">{info.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400">{percent.toFixed(1)}% of total</span>
+                        {breakdown && (
+                          isExpanded ? (
+                            <ChevronDown size={16} className="text-gray-400" />
+                          ) : (
+                            <ChevronRight size={16} className="text-gray-400" />
+                          )
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Damage bar */}
+                    <div className="relative h-6 bg-gray-700 rounded overflow-hidden">
+                      <div
+                        className="h-full bg-amber-500 rounded"
+                        style={{ width: `${barWidth}%` }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-xs font-medium text-white drop-shadow-md">
+                          {info.damage.toLocaleString()}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Expanded breakdown */}
+                {isExpanded && breakdown && (
+                  <SharedAttackTypeBreakdown breakdown={breakdown} />
+                )}
               </div>
             );
           })}

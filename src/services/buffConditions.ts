@@ -225,14 +225,36 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     const abilityName = getAbilityNameSync('AggressiveOnslaught');
 
     if (values) {
+      const summonHp = values.summonHp as number || 0;
       const summonDmg = values.summonDmg as number || 0;
+      const summonArmor = values.summonArmor as number || 0;
 
       conditions.push({
         id: 'AggressiveOnslaught',
         label: 'Charging',
         source: abilityName,
-        effect: `2x Jump Pack Intercessors attack (2x ${summonDmg} Physical)`,
+        effect: `Summon 2x Intercessors (HP:${summonHp}, Dmg:${summonDmg}, Armor:${summonArmor})`,
         isActive: isToggleActive(character.abilityToggles['AggressiveOnslaught']),
+        category: 'self',
+      });
+    }
+  }
+
+  // Hammer of Wrath (Mataneo) - Low HP for 2x damage
+  if (character.activeAbilities.includes('HammerOfWrath')) {
+    const levelIndex = character.abilityLevels?.['HammerOfWrath'] ?? 54;
+    const values = getAbilityValues('HammerOfWrath', levelIndex);
+    const abilityName = getAbilityNameSync('HammerOfWrath');
+
+    if (values) {
+      const healthPct = values.healthPct as number || 50;
+
+      conditions.push({
+        id: 'HammerOfWrath_lowHealth',
+        label: `Low HP (≤${healthPct}%)`,
+        source: abilityName,
+        effect: '2x damage',
+        isActive: isToggleActive(character.abilityToggles['HammerOfWrath_lowHealth']),
         category: 'self',
       });
     }
@@ -250,10 +272,30 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
 
       conditions.push({
         id: 'VisionsOfHeresy_lowHealth',
-        label: `Below ${healthPct}% HP`,
+        label: `Low HP (≤${healthPct}%)`,
         source: abilityName,
         effect: `+${extraPierceRatio}% pierce ratio`,
         isActive: isToggleActive(character.abilityToggles['VisionsOfHeresy_lowHealth']),
+        category: 'self',
+      });
+    }
+  }
+
+  // Black Rage (Lucien) - Charging for damage bonus
+  if (character.activeAbilities.includes('BlackRage')) {
+    const levelIndex = character.abilityLevels?.['BlackRage'] ?? 54;
+    const values = getAbilityValues('BlackRage', levelIndex);
+    const abilityName = getAbilityNameSync('BlackRage');
+
+    if (values) {
+      const extraDmg = values.extraDmg as number || 0;
+
+      conditions.push({
+        id: 'BlackRage_charging',
+        label: 'Charging',
+        source: abilityName,
+        effect: `+${extraDmg} dmg`,
+        isActive: isToggleActive(character.abilityToggles['BlackRage_charging']),
         category: 'self',
       });
     }
@@ -1605,6 +1647,51 @@ export function getSummonBuffConditions(
   for (const teammate of team) {
     // Skip source character (already handled Waaagh and ShockAssault above)
     if (teammate.id === summon.sourceCharacterId) continue;
+
+    // Lord of the Host (Dante) - provides buffs to RapidAssault/Flying summons
+    if (teammate.passiveAbilities.includes('LordOfTheHost')) {
+      // Check if summon has RapidAssault or Flying trait
+      const hasRapidAssault = summon.traits?.includes('RapidAssault');
+      const hasFlying = summon.traits?.includes('Flying');
+
+      if (hasRapidAssault || hasFlying) {
+        const levelIndex = teammate.abilityLevels?.['LordOfTheHost'] ?? 54;
+        const values = getAbilityValues('LordOfTheHost', levelIndex);
+        const abilityName = getAbilityNameSync('LordOfTheHost');
+
+        if (values) {
+          const extraDmg = values.extraDmg as number || 0;
+
+          // Damage bonus condition - "In Range of [Dante]"
+          const dmgToggleId = `LordOfTheHost_${teammate.id}_damage`;
+          const isDmgActive = isToggleActive(toggles[dmgToggleId]);
+          conditions.push({
+            id: dmgToggleId,
+            label: `In Range of ${teammate.name}`,
+            source: abilityName,
+            sourceCharacter: teammate.name,
+            effect: `+${extraDmg} melee dmg`,
+            isActive: isDmgActive,
+            category: 'aura',
+          });
+
+          // Extra melee hit condition - "Low HP (≤50%)"
+          // Can only be enabled if In Range is active
+          const hitsToggleId = `LordOfTheHost_${teammate.id}_hits`;
+          const isHitsActive = isDmgActive && isToggleActive(toggles[hitsToggleId]);
+          conditions.push({
+            id: hitsToggleId,
+            label: 'Low HP (≤50%)',
+            source: abilityName,
+            sourceCharacter: teammate.name,
+            effect: '+1 melee hit',
+            isActive: isHitsActive,
+            category: 'aura',
+            dependsOn: dmgToggleId,
+          });
+        }
+      }
+    }
 
     // Serene Unifier (Aun'Shi passive) - turn-cycling aura buff
     if (teammate.passiveAbilities.includes('SereneUnifier')) {

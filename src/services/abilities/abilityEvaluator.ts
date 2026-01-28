@@ -26,6 +26,8 @@ export function combineModifiers(modifiers: AbilityStatModifier[]): AbilityStatM
     extraHits: 0,
     critChanceBonus: 0,
     critDamageBonus: 0,
+    armorIgnored: 0,
+    pierceRatioBonus: 0,
   };
 
   for (const mod of modifiers) {
@@ -44,6 +46,12 @@ export function combineModifiers(modifiers: AbilityStatModifier[]): AbilityStatM
     }
     if (mod.critDamageBonus) {
       combined.critDamageBonus! += mod.critDamageBonus;
+    }
+    if (mod.armorIgnored) {
+      combined.armorIgnored! += mod.armorIgnored;
+    }
+    if (mod.pierceRatioBonus) {
+      combined.pierceRatioBonus! += mod.pierceRatioBonus;
     }
 
     // Multiplicative bonuses (stack multiplicatively)

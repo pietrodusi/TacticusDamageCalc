@@ -603,10 +603,42 @@ export const masterAnnihilatorBuffTemplate: BuffTemplate = {
   // No duration - permanent debuff on boss (until Vitruvius attacks different enemy or is defeated)
 };
 
+/**
+ * BlackRage buff template (Lucien)
+ * Adds +extraDmg to normal and special attacks when charging
+ * Target: self only (Lucien)
+ * Duration: rest of battle (-1)
+ * Condition: BlackRage_charging toggle must be active
+ */
+export const blackRageBuffTemplate: BuffTemplate = {
+  buffId: 'black_rage',
+  name: 'Black Rage',
+  sourceAbilityId: 'BlackRage',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      // Only applies to the source character (Lucien)
+      if (context.attacker.id !== buff.sourceCharacterId) return false;
+
+      // Only applies when charging toggle is active
+      const isCharging = isToggleActive(context.attacker.abilityToggles['BlackRage_charging']);
+      return isCharging;
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg as number) || 0,
+  }),
+  duration: -1,  // Lasts rest of battle
+  // Note: No requiredToggles - toggle is dynamically added via buffConditions.ts
+  // only after BlackRage ability has been used (checked via abilityCooldowns)
+};
+
 // Registry of all buff templates by ability ID
 export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   WarHowl: warHowlBuffTemplate,
   TheQuickening: theQuickeningBuffTemplate,
+  // Lucien abilities
+  BlackRage: blackRageBuffTemplate,
   // LC buffs are registered by buff ID since they're not triggered by ability activation
   legendary_commander_damage: legendaryCommanderDamageBuffTemplate,
   legendary_commander_hits: legendaryCommanderHitsBuffTemplate,

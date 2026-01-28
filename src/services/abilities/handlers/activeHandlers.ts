@@ -7,6 +7,9 @@ import type { AbilityHandler, ComputedAbilityValues, AbilityContext, ActiveAbili
 import type { DamageType } from '../../../types';
 import { getAbilityNameSync } from '../abilityDataLoader';
 
+// Helper to check if a toggle is active (handles boolean and number values)
+const isToggleActive = (value: boolean | number | undefined): boolean => value === true;
+
 /**
  * WarHowl (Ragnar)
  * Buff that grants extra crit chance and flat damage
@@ -41,31 +44,56 @@ export const WarHowlHandler: AbilityHandler = {
 
 /**
  * TheQuickening (Mephiston)
- * Buff that grants damage percentage bonus and movement boost
+ * Target a friendly Blood Angels character to perform an additional melee attack
+ * dealing dmgPct% of their own damage, capped at maxDmg
  * Variables: maxDmg, dmgPct
  * Constants: range: 2
+ * Note: Actual target selection and attack execution handled in CalculatorPage
  */
 export const TheQuickeningHandler: AbilityHandler = {
   abilityId: 'TheQuickening',
   abilityName: 'The Quickening',
-  category: 'buff',
+  category: 'buff',  // Uses target selection modal
   cooldown: -1,
+  endsTurn: true,
 
   executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('TheQuickening');
+    const dmgPct = values.dmgPct as number || 100;
+    const maxDmg = values.maxDmg as number || 0;
 
     return {
       abilityId: 'TheQuickening',
       abilityName,
       category: 'buff',
-      buffResult: {
-        effect: {
-          baseDamageMultiplier: (values.dmgPct as number || 100) / 100,
-          baseDamageBonus: values.maxDmg as number || 0,
-        },
-        duration: 1,
-      },
-      message: abilityName,
+      message: `${abilityName}: Target Blood Angels attacks at ${dmgPct}% damage (max ${maxDmg})`,
+    };
+  },
+};
+
+/**
+ * BloodChalice (Nicodemus)
+ * Select friendly non-mechanical units to grant +extraPierceRatio% pierce ratio with melee attacks for this turn
+ * Variables: extraPierceRatio, hpToHeal
+ * Constants: healthPct: 50
+ * Note: Target selection handled in CalculatorPage via BloodChaliceModal
+ */
+export const BloodChaliceHandler: AbilityHandler = {
+  abilityId: 'BloodChalice',
+  abilityName: 'Blood Chalice',
+  category: 'buff',
+  cooldown: -1,
+  endsTurn: true,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('BloodChalice');
+    const extraPierceRatio = values.extraPierceRatio as number || 0;
+
+    return {
+      abilityId: 'BloodChalice',
+      abilityName,
+      category: 'buff',
+      message: `${abilityName}: Grants +${extraPierceRatio}% pierce ratio to selected units`,
     };
   },
 };
@@ -388,9 +416,11 @@ export const TacticalPrecisionHandler: AbilityHandler = {
 
 /**
  * BlackRage (Lucien)
- * Buff ability that grants +extraDmg damage to all attacks
+ * Buff ability that grants +extraDmg damage when charging (normal and special attacks)
  * Sets HP to hpPct% and grants +1 movement
+ * Requires "Charging" toggle to apply damage bonus (via buff template condition)
  * Variables: extraDmg, hpPct
+ * Does not end turn
  */
 export const BlackRageHandler: AbilityHandler = {
   abilityId: 'BlackRage',
@@ -403,28 +433,31 @@ export const BlackRageHandler: AbilityHandler = {
     const abilityName = getAbilityNameSync('BlackRage');
     const extraDmg = values.extraDmg as number || 0;
 
+    // Black Rage activates and adds a buff to the pool
+    // The buff template's customEvaluator checks the Charging toggle
+    // Damage bonus only applies when charging
     return {
       abilityId: 'BlackRage',
       abilityName,
       category: 'buff',
       buffResult: {
         effect: {
-          baseDamageBonus: extraDmg,
+          baseDamageBonus: extraDmg,  // Stored in buff, applied via buff template condition
         },
         duration: -1,  // Lasts rest of battle
       },
-      message: `${abilityName}: +${extraDmg} damage`,
+      message: `${abilityName}: +${extraDmg} damage when charging`,
     };
   },
 };
 
 /**
  * HammerOfWrath (Mataneo)
- * Melee ability with two damage components:
- * - 2x Power damage (minDmg, maxDmg)
- * - 1x Physical damage (minDmg_2, maxDmg_2) applied to adjacent enemies
- * Variables: minDmg, maxDmg, minDmg_2, maxDmg_2
- * At or below healthPct%: bonus effects (not modeled here)
+ * Deals 2x minDmg-maxDmg Power damage to the boss.
+ * This ability ignores all bonuses/modifiers and cannot crit.
+ * Low HP toggle (≤50%): deals 2x damage.
+ * Variables: minDmg, maxDmg
+ * Constants: nrOfHits: 2, healthPct: 50
  */
 export const HammerOfWrathHandler: AbilityHandler = {
   abilityId: 'HammerOfWrath',
@@ -432,43 +465,40 @@ export const HammerOfWrathHandler: AbilityHandler = {
   category: 'damage',
   cooldown: -1,
 
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('HammerOfWrath');
 
-    // Primary damage: 2x Power
-    const minDmg1 = values.minDmg as number || 0;
-    const maxDmg1 = values.maxDmg as number || 0;
-    const avgDmg1 = Math.round((minDmg1 + maxDmg1) / 2);
-    const hits1 = values.nrOfHits as number || 2;
+    // Base damage: 2x Power
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 2;
+    const healthPct = values.healthPct as number || 50;
 
-    // Secondary damage: 1x Physical (adjacent enemies)
-    const minDmg2 = values.minDmg_2 as number || 0;
-    const maxDmg2 = values.maxDmg_2 as number || 0;
-    const avgDmg2 = Math.round((minDmg2 + maxDmg2) / 2);
-    const hits2 = values.nrOfHits_2 as number || 1;
+    // Check Low HP toggle for 2x damage
+    const isLowHp = isToggleActive(context.abilityToggles['HammerOfWrath_lowHealth']);
+    const damageMultiplier = isLowHp ? 2 : 1;
+
+    // Apply multiplier to damage (since rawDamage bypasses all other modifiers)
+    const effectiveMinDmg = minDmg * damageMultiplier;
+    const effectiveMaxDmg = maxDmg * damageMultiplier;
+    const avgDmg = Math.round((effectiveMinDmg + effectiveMaxDmg) / 2);
+
+    const multiplierText = isLowHp ? ` (2x from Low HP ≤${healthPct}%)` : '';
 
     return {
       abilityId: 'HammerOfWrath',
       abilityName,
       category: 'damage',
-      damageComponents: [
-        {
-          minDamage: minDmg1,
-          maxDamage: maxDmg1,
-          averageDamage: avgDmg1,
-          hits: hits1,
-          damageProfile: (values.damageProfile as DamageType) || 'Power',
-        },
-        {
-          minDamage: minDmg2,
-          maxDamage: maxDmg2,
-          averageDamage: avgDmg2,
-          hits: hits2,
-          damageProfile: (values.damageProfile_2 as DamageType) || 'Physical',
-        },
-      ],
+      damageResult: {
+        minDamage: effectiveMinDmg,
+        maxDamage: effectiveMaxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: (values.damageProfile as DamageType) || 'Power',
+      },
+      rawDamage: true,  // Ignores all bonuses/modifiers and cannot crit
       attackType: 'melee',
-      message: abilityName,
+      message: `${abilityName}${multiplierText}`,
     };
   },
 };
@@ -4155,6 +4185,7 @@ export const SentinelDirectivesHandler: AbilityHandler = {
 export const activeHandlers: AbilityHandler[] = [
   WarHowlHandler,
   TheQuickeningHandler,
+  BloodChaliceHandler,
   ExecutionerHandler,
   GauntletsOfUltramarHandler,
   DeathFromAboveHandler,

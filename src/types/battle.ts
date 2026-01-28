@@ -74,6 +74,8 @@ export interface BattleCharacter extends TeamMember {
   calibaniteGreatswordStance?: 'strike' | 'sweep';  // 'strike' = enables Overwatch, 'sweep' = no effect. Defaults to 'strike'
   hasUsedCalibaniteThisTurn?: boolean;  // Track if ability was used this turn (once per turn)
   hasUsedCalibaniteThisBattle?: boolean;  // Track if ability was used this battle (for LC - only first use counts)
+  // Mephiston's Fury of the Ancients manual trigger tracking
+  hasUsedFuryOfTheAncientsThisTurn?: boolean;  // When true, FuryOfTheAncients cannot be used again this turn
 }
 
 export interface Buff {

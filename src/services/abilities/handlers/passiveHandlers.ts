@@ -3,7 +3,7 @@
  * Handlers for passive abilities that modify character stats
  */
 
-import type { AbilityHandler, ComputedAbilityValues, AbilityContext, PassiveAbilityEvaluation, FollowUpAttack } from '../types';
+import type { AbilityHandler, ComputedAbilityValues, AbilityContext, PassiveAbilityEvaluation, FollowUpAttack, SummonRequest } from '../types';
 import type { DamageType } from '../../../types/character';
 import { getAbilityNameSync } from '../abilityDataLoader';
 import { hasMechanicalTrait } from '../../../utils/traitUtils';
@@ -44,7 +44,8 @@ export const SagaOfTheWarriorBornHandler: AbilityHandler = {
 
 /**
  * FuryOfTheAncients (Mephiston)
- * Passive that adds a Psychic melee attack with 2 hits
+ * Passive that provides a separate 2x Psychic melee attack button
+ * Triggered manually via button (like TheBetrayer), not applied to normal attacks
  * Variables: minDmg, maxDmg
  * Constants: damageProfile: Psychic, nrOfHits: 2
  */
@@ -54,22 +55,18 @@ export const FuryOfTheAncientsHandler: AbilityHandler = {
   category: 'passive',
   cooldown: -1,
 
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
-    // This passive triggers on melee attacks
-    const applicable = context.attackType === 'melee';
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    // This passive provides a separate attack button - no modifiers to normal attacks
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const hits = values.nrOfHits as number || 2;
 
     return {
       abilityId: 'FuryOfTheAncients',
       abilityName: getAbilityNameSync('FuryOfTheAncients'),
-      modifiers: applicable ? {
-        // This is an additional attack - handled separately in damage calculation
-        overrideDamageProfile: 'Psychic',
-        overrideMinDamage: values.minDmg as number,
-        overrideMaxDamage: values.maxDmg as number,
-        overrideHits: values.nrOfHits as number || 2,
-      } : {},
-      applicable,
-      reason: applicable ? 'Melee attack triggers Psychic damage' : 'Only triggers on melee attacks',
+      modifiers: {}, // No modifier to Mephiston's normal attack - this is a separate attack
+      applicable: true,
+      reason: `${hits}x ${minDmg}-${maxDmg} Psychic (button)`,
       requiresToggle: false,
     };
   },
@@ -812,7 +809,7 @@ export const FuelledByFuryHandler: AbilityHandler = {
 /**
  * VisionsOfHeresy (Lucien)
  * After normal attack, performs a follow-up 2x Bolter ranged attack.
- * At or below healthPct%: all attacks have +extraPierceRatio% pierce ratio.
+ * At or below healthPct%: ALL attacks have +extraPierceRatio% pierce ratio.
  * Variables: minDmg, maxDmg, extraPierceRatio, healthPct
  * Constants: damageProfile: Bolter, nrOfHits: 2, range: 2
  */
@@ -823,18 +820,6 @@ export const VisionsOfHeresyHandler: AbilityHandler = {
   cooldown: -1,
 
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
-    // Only applies to normal attacks
-    if (context.attackCategory !== 'normal') {
-      return {
-        abilityId: 'VisionsOfHeresy',
-        abilityName: getAbilityNameSync('VisionsOfHeresy'),
-        modifiers: {},
-        applicable: false,
-        reason: 'Only triggers on normal attacks',
-        requiresToggle: false,
-      };
-    }
-
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
@@ -842,29 +827,47 @@ export const VisionsOfHeresyHandler: AbilityHandler = {
     const extraPierceRatio = values.extraPierceRatio as number || 0;
     const healthPct = values.healthPct as number || 50;
 
-    // Check if at or below health threshold for pierce bonus
+    // Check if at or below health threshold for pierce bonus (applies to ALL attacks)
     const belowHealthThreshold = isToggleActive(context.abilityToggles['VisionsOfHeresy_lowHealth']);
+
+    // Follow-up attack only triggers on normal attacks
+    const isNormalAttack = context.attackCategory === 'normal';
+    const followUpAttack: FollowUpAttack | undefined = isNormalAttack ? {
+      abilityId: 'VisionsOfHeresy',
+      abilityName: 'Visions of Heresy',
+      minDamage: minDmg,
+      maxDamage: maxDmg,
+      hits,
+      damageProfile: 'Bolter',
+      attackCategory: 'special',
+      triggersOnNormalOnly: true,  // Only triggers after normal attacks
+      followUpAttackType: 'ranged',  // Ranged follow-up attack
+    } : undefined;
+
+    // Build reason message
+    let reason = '';
+    if (isNormalAttack) {
+      reason = `Follow-up: ${hits}x Bolter (${avgDmg} avg dmg)`;
+    }
+    if (belowHealthThreshold) {
+      reason += (reason ? ', ' : '') + `+${extraPierceRatio}% pierce (Low HP)`;
+    }
+    if (!reason) {
+      reason = 'No follow-up (special attack)';
+    }
 
     return {
       abilityId: 'VisionsOfHeresy',
       abilityName: getAbilityNameSync('VisionsOfHeresy'),
+      // Pierce bonus applies to ALL attacks when below health threshold
       modifiers: belowHealthThreshold ? {
         pierceRatioBonus: extraPierceRatio,
       } : {},
-      applicable: true,
-      reason: `Follow-up: ${hits}x Bolter (${avgDmg} avg dmg)${belowHealthThreshold ? `, +${extraPierceRatio}% pierce` : ''}`,
+      applicable: belowHealthThreshold || isNormalAttack,  // Applicable if pierce bonus OR follow-up
+      reason,
       requiresToggle: true,
-      toggleLabel: `Below ${healthPct}% HP`,
-      followUpAttack: {
-        abilityId: 'VisionsOfHeresy',
-        abilityName: 'Visions of Heresy',
-        minDamage: minDmg,
-        maxDamage: maxDmg,
-        hits,
-        damageProfile: 'Bolter',
-        attackCategory: 'special',
-        triggersOnNormalOnly: true,  // Only triggers after normal attacks
-      },
+      toggleLabel: `Low HP (≤${healthPct}%)`,
+      followUpAttack,
     };
   },
 };
@@ -3068,8 +3071,8 @@ export const HeavyGravCannonHandler: AbilityHandler = {
 
 /**
  * AggressiveOnslaught (Mataneo)
- * When charging, Mataneo summons 2 Jump Pack Intercessors that immediately attack his target.
- * The summons leave the battlefield at the start of Mataneo's next turn.
+ * When charging and Mataneo performs a normal attack or uses HammerOfWrath,
+ * summon 2x Jump Pack Intercessors if not already present.
  * Variables: summonDmg, summonHp, summonArmor
  * Constants: nrOfSummons: 2, unitId: bloodSmnIntercessor
  */
@@ -3082,25 +3085,25 @@ export const AggressiveOnslaughtHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     // Only triggers when charging (toggle)
     const isCharging = isToggleActive(context.abilityToggles['AggressiveOnslaught']);
-    const applicable = isCharging && (context.attackType === 'melee' || context.attackType === 'ranged');
 
-    // Get summon damage values
+    // Triggers on normal attacks (HammerOfWrath summons are handled separately in battleStore)
+    const isNormalAttack = context.attackCategory === 'normal';
+    const applicable = isCharging && isNormalAttack;
+
+    // Get summon stats
     const summonDmg = values.summonDmg as number || 0;
-    // 2 summons × 1 hit each = 2 hits total
-    const nrOfSummons = 2;
-    const totalHits = nrOfSummons * 1;
+    const summonHp = values.summonHp as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+    const nrOfSummons = values.nrOfSummons as number || 2;
 
-    // Build follow-up attack representing the summons' immediate attacks
-    const followUpAttack: FollowUpAttack | undefined = applicable ? {
-      abilityId: 'AggressiveOnslaught',
-      abilityName: 'Jump Pack Intercessors',
-      damageProfile: 'Physical',
-      minDamage: summonDmg,
-      maxDamage: summonDmg,
-      hits: totalHits,
-      attackCategory: 'special',  // Summon follow-up attack
-      triggersOnNormalOnly: true,  // Only triggers on normal attacks while charging
-      followUpAttackType: 'melee',  // Summons perform melee attacks
+    // Build summon request (creates summons if not already present)
+    const summonRequest: SummonRequest | undefined = applicable ? {
+      unitId: 'bloodSmnIntercessor',
+      count: nrOfSummons,
+      hp: summonHp,
+      damage: summonDmg,
+      armor: summonArmor,
+      ifNotPresent: true,  // Only create if summons don't exist
     } : undefined;
 
     return {
@@ -3109,11 +3112,11 @@ export const AggressiveOnslaughtHandler: AbilityHandler = {
       modifiers: {},  // No modifiers to Mataneo's own attack
       applicable,
       reason: isCharging
-        ? `Charging: 2x Jump Pack Intercessors attack (${totalHits}x ${summonDmg} Physical)`
+        ? `Charging: Summon 2x Jump Pack Intercessors (HP:${summonHp}, Dmg:${summonDmg}, Armor:${summonArmor})`
         : 'Requires Charging',
       requiresToggle: true,
       toggleLabel: 'Charging',
-      followUpAttack,
+      summonRequest,
     };
   },
 };

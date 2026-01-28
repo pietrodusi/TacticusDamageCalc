@@ -9,14 +9,16 @@ interface ActionPanelProps {
   onAction: (type: ActionType) => void;
   onExecuteBetrayer?: () => void;
   onExecuteOverwatch?: () => void;
+  onExecuteFuryOfTheAncients?: () => void;
 }
 
-export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onExecuteOverwatch }: ActionPanelProps) {
+export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onExecuteOverwatch, onExecuteFuryOfTheAncients }: ActionPanelProps) {
   const hasRanged = character.rangedHits !== undefined && character.rangedHits > 0;
   const hasActiveAbility = character.activeAbilities.length > 0;
   const hasMechanicTrait = character.traits.includes('Mechanic');
   const hasHealerTrait = character.traits.includes('Healer');
   const hasTheBetrayerAbility = character.passiveAbilities?.includes('TheBetrayer') ?? false;
+  const hasFuryOfTheAncientsAbility = character.passiveAbilities?.includes('FuryOfTheAncients') ?? false;
   const isAdjacentToBoss = character.abilityToggles?.['adjacentToBoss'] ?? false;
   // Overwatch check - available for:
   // 1. Characters with Overwatch trait (e.g., Azrael) - always available once per turn
@@ -363,6 +365,26 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
                 ~{executePreview.total.toLocaleString()} dmg
               </span>
             )}
+          </button>
+        )}
+
+        {/* Fury of the Ancients (bonus attack for Mephiston) - can be used even after acting, once per turn */}
+        {hasFuryOfTheAncientsAbility && onExecuteFuryOfTheAncients && (
+          <button
+            onClick={() => !character.hasUsedFuryOfTheAncientsThisTurn && onExecuteFuryOfTheAncients()}
+            disabled={character.hasUsedFuryOfTheAncientsThisTurn}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              character.hasUsedFuryOfTheAncientsThisTurn ? disabledClasses : 'hover:bg-purple-900/50 hover:border-purple-600 text-purple-500'
+            }`}
+            title="Fury of the Ancients: 2x Psychic melee attack (once per turn)"
+          >
+            <div className="flex items-center gap-1">
+              {getDamageTypeImageUrl('Psychic') && (
+                <img src={getDamageTypeImageUrl('Psychic')} alt="Psychic" className="w-5 h-5" />
+              )}
+              <span className="text-xs font-medium">Fury of the Ancients</span>
+            </div>
+            <span className="text-[10px] text-gray-400">2x Psychic</span>
           </button>
         )}
 

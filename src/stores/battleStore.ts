@@ -41,6 +41,7 @@ interface ExecuteAttackOptions {
   skipStateUpdates?: boolean;   // Don't update hasActed, hasAttackedThisBattle, etc.
   abilityName?: string;         // For log display (e.g., "Galvanic Field")
   isOverwatchAttack?: boolean;  // Flag for Overwatch attack (for follow-ups like CyclicIonBlaster)
+  isTheQuickeningAttack?: boolean;  // Flag for The Quickening ability (Mephiston)
 }
 
 // Result from triggerOptimisedGait helper
@@ -615,6 +616,9 @@ interface BattleStore {
   // Special ability executions
   executeTheBetrayerBonus: (characterId: string) => BattleLogEntry;
   executeOverwatchAttack: (characterId: string) => BattleLogEntry;
+  executeFuryOfTheAncients: (characterId: string) => BattleLogEntry;
+  executeTheQuickening: (casterId: string, targetId: string) => BattleLogEntry;
+  applyBloodChaliceBuff: (casterId: string, targetIds: string[], extraPierceRatio: number) => void;
 }
 
 export const useBattleStore = create<BattleStore>((set, get) => ({
@@ -837,6 +841,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       hasUsedOverwatchThisTurn: false,
       // Reset Calibanite Greatsword usage for new turn (once per turn ability)
       hasUsedCalibaniteThisTurn: false,
+      // Reset Fury of the Ancients usage for new turn (once per turn ability)
+      hasUsedFuryOfTheAncientsThisTurn: false,
       // Increment attackTurnsCount if character attacked this turn (for LegacyOfCombat bonus)
       attackTurnsCount: char.attacksThisTurn > 0 ? char.attackTurnsCount + 1 : char.attackTurnsCount,
       // Advance ability cooldowns
@@ -1432,7 +1438,16 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const superchargePierceBonus = (battleState.superchargePierceBonus && damageType === 'Plasma')
       ? battleState.superchargePierceBonus
       : 0;
-    const poolPierceRatioBonus = (poolBuffEffects.pierceRatioBonus || 0) + superchargePierceBonus;
+    // Blood Chalice and other activeBuffs pierce ratio bonus (check meleeOnly flag)
+    const buffPierceRatioBonus = attacker.activeBuffs.reduce(
+      (sum, buff) => {
+        if (!buff.pierceRatioBonus) return sum;
+        // Check if buff is melee only and we're not doing melee
+        if (buff.meleeOnly && attackType !== 'melee') return sum;
+        return sum + buff.pierceRatioBonus;
+      }, 0
+    );
+    const poolPierceRatioBonus = (poolBuffEffects.pierceRatioBonus || 0) + superchargePierceBonus + buffPierceRatioBonus;
 
     // Markerlight debuff: T'au Empire ranged attacks deal +15% damage
     const isTauEmpire = attacker.faction === "T'au Empire" || attacker.faction === 'Tau';
@@ -1653,6 +1668,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           source.critChanceBonus = evaluation.modifiers.critChanceBonus;
           hasBonus = true;
         }
+        if (evaluation.modifiers.pierceRatioBonus) {
+          source.pierceRatioBonus = evaluation.modifiers.pierceRatioBonus;
+          hasBonus = true;
+        }
 
         if (hasBonus) {
           buffSources.push(source);
@@ -1660,7 +1679,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
-    // Add active buff sources (like WarHowl) with their bonuses (legacy character activeBuffs)
+    // Add active buff sources (like WarHowl, Blood Chalice) with their bonuses (legacy character activeBuffs)
     for (const buff of attacker.activeBuffs) {
       const source: BuffSourceType = {
         name: buff.abilityName || 'Buff',
@@ -1669,8 +1688,12 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (buff.extraHits) source.extraHits = buff.extraHits;
       if (buff.critChanceBonus) source.critChanceBonus = buff.critChanceBonus;
       if (buff.critDamageBonus) source.critDamageBonus = buff.critDamageBonus;
+      // Add pierce ratio bonus if applicable (check meleeOnly flag)
+      if (buff.pierceRatioBonus && (!buff.meleeOnly || attackType === 'melee')) {
+        source.pierceRatioBonus = buff.pierceRatioBonus;
+      }
       // Only add if there's at least one bonus
-      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus) {
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus || source.pierceRatioBonus) {
         buffSources.push(source);
       }
     }
@@ -1795,6 +1818,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Combine armor ignored from passive abilities and pool buffs
     const totalArmorIgnored = (combinedMods.armorIgnored || 0) + poolArmorIgnored;
+    // Combine pierce ratio bonus from passive abilities and pool buffs
+    const totalPierceRatioBonus = (combinedMods.pierceRatioBonus || 0) + poolPierceRatioBonus;
 
     attackerStats.abilityModifiers = {
       ...combinedMods,
@@ -1804,7 +1829,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       critDamageBonus: (combinedMods.critDamageBonus || 0) + buffCritDmgBonus > 0 ? (combinedMods.critDamageBonus || 0) + buffCritDmgBonus : undefined,
       extraHits: (combinedMods.extraHits || 0) + buffExtraHits > 0 ? (combinedMods.extraHits || 0) + buffExtraHits : undefined,
       armorIgnored: totalArmorIgnored > 0 ? totalArmorIgnored : undefined,
-      pierceRatioBonus: poolPierceRatioBonus > 0 ? poolPierceRatioBonus : undefined,
+      pierceRatioBonus: totalPierceRatioBonus > 0 ? totalPierceRatioBonus : undefined,
       buffSources,
     };
 
@@ -2274,6 +2299,28 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           });
         }
 
+        // Blood Chalice and other activeBuffs pierce ratio bonus (check meleeOnly flag)
+        const followUpBuffPierceRatioBonus = attacker.activeBuffs.reduce(
+          (sum, buff) => {
+            if (!buff.pierceRatioBonus) return sum;
+            // Check if buff is melee only and we're not doing melee
+            if (buff.meleeOnly && effectiveAttackType !== 'melee') return sum;
+            return sum + buff.pierceRatioBonus;
+          }, 0
+        );
+
+        // Add activeBuffs pierce ratio sources for display
+        for (const buff of attacker.activeBuffs) {
+          if (buff.pierceRatioBonus && (!buff.meleeOnly || effectiveAttackType === 'melee')) {
+            followUpBuffSources.push({
+              name: buff.abilityName || 'Active Buff',
+              pierceRatioBonus: buff.pierceRatioBonus,
+            });
+          }
+        }
+
+        const followUpTotalPierceRatioBonus = followUpSuperchargeBonus + followUpBuffPierceRatioBonus;
+
         const followUpStats: AttackerStats = {
           baseDamage: multipliedDamage,  // Just the ability base damage (avg of min/max * multiplier)
           damageType: effectiveDamageProfile,  // Use effective damage profile (may be from character's ranged)
@@ -2298,14 +2345,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           // Pass Fighting Retreat flag for RangedSpecialist override
           fightingRetreatActive: attacker.fightingRetreatActive,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
-          abilityModifiers: (lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1 || followUpCritChanceBonus > 0 || followUpCritDamageBonus > 0 || followUpSuperchargeBonus > 0) ? {
+          abilityModifiers: (lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1 || followUpCritChanceBonus > 0 || followUpCritDamageBonus > 0 || followUpTotalPierceRatioBonus > 0) ? {
             baseDamageBonus: lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus > 0 ? lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus : undefined,
             extraHits: lcExtraHits + auraHitsBonus > 0 ? lcExtraHits + auraHitsBonus : undefined,
             armorIgnored: followUpArmorIgnored > 0 ? followUpArmorIgnored : undefined,
             baseDamageMultiplier: finalFollowUpMultiplier !== 1 ? finalFollowUpMultiplier : undefined,
             critChanceBonus: followUpCritChanceBonus > 0 ? followUpCritChanceBonus : undefined,
             critDamageBonus: followUpCritDamageBonus > 0 ? followUpCritDamageBonus : undefined,
-            pierceRatioBonus: followUpSuperchargeBonus > 0 ? followUpSuperchargeBonus : undefined,
+            pierceRatioBonus: followUpTotalPierceRatioBonus > 0 ? followUpTotalPierceRatioBonus : undefined,
             buffSources: followUpBuffSources,
           } : undefined,
         };
@@ -2376,6 +2423,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           effectiveArmor: followUpResult.effectiveArmor,
           afterArmor: followUpResult.afterArmor,
           pierceRatio: followUpResult.pierceRatio,
+          effectivePierceRatio: followUpResult.effectivePierceRatio,
+          pierceRatioBonus: followUpResult.pierceRatioBonus,
+          pierceRatioBonusSources: followUpResult.pierceRatioBonusSources,
           pierceFloor: followUpResult.pierceFloor,
           afterArmorPierce: followUpResult.afterArmorPierce,
           globalMultiplier: followUpResult.globalMultiplier,
@@ -2503,6 +2553,15 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const drachnyenExtraHits = drachnyenPoolEffects.extraHits || 0;
       const drachnyenArmorIgnored = drachnyenPoolEffects.armorIgnored || 0;
       const poolDrachnyenMultiplier = drachnyenPoolEffects.baseDamageMultiplier || 1;
+      // Include pierce ratio bonus from activeBuffs (Blood Chalice, etc.) - Drachnyen is a melee attack
+      const drachnyenActiveBuffPierceRatio = attacker.activeBuffs.reduce(
+        (sum, buff) => {
+          if (!buff.pierceRatioBonus) return sum;
+          // Drachnyen is melee, so include melee-only buffs
+          return sum + buff.pierceRatioBonus;
+        }, 0
+      );
+      const drachnyenPierceRatioBonus = (drachnyenPoolEffects.pierceRatioBonus || 0) + drachnyenActiveBuffPierceRatio;
 
       // High Ground: +50% damage multiplier when toggle is enabled
       const drachnyenHighGroundMultiplier = attacker.abilityToggles['HighGround'] ? 1.5 : 1;
@@ -2520,7 +2579,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
 
       // Build buff sources for breakdown display
-      type DrachnyenBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number };
+      type DrachnyenBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number; pierceRatioBonus?: number };
       const drachnyenBuffSources: DrachnyenBuffSource[] = [];
 
       for (const poolBuff of drachnyenApplicableBuffs) {
@@ -2553,7 +2612,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         });
       }
 
-      const hasDrachnyenModifiers = drachnyenExtraDmg > 0 || drachnyenExtraHits > 0 || drachnyenArmorIgnored > 0 || drachnyenDamageMultiplier !== 1;
+      // Add activeBuffs pierce ratio sources (Blood Chalice, etc.) for display
+      for (const buff of attacker.activeBuffs) {
+        if (buff.pierceRatioBonus && buff.pierceRatioBonus > 0) {
+          drachnyenBuffSources.push({
+            name: buff.abilityName || 'Active Buff',
+            pierceRatioBonus: buff.pierceRatioBonus,
+          });
+        }
+      }
+
+      const hasDrachnyenModifiers = drachnyenExtraDmg > 0 || drachnyenExtraHits > 0 || drachnyenArmorIgnored > 0 || drachnyenDamageMultiplier !== 1 || drachnyenPierceRatioBonus > 0;
 
       // Build attacker stats for Drachnyen follow-up (uses character's equipment crit)
       const drachnyenAttackerStats: AttackerStats = {
@@ -2580,6 +2649,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           extraHits: drachnyenExtraHits > 0 ? drachnyenExtraHits : undefined,
           armorIgnored: drachnyenArmorIgnored > 0 ? drachnyenArmorIgnored : undefined,
           baseDamageMultiplier: drachnyenDamageMultiplier !== 1 ? drachnyenDamageMultiplier : undefined,
+          pierceRatioBonus: drachnyenPierceRatioBonus > 0 ? drachnyenPierceRatioBonus : undefined,
           buffSources: drachnyenBuffSources,
         } : undefined,
       };
@@ -2625,6 +2695,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         effectiveArmor: drachnyenResult.effectiveArmor,
         afterArmor: drachnyenResult.afterArmor,
         pierceRatio: drachnyenResult.pierceRatio,
+        effectivePierceRatio: drachnyenResult.effectivePierceRatio,
+        pierceRatioBonus: drachnyenResult.pierceRatioBonus,
+        pierceRatioBonusSources: drachnyenResult.pierceRatioBonusSources,
         pierceFloor: drachnyenResult.pierceFloor,
         afterArmorPierce: drachnyenResult.afterArmorPierce,
         globalMultiplier: drachnyenResult.globalMultiplier,
@@ -2837,6 +2910,215 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       console.log(`Total with Chordclaw: ${totalDamage.toLocaleString()}`);
     }
 
+    // === FURY OF THE ANCIENTS AUTO-TRIGGER (Mephiston) ===
+    // Automatically triggers once per turn when Mephiston acts (attacks), if not already used
+    let furyOfTheAncientsTriggered = false;
+    if (attacker.passiveAbilities.includes('FuryOfTheAncients') && !attacker.hasUsedFuryOfTheAncientsThisTurn && !options?.skipStateUpdates) {
+      furyOfTheAncientsTriggered = true;
+
+      // Get FuryOfTheAncients ability values
+      const furyLevelIndex = attacker.abilityLevels?.FuryOfTheAncients ?? 54;
+      const furyAbilityValues = getAbilityValues('FuryOfTheAncients', furyLevelIndex);
+
+      if (furyAbilityValues) {
+        const furyMinDamage = furyAbilityValues.minDmg as number || 0;
+        const furyMaxDamage = furyAbilityValues.maxDmg as number || 0;
+        const furyAvgDamage = Math.round((furyMinDamage + furyMaxDamage) / 2);
+        const furyHits = furyAbilityValues.nrOfHits as number || 2;
+        const furyDamageType: DamageType = 'Psychic';
+
+        // Get current battle state for buff evaluation
+        const currentBattleStateForFury = get().battleState!;
+
+        // Build buff pool evaluation context for Fury of the Ancients (special melee attack)
+        const furyBuffContext: BuffEvaluationContext = {
+          attacker: attacker,
+          attackType: 'melee',
+          attackCategory: 'special',
+          target: currentBattleStateForFury.boss,
+          battleState: currentBattleStateForFury,
+        };
+
+        // Get applicable buffs from the pool
+        const furyApplicableBuffs = getApplicableBuffs(currentBattleStateForFury.buffPool, furyBuffContext);
+        const furyPoolEffects = combineBuffEffects(furyApplicableBuffs);
+
+        // Extract bonuses from pool effects
+        const furyExtraDmg = furyPoolEffects.baseDamageBonus || 0;
+        const furyExtraHits = furyPoolEffects.extraHits || 0;
+        const furyArmorIgnored = furyPoolEffects.armorIgnored || 0;
+        const poolFuryMultiplier = furyPoolEffects.baseDamageMultiplier || 1;
+        const furyPoolCritChanceBonus = furyPoolEffects.critChanceBonus || 0;
+        const furyPoolCritDmgBonus = furyPoolEffects.critDamageBonus || 0;
+        // Include pierce ratio bonus from activeBuffs (Blood Chalice, etc.) - Fury is a melee attack
+        const furyActiveBuffPierceRatio = attacker.activeBuffs.reduce(
+          (sum, buff) => {
+            if (!buff.pierceRatioBonus) return sum;
+            // Fury of the Ancients is melee, so include melee-only buffs
+            return sum + buff.pierceRatioBonus;
+          }, 0
+        );
+        const furyPoolPierceRatioBonus = (furyPoolEffects.pierceRatioBonus || 0) + furyActiveBuffPierceRatio;
+
+        // High Ground: +50% damage multiplier when toggle is enabled
+        const furyHighGroundMultiplier = attacker.abilityToggles['HighGround'] ? 1.5 : 1;
+
+        // War Machine: dynamic damage multiplier based on selected Machine of War
+        const furyWarMachineMultiplier = attacker.abilityToggles['WarMachine'] && currentBattleStateForFury.machineOfWar
+          ? 1 + currentBattleStateForFury.machineOfWar.extraDmgPct / 100
+          : 1;
+
+        const furyDamageMultiplier = poolFuryMultiplier * furyHighGroundMultiplier * furyWarMachineMultiplier;
+
+        // Build buff sources for breakdown display
+        type FuryBuffSource = { name: string; sourceName?: string; damageBonus?: number; extraHits?: number; armorIgnored?: number; damageMultiplier?: number; critChanceBonus?: number; critDamageBonus?: number; pierceRatioBonus?: number };
+        const furyBuffSources: FuryBuffSource[] = [];
+
+        for (const poolBuff of furyApplicableBuffs) {
+          const effects = poolBuff.effects;
+          const source: FuryBuffSource = { name: poolBuff.name };
+          if (effects.baseDamageBonus) source.damageBonus = effects.baseDamageBonus;
+          if (effects.extraHits) source.extraHits = effects.extraHits;
+          if (effects.armorIgnored) source.armorIgnored = effects.armorIgnored;
+          if (effects.baseDamageMultiplier && effects.baseDamageMultiplier !== 1) source.damageMultiplier = effects.baseDamageMultiplier;
+          if (effects.critChanceBonus) source.critChanceBonus = effects.critChanceBonus;
+          if (effects.critDamageBonus) source.critDamageBonus = effects.critDamageBonus;
+          if (effects.pierceRatioBonus) source.pierceRatioBonus = effects.pierceRatioBonus;
+          if (Object.keys(source).length > 1) furyBuffSources.push(source);
+        }
+
+        // Add High Ground buff source for display
+        if (furyHighGroundMultiplier > 1) {
+          furyBuffSources.push({
+            name: 'High Ground',
+            damageMultiplier: furyHighGroundMultiplier,
+          });
+        }
+
+        // Add Machine of War buff source for display
+        if (furyWarMachineMultiplier > 1 && currentBattleStateForFury.machineOfWar) {
+          furyBuffSources.push({
+            name: `Machine of War (+${currentBattleStateForFury.machineOfWar.extraDmgPct}%)`,
+            damageMultiplier: furyWarMachineMultiplier,
+          });
+        }
+
+        // Add activeBuffs pierce ratio sources (Blood Chalice, etc.) for display
+        for (const buff of attacker.activeBuffs) {
+          if (buff.pierceRatioBonus && buff.pierceRatioBonus > 0) {
+            furyBuffSources.push({
+              name: buff.abilityName || 'Active Buff',
+              pierceRatioBonus: buff.pierceRatioBonus,
+            });
+          }
+        }
+
+        const hasFuryModifiers = furyExtraDmg > 0 || furyExtraHits > 0 || furyArmorIgnored > 0 || furyDamageMultiplier !== 1 || furyPoolCritChanceBonus > 0 || furyPoolCritDmgBonus > 0 || furyPoolPierceRatioBonus > 0;
+
+        // Build attacker stats for Fury of the Ancients follow-up
+        const furyAttackerStats: AttackerStats = {
+          baseDamage: furyAvgDamage,
+          damageType: furyDamageType,
+          hits: furyHits,
+          critChance: (equipmentStats.critChance || 0) + (equipmentStats.critChanceBonus || 0),
+          critDamage: (equipmentStats.critDmg || 0) + (equipmentStats.critDmgBonus || 0),
+          critChanceBonus: 0,
+          critDmgBonus: 0,
+          ignoreCrit,
+          traits: attacker.traits,
+          hasMoved: true,
+          attackType: 'melee',
+          hasAttackedThisBattle: true,
+          abilityModifiers: hasFuryModifiers ? {
+            baseDamageBonus: furyExtraDmg > 0 ? furyExtraDmg : undefined,
+            extraHits: furyExtraHits > 0 ? furyExtraHits : undefined,
+            armorIgnored: furyArmorIgnored > 0 ? furyArmorIgnored : undefined,
+            baseDamageMultiplier: furyDamageMultiplier !== 1 ? furyDamageMultiplier : undefined,
+            critChanceBonus: furyPoolCritChanceBonus > 0 ? furyPoolCritChanceBonus : undefined,
+            critDamageBonus: furyPoolCritDmgBonus > 0 ? furyPoolCritDmgBonus : undefined,
+            pierceRatioBonus: furyPoolPierceRatioBonus > 0 ? furyPoolPierceRatioBonus : undefined,
+            buffSources: furyBuffSources,
+          } : undefined,
+        };
+
+        // Calculate Fury of the Ancients follow-up damage
+        const furyCalculator = new DamageCalculator(true);
+        const furyResult = furyCalculator.calculate(furyAttackerStats, defenderStats);
+
+        console.log(`Fury of the Ancients: ${furyResult.totalHits}x ${furyResult.perHitDamage} = ${furyResult.damage}`);
+
+        // Prophet of Gork and Mork: Apply damage reduction to Fury follow-up
+        prophetAttackCounter += 1;
+        const furyProphetReduction = (prophetAttackCounter > prophetThreshold) ? prophetMultiplier : 1;
+        const adjustedFuryDamage = Math.round(furyResult.damage * furyProphetReduction);
+
+        totalDamage += adjustedFuryDamage;
+
+        // Track max per-hit damage for Laviscus outrage
+        maxPerHitDamage = Math.max(maxPerHitDamage, furyResult.perHitDamage);
+
+        // Build breakdown for Fury of the Ancients follow-up
+        const furyBreakdown: DamageBreakdown = {
+          damage: furyResult.damage,
+          perHitDamage: furyResult.perHitDamage,
+          hits: furyResult.totalHits,
+          baseDamage: furyAvgDamage,
+          flatModifiers: furyResult.flatModifiers,
+          flatModifierSources: furyResult.flatModifierSources || [],
+          critBonus: furyResult.critBonus,
+          critChanceSources: furyResult.critChanceSources || [],
+          critDamageSources: furyResult.critDamageSources || [],
+          extraHits: furyResult.extraHits,
+          extraHitsSources: furyResult.extraHitsSources || [],
+          damVarMod: furyResult.damVarMod,
+          targetArmor: bossArmor,
+          armorIgnored: furyResult.armorIgnored,
+          armorIgnoredSources: furyResult.armorIgnoredSources,
+          effectiveArmor: furyResult.effectiveArmor,
+          afterArmor: furyResult.afterArmor,
+          pierceRatio: furyResult.pierceRatio,
+          pierceRatioBonus: furyResult.pierceRatioBonus,
+          pierceRatioBonusSources: furyResult.pierceRatioBonusSources,
+          effectivePierceRatio: furyResult.effectivePierceRatio,
+          pierceFloor: furyResult.pierceFloor,
+          afterArmorPierce: furyResult.afterArmorPierce,
+          globalMultiplier: furyResult.globalMultiplier,
+          globalMultiplierSources: furyResult.globalMultiplierSources || [],
+          baseCritChance: equipmentStats.critChance || 0,
+          baseCritDamage: equipmentStats.critDmg || 0,
+          critChanceBonus: equipmentStats.critChanceBonus || 0,
+          critDmgBonus: equipmentStats.critDmgBonus || 0,
+          critChance: furyResult.effectiveCritChance,
+          critDamage: furyResult.effectiveCritDamage,
+          expectedBlocks: furyResult.expectedBlocks,
+          blockReductionPerHit: furyResult.blockReductionPerHit,
+          totalBlockReduction: furyResult.totalBlockReduction,
+        };
+
+        // Add Prophet reduction to breakdown if active
+        if (furyProphetReduction < 1) {
+          furyBreakdown.globalMultiplier = (furyBreakdown.globalMultiplier || 1) * furyProphetReduction;
+          furyBreakdown.globalMultiplierSources = [
+            ...(furyBreakdown.globalMultiplierSources || []),
+            { name: 'Prophet of Gork and Mork', damageMultiplier: furyProphetReduction }
+          ];
+          furyBreakdown.damage = adjustedFuryDamage;
+          furyBreakdown.perHitDamage = Math.round(furyBreakdown.perHitDamage * furyProphetReduction);
+        }
+
+        followUpAttackLogs.push({
+          abilityName: 'Fury of the Ancients',
+          damage: adjustedFuryDamage,
+          hits: furyResult.totalHits,
+          damageType: furyDamageType,
+          attackType: 'melee',
+          breakdown: furyBreakdown,
+        });
+
+        console.log(`Total with Fury of the Ancients: ${totalDamage.toLocaleString()}`);
+      }
+    }
+
     console.groupEnd();
 
     // Build damage breakdown for UI with calculation steps
@@ -2952,6 +3234,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                     updates.outrage = 0;
                     updates.outrageContributors = [];
                   }
+
+                  // Mark Fury of the Ancients as used if it triggered
+                  if (furyOfTheAncientsTriggered) {
+                    updates.hasUsedFuryOfTheAncientsThisTurn = true;
+                  }
                 }
 
                 return { ...char, ...updates };
@@ -3049,6 +3336,62 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             name: evaluation.abilityName,
             effect: effects.join(', '),
           });
+        }
+      }
+
+      // Handle summonRequest from passives (e.g., AggressiveOnslaught)
+      if (evaluation.applicable && evaluation.summonRequest) {
+        const summonReq = evaluation.summonRequest;
+        const currentState = get().battleState;
+
+        if (currentState) {
+          // Check if summons already exist (if ifNotPresent is true)
+          const existingSummon = currentState.summons.find(s =>
+            s.unitId === summonReq.unitId && s.sourceCharacterId === attackerId
+          );
+
+          if (!summonReq.ifNotPresent || !existingSummon) {
+            const summonData = getSummonUnitData(summonReq.unitId);
+            if (summonData) {
+              const meleeWeapon = summonData.weapons.find(w => !w.Range);
+              const rangedWeapon = summonData.weapons.find(w => w.Range);
+
+              const newSummon: import('../types').BattleSummon = {
+                id: `summon_${summonReq.unitId}_${Date.now()}`,
+                unitId: summonReq.unitId,
+                name: summonData.name,
+                sourceCharacterId: attackerId,
+                sourceAbilityId: evaluation.abilityId,
+                hp: summonReq.hp,
+                damage: summonReq.damage,
+                armor: summonReq.armor,
+                meleeHits: meleeWeapon?.hits || 1,
+                meleeDamageType: (meleeWeapon?.DamageProfile as import('../types').DamageType) || 'Physical',
+                rangedHits: rangedWeapon?.hits,
+                rangedDamageType: rangedWeapon?.DamageProfile as import('../types').DamageType | undefined,
+                rangedRange: rangedWeapon?.Range,
+                traits: summonData.traits || [],
+                count: summonReq.count,
+                createdAtTurn: currentState.turn,
+                iconUrl: getSummonIconUrl(summonReq.unitId),
+                activeAbilities: summonData.activeAbilities,
+                totalDamageDealt: 0,
+              };
+
+              set((state) => ({
+                battleState: state.battleState
+                  ? {
+                      ...state.battleState,
+                      summons: [...state.battleState.summons, newSummon],
+                    }
+                  : null,
+              }));
+
+              console.log(`[Passive ${evaluation.abilityName}: Summoned ${summonReq.count}x ${summonData.name}]`);
+            }
+          } else {
+            console.log(`[Passive ${evaluation.abilityName}: ${summonReq.unitId} already present, skipping summon]`);
+          }
         }
       }
     }
@@ -3408,7 +3751,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const superchargeTeamBonus = (battleState.superchargePierceBonus && component.damageProfile === 'Plasma')
           ? battleState.superchargePierceBonus
           : 0;
-        const abilityPierceRatioBonus = abilityOwnPierceBonus + superchargeTeamBonus;
+        // Blood Chalice and other activeBuffs pierce ratio bonus (check meleeOnly flag)
+        // KillMaimBurn components are melee attacks
+        const componentBuffPierceRatioBonus = character.activeBuffs.reduce(
+          (sum, buff) => {
+            if (!buff.pierceRatioBonus) return sum;
+            // KillMaimBurn is always melee, but check flag anyway for consistency
+            if (buff.meleeOnly) return sum + buff.pierceRatioBonus;
+            return sum + buff.pierceRatioBonus;
+          }, 0
+        );
+        const abilityPierceRatioBonus = abilityOwnPierceBonus + superchargeTeamBonus + componentBuffPierceRatioBonus;
 
         // High Ground: +50% damage multiplier when toggle is enabled
         const componentHighGroundMultiplier = character.abilityToggles['HighGround'] ? 1.5 : 1;
@@ -3510,6 +3863,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             name: 'Supercharge',
             pierceRatioBonus: superchargeTeamBonus,
           });
+        }
+
+        // Add activeBuffs pierce ratio sources (e.g., Blood Chalice)
+        // KillMaimBurn is a melee attack so all melee-only buffs apply
+        for (const buff of character.activeBuffs) {
+          if (buff.pierceRatioBonus) {
+            componentBuffSources.push({
+              name: buff.abilityName || 'Active Buff',
+              pierceRatioBonus: buff.pierceRatioBonus,
+            });
+          }
         }
 
         // Calculate total damage and hit bonuses (LC + aura)
@@ -3734,6 +4098,74 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         blockReductionPerHit: rawResult.blockReductionPerHit,
         totalBlockReduction: rawResult.totalBlockReduction,
       };
+
+      // Handle passive ability summonRequests for HammerOfWrath (triggers AggressiveOnslaught)
+      if (abilityId === 'HammerOfWrath' && character.passiveAbilities.includes('AggressiveOnslaught')) {
+        const isCharging = isToggleActive(character.abilityToggles['AggressiveOnslaught']);
+        if (isCharging) {
+          const aggressiveOnslaughtLevel = character.abilityLevels?.['AggressiveOnslaught'] ?? 54;
+          const aoValues = getAbilityValues('AggressiveOnslaught', aggressiveOnslaughtLevel);
+
+          if (aoValues) {
+            const summonHp = aoValues.summonHp as number || 0;
+            const summonDmg = aoValues.summonDmg as number || 0;
+            const summonArmor = aoValues.summonArmor as number || 0;
+            const nrOfSummons = aoValues.nrOfSummons as number || 2;
+            const unitId = 'bloodSmnIntercessor';
+
+            const currentState = get().battleState;
+            if (currentState) {
+              // Check if summons already exist for this character
+              const existingSummon = currentState.summons.find(s =>
+                s.unitId === unitId && s.sourceCharacterId === characterId
+              );
+
+              if (!existingSummon) {
+                const summonData = getSummonUnitData(unitId);
+                if (summonData) {
+                  const meleeWeapon = summonData.weapons.find(w => !w.Range);
+                  const rangedWeapon = summonData.weapons.find(w => w.Range);
+
+                  const newSummon: import('../types').BattleSummon = {
+                    id: `summon_${unitId}_${Date.now()}`,
+                    unitId,
+                    name: summonData.name,
+                    sourceCharacterId: characterId,
+                    sourceAbilityId: 'AggressiveOnslaught',
+                    hp: summonHp,
+                    damage: summonDmg,
+                    armor: summonArmor,
+                    meleeHits: meleeWeapon?.hits || 1,
+                    meleeDamageType: (meleeWeapon?.DamageProfile as import('../types').DamageType) || 'Physical',
+                    rangedHits: rangedWeapon?.hits,
+                    rangedDamageType: rangedWeapon?.DamageProfile as import('../types').DamageType | undefined,
+                    rangedRange: rangedWeapon?.Range,
+                    traits: summonData.traits || [],
+                    count: nrOfSummons,
+                    createdAtTurn: currentState.turn,
+                    iconUrl: getSummonIconUrl(unitId),
+                    activeAbilities: summonData.activeAbilities,
+                    totalDamageDealt: 0,
+                  };
+
+                  set((state) => ({
+                    battleState: state.battleState
+                      ? {
+                          ...state.battleState,
+                          summons: [...state.battleState.summons, newSummon],
+                        }
+                      : null,
+                  }));
+
+                  console.log(`[AggressiveOnslaught: Summoned ${nrOfSummons}x ${summonData.name} via HammerOfWrath]`);
+                }
+              } else {
+                console.log(`[AggressiveOnslaught: ${unitId} already present, skipping summon]`);
+              }
+            }
+          }
+        }
+      }
     } else if (result.damageResult) {
       // Single component damage ability (like Martial Inspiration)
       // Displayed as a special attack with purple shading
@@ -4878,8 +5310,32 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           });
         }
 
+        // Blood Chalice and other activeBuffs pierce ratio bonus (check meleeOnly flag)
+        // Use follow-up's attack type if specified, otherwise default to melee
+        const abilityFollowUpAttackType: 'melee' | 'ranged' = followUp.followUpAttackType || 'melee';
+        const abilityFollowUpBuffPierceRatioBonus = character.activeBuffs.reduce(
+          (sum, buff) => {
+            if (!buff.pierceRatioBonus) return sum;
+            // Check if buff is melee only and we're not doing melee
+            if (buff.meleeOnly && abilityFollowUpAttackType !== 'melee') return sum;
+            return sum + buff.pierceRatioBonus;
+          }, 0
+        );
+
+        // Add activeBuffs pierce ratio sources for display
+        for (const buff of character.activeBuffs) {
+          if (buff.pierceRatioBonus && (!buff.meleeOnly || abilityFollowUpAttackType === 'melee')) {
+            followUpBuffSources.push({
+              name: buff.abilityName || 'Active Buff',
+              pierceRatioBonus: buff.pierceRatioBonus,
+            });
+          }
+        }
+
+        const abilityFollowUpTotalPierceRatioBonus = abilityFollowUpSuperchargeBonus + abilityFollowUpBuffPierceRatioBonus;
+
         // Check if we have any modifiers to pass
-        const hasFollowUpModifiers = lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpGlobalMultiplier || followUpArmorIgnored > 0 || followUpDamageMultiplier !== 1 || abilityFollowUpHighGroundMultiplier !== 1 || abilityFollowUpWarMachineMultiplier !== 1 || abilityFollowUpCritChanceBonus > 0 || abilityFollowUpCritDamageBonus > 0 || abilityFollowUpSuperchargeBonus > 0;
+        const hasFollowUpModifiers = lcExtraDmg + auraDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpGlobalMultiplier || followUpArmorIgnored > 0 || followUpDamageMultiplier !== 1 || abilityFollowUpHighGroundMultiplier !== 1 || abilityFollowUpWarMachineMultiplier !== 1 || abilityFollowUpCritChanceBonus > 0 || abilityFollowUpCritDamageBonus > 0 || abilityFollowUpTotalPierceRatioBonus > 0;
 
         // Combine ability multiplier with pool multiplier and high ground and war machine (multiplicative)
         const combinedDamageMultiplier = (followUpGlobalMultiplier || 1) * followUpDamageMultiplier * abilityFollowUpHighGroundMultiplier * abilityFollowUpWarMachineMultiplier;
@@ -4918,7 +5374,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             armorIgnored: followUpArmorIgnored > 0 ? followUpArmorIgnored : undefined,
             critChanceBonus: abilityFollowUpCritChanceBonus > 0 ? abilityFollowUpCritChanceBonus : undefined,
             critDamageBonus: abilityFollowUpCritDamageBonus > 0 ? abilityFollowUpCritDamageBonus : undefined,
-            pierceRatioBonus: abilityFollowUpSuperchargeBonus > 0 ? abilityFollowUpSuperchargeBonus : undefined,
+            pierceRatioBonus: abilityFollowUpTotalPierceRatioBonus > 0 ? abilityFollowUpTotalPierceRatioBonus : undefined,
             buffSources: followUpBuffSources,
           } : undefined,
         };
@@ -4970,8 +5426,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           extraHitsSources: followUpResult.extraHitsSources,
           damVarMod: followUpResult.damVarMod,
           targetArmor: bossArmorFollowUp,
+          armorIgnored: followUpResult.armorIgnored,
+          armorIgnoredSources: followUpResult.armorIgnoredSources,
+          effectiveArmor: followUpResult.effectiveArmor,
           afterArmor: followUpResult.afterArmor,
           pierceRatio: followUpResult.pierceRatio,
+          effectivePierceRatio: followUpResult.effectivePierceRatio,
+          pierceRatioBonus: followUpResult.pierceRatioBonus,
+          pierceRatioBonusSources: followUpResult.pierceRatioBonusSources,
           pierceFloor: followUpResult.pierceFloor,
           afterArmorPierce: followUpResult.afterArmorPierce,
           globalMultiplier: followUpResult.globalMultiplier,
@@ -5406,6 +5868,34 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Lord of the Host from Dante (for Flying/RapidAssault summons)
+    const hasFlying = summon.traits?.includes('Flying');
+    const hasRapidAssault = summon.traits?.includes('RapidAssault');
+    if ((hasFlying || hasRapidAssault) && attackType === 'melee') {
+      for (const teammate of battleState.team) {
+        if (teammate.passiveAbilities.includes('LordOfTheHost')) {
+          const dmgToggleId = `LordOfTheHost_${teammate.id}_damage`;
+          if (toggles[dmgToggleId]) {
+            const levelIndex = teammate.abilityLevels?.['LordOfTheHost'] ?? 54;
+            const values = getAbilityValues('LordOfTheHost', levelIndex);
+            if (values) {
+              const extraDmg = values.extraDmg as number || 0;
+              flatDamageBonus += extraDmg;
+              buffSources.push({ name: 'Lord of the Host', damageBonus: extraDmg });
+
+              // Check for Low HP extra hit
+              const hitsToggleId = `LordOfTheHost_${teammate.id}_hits`;
+              if (toggles[hitsToggleId]) {
+                extraHitsFromBuffs += 1;
+                buffSources.push({ name: 'Lord of the Host (Low HP)', extraHits: 1 });
+              }
+            }
+          }
+          break; // Only one Dante can provide the buff
+        }
+      }
+    }
+
     // Evaluate pool buffs for summons (Master Annihilator, etc.)
     // Create a minimal context for buff evaluation
     const summonAsAttacker = {
@@ -5763,7 +6253,16 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const poolExtraHits = poolBuffEffects.extraHits || 0;
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
     const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
-    const poolPierceRatioBonus = poolBuffEffects.pierceRatioBonus || 0;
+    // Blood Chalice and other activeBuffs pierce ratio bonus (check meleeOnly flag)
+    const buffPierceRatioBonus = character.activeBuffs.reduce(
+      (sum, buff) => {
+        if (!buff.pierceRatioBonus) return sum;
+        // Check if buff is melee only and we're not doing melee
+        if (buff.meleeOnly && attackType !== 'melee') return sum;
+        return sum + buff.pierceRatioBonus;
+      }, 0
+    );
+    const poolPierceRatioBonus = (poolBuffEffects.pierceRatioBonus || 0) + buffPierceRatioBonus;
 
     // War Machine: dynamic damage multiplier based on selected Machine of War
     const warMachineMultiplier = character.abilityToggles['WarMachine'] && battleState.machineOfWar
@@ -5864,7 +6363,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         if (evaluation.modifiers.extraHits) source.extraHits = evaluation.modifiers.extraHits;
         if (evaluation.modifiers.critDamageBonus) source.critDamageBonus = evaluation.modifiers.critDamageBonus;
         if (evaluation.modifiers.critChanceBonus) source.critChanceBonus = evaluation.modifiers.critChanceBonus;
-        if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus) {
+        if (evaluation.modifiers.pierceRatioBonus) source.pierceRatioBonus = evaluation.modifiers.pierceRatioBonus;
+        if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus || source.pierceRatioBonus) {
           buffSources.push(source);
         }
       }
@@ -5895,6 +6395,16 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       });
     }
 
+    // Add activeBuffs pierce ratio sources (e.g., Blood Chalice)
+    for (const buff of character.activeBuffs) {
+      if (buff.pierceRatioBonus && (!buff.meleeOnly || attackType === 'melee')) {
+        buffSources.push({
+          name: buff.abilityName || 'Active Buff',
+          pierceRatioBonus: buff.pierceRatioBonus,
+        });
+      }
+    }
+
     // Combine all modifiers
     const combinedMods = combineModifiers([...passiveModifiers, ...auraModifiers]);
     const totalCritChanceBonus = (combinedMods.critChanceBonus || 0) + buffCritChanceBonus;
@@ -5907,6 +6417,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * warMachineMultiplier;
     const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus;
     const totalArmorIgnored = (combinedMods.armorIgnored || 0) + poolArmorIgnored;
+    // Combine pierce ratio bonus from passive abilities and pool buffs (buffPierceRatioBonus already included in poolPierceRatioBonus)
+    const totalPierceRatioBonus = (combinedMods.pierceRatioBonus || 0) + poolPierceRatioBonus;
 
     attackerStats.abilityModifiers = {
       ...combinedMods,
@@ -5916,7 +6428,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       critDamageBonus: (combinedMods.critDamageBonus || 0) + buffCritDmgBonus > 0 ? (combinedMods.critDamageBonus || 0) + buffCritDmgBonus : undefined,
       extraHits: (combinedMods.extraHits || 0) + buffExtraHits > 0 ? (combinedMods.extraHits || 0) + buffExtraHits : undefined,
       armorIgnored: totalArmorIgnored > 0 ? totalArmorIgnored : undefined,
-      pierceRatioBonus: poolPierceRatioBonus > 0 ? poolPierceRatioBonus : undefined,
+      pierceRatioBonus: totalPierceRatioBonus > 0 ? totalPierceRatioBonus : undefined,
       buffSources,
     };
 
@@ -5977,8 +6489,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       extraHitsSources: result.extraHitsSources || [],
       damVarMod: result.damVarMod,
       targetArmor: bossArmor,
+      armorIgnored: result.armorIgnored,
+      armorIgnoredSources: result.armorIgnoredSources,
+      effectiveArmor: result.effectiveArmor,
       afterArmor: result.afterArmor,
       pierceRatio: result.pierceRatio,
+      effectivePierceRatio: result.effectivePierceRatio,
+      pierceRatioBonus: result.pierceRatioBonus,
+      pierceRatioBonusSources: result.pierceRatioBonusSources,
       pierceFloor: result.pierceFloor,
       afterArmorPierce: result.afterArmorPierce,
       globalMultiplier: result.globalMultiplier,
@@ -6004,6 +6522,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       damage: result.damage,
       damageBreakdown,
       damageType: damageType,
+      attackType: 'melee' as const,
       message: `The Betrayer deals ${result.damage.toLocaleString()} damage (${hits}x ${damageType})`,
     };
   },
@@ -6110,5 +6629,421 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       ...result,
       message: `Overwatch ${attackType} deals ${result.damage?.toLocaleString() || 0} damage${bonusText}`,
     };
+  },
+
+  /**
+   * Execute Fury of the Ancients attack (Mephiston)
+   * Manual trigger for the Psychic melee attack: 2x Psychic hits
+   * Does NOT end Mephiston's turn, but can only be used once per turn
+   */
+  executeFuryOfTheAncients: (characterId) => {
+    const { battleState } = get();
+    if (!battleState || !battleState.boss) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'No battle in progress',
+      };
+    }
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'Character not found',
+      };
+    }
+
+    // Get FuryOfTheAncients ability values
+    const levelIndex = character.abilityLevels?.FuryOfTheAncients ?? 54;
+    const abilityValues = getAbilityValues('FuryOfTheAncients', levelIndex);
+    if (!abilityValues) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: character.name,
+        characterIconUrl: character.iconUrl,
+        action: 'ability' as const,
+        message: 'Fury of the Ancients ability not found',
+      };
+    }
+
+    const minDamage = abilityValues.minDmg as number || 0;
+    const maxDamage = abilityValues.maxDmg as number || 0;
+    const avgDamage = Math.round((minDamage + maxDamage) / 2);
+    const hits = abilityValues.nrOfHits as number || 2;
+    const damageType: DamageType = 'Psychic';
+    const attackType = 'melee';
+
+    // Calculate boss armor
+    const bossBaseArmor = battleState.boss.armor || 0;
+    const bossArmorReduction = battleState.bossArmorReduction || 0;
+    const bossArmor = Math.max(0, bossBaseArmor - bossArmorReduction);
+
+    // Get equipment stats for crit calculation
+    const equipmentStats = calculateEquipmentStats(character.equipment);
+    const ignoreCrit = battleState.ignoreCrit || false;
+
+    // === BUFF EVALUATION ===
+    const buffEvalContext: BuffEvaluationContext = {
+      attacker: character,
+      attackType,
+      attackCategory: 'special',
+      target: battleState.boss,
+      battleState,
+    };
+
+    const applicablePoolBuffs = getApplicableBuffs(battleState.buffPool, buffEvalContext);
+    const poolBuffEffects = combineBuffEffects(applicablePoolBuffs);
+
+    const buffCritChanceBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critChanceBonus || 0), 0
+    ) + (poolBuffEffects.critChanceBonus || 0);
+    const buffDamageMultiplier = character.activeBuffs.reduce(
+      (mult, buff) => mult * (buff.baseDamageMultiplier || 1), 1
+    ) * (poolBuffEffects.baseDamageMultiplier || 1);
+    const buffDamageBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.baseDamageBonus || 0), 0
+    ) + (poolBuffEffects.baseDamageBonus || 0);
+    const poolExtraHits = poolBuffEffects.extraHits || 0;
+    const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
+    const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
+    // Blood Chalice and other activeBuffs pierce ratio bonus (check meleeOnly flag)
+    const buffPierceRatioBonus = character.activeBuffs.reduce(
+      (sum, buff) => {
+        if (!buff.pierceRatioBonus) return sum;
+        // Check if buff is melee only and we're not doing melee
+        if (buff.meleeOnly && attackType !== 'melee') return sum;
+        return sum + buff.pierceRatioBonus;
+      }, 0
+    );
+    const poolPierceRatioBonus = (poolBuffEffects.pierceRatioBonus || 0) + buffPierceRatioBonus;
+
+    // War Machine multiplier
+    const warMachineMultiplier = character.abilityToggles['WarMachine'] && battleState.machineOfWar
+      ? 1 + battleState.machineOfWar.extraDmgPct / 100
+      : 1;
+
+    // Build attacker stats
+    const attackerStats: AttackerStats = {
+      baseDamage: avgDamage,
+      damageType,
+      hits,
+      critChance: (equipmentStats.critChance || 0) + (equipmentStats.critChanceBonus || 0),
+      critDamage: (equipmentStats.critDmg || 0) + (equipmentStats.critDmgBonus || 0),
+      critChanceBonus: 0,
+      critDmgBonus: 0,
+      ignoreCrit,
+      traits: character.traits,
+      hasMoved: character.hasMoved,
+      attackType,
+      hasAttackedThisBattle: character.hasAttackedThisBattle,
+      attacksThisTurn: character.attacksThisTurn,
+      firstAttackTurn: character.firstAttackTurn ?? battleState.turn,
+      currentTurn: battleState.turn,
+      abilityToggles: character.abilityToggles,
+    };
+
+    // Evaluate aura bonuses
+    const auraBonuses = getCharacterAuraBonuses(character, battleState.team);
+    const activeAuras = auraBonuses.filter(a => {
+      if (!a.isActive) return false;
+      if (a.attackTypeRestriction && a.attackTypeRestriction !== attackType) return false;
+      return true;
+    });
+    const auraModifiers = activeAuras.map(a => a.modifiers || {});
+
+    // Build buff sources
+    type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number; pierceRatioBonus?: number };
+    const buffSources: BuffSourceType[] = [];
+
+    for (const a of activeAuras) {
+      const source: BuffSourceType = { name: a.abilityName, sourceName: a.sourceCharacterName || 'Unknown' };
+      if (a.modifiers?.baseDamageBonus) source.damageBonus = a.modifiers.baseDamageBonus;
+      if (a.modifiers?.extraHits) source.extraHits = a.modifiers.extraHits;
+      if (a.modifiers?.critChanceBonus) source.critChanceBonus = a.modifiers.critChanceBonus;
+      if (a.modifiers?.critDamageBonus) source.critDamageBonus = a.modifiers.critDamageBonus;
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus) {
+        buffSources.push(source);
+      }
+    }
+
+    for (const poolBuff of applicablePoolBuffs) {
+      const source: BuffSourceType = { name: poolBuff.name };
+      if (poolBuff.effects.baseDamageBonus) source.damageBonus = poolBuff.effects.baseDamageBonus;
+      if (poolBuff.effects.extraHits) source.extraHits = poolBuff.effects.extraHits;
+      if (poolBuff.effects.critChanceBonus) source.critChanceBonus = poolBuff.effects.critChanceBonus;
+      if (poolBuff.effects.critDamageBonus) source.critDamageBonus = poolBuff.effects.critDamageBonus;
+      if (poolBuff.effects.baseDamageMultiplier && poolBuff.effects.baseDamageMultiplier !== 1) {
+        source.damageMultiplier = poolBuff.effects.baseDamageMultiplier;
+      }
+      if (poolBuff.effects.armorIgnored) source.armorIgnored = poolBuff.effects.armorIgnored;
+      if (poolBuff.effects.pierceRatioBonus) source.pierceRatioBonus = poolBuff.effects.pierceRatioBonus;
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus || source.damageMultiplier || source.armorIgnored || source.pierceRatioBonus) {
+        buffSources.push(source);
+      }
+    }
+
+    if (warMachineMultiplier > 1 && battleState.machineOfWar) {
+      buffSources.push({
+        name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
+        damageMultiplier: warMachineMultiplier,
+      });
+    }
+
+    // Add activeBuffs pierce ratio sources (e.g., Blood Chalice)
+    for (const buff of character.activeBuffs) {
+      if (buff.pierceRatioBonus && (!buff.meleeOnly || attackType === 'melee')) {
+        buffSources.push({
+          name: buff.abilityName || 'Active Buff',
+          pierceRatioBonus: buff.pierceRatioBonus,
+        });
+      }
+    }
+
+    // Combine modifiers
+    const combinedMods = combineModifiers(auraModifiers);
+    const totalCritChanceBonus = (combinedMods.critChanceBonus || 0) + buffCritChanceBonus;
+    const buffCritDmgBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critDamageBonus || 0), 0
+    ) + poolCritDmgBonus;
+    const buffExtraHits = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.extraHits || 0), 0
+    ) + poolExtraHits;
+    const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * warMachineMultiplier;
+    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus;
+    const totalArmorIgnored = (combinedMods.armorIgnored || 0) + poolArmorIgnored;
+    // buffPierceRatioBonus already included in poolPierceRatioBonus
+    const totalPierceRatioBonus = (combinedMods.pierceRatioBonus || 0) + poolPierceRatioBonus;
+
+    attackerStats.abilityModifiers = {
+      ...combinedMods,
+      baseDamageBonus: totalDamageBonus > 0 ? totalDamageBonus : undefined,
+      baseDamageMultiplier: totalDamageMultiplier !== 1 ? totalDamageMultiplier : undefined,
+      critChanceBonus: totalCritChanceBonus > 0 ? totalCritChanceBonus : undefined,
+      critDamageBonus: (combinedMods.critDamageBonus || 0) + buffCritDmgBonus > 0 ? (combinedMods.critDamageBonus || 0) + buffCritDmgBonus : undefined,
+      extraHits: (combinedMods.extraHits || 0) + buffExtraHits > 0 ? (combinedMods.extraHits || 0) + buffExtraHits : undefined,
+      armorIgnored: totalArmorIgnored > 0 ? totalArmorIgnored : undefined,
+      pierceRatioBonus: totalPierceRatioBonus > 0 ? totalPierceRatioBonus : undefined,
+      buffSources,
+    };
+
+    // Daemon block check
+    const hasDaemonTrait = battleState.boss?.traits?.includes('Daemon') ?? false;
+
+    const defenderStats: DefenderStats = {
+      armor: bossArmor,
+      maxHealth: battleState.boss?.health ?? 100000,
+      traits: battleState.boss.traits,
+      daemonBlockChance: hasDaemonTrait ? 0.25 : undefined,
+      daemonBlockMaxAmount: hasDaemonTrait ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
+    };
+
+    // Calculate damage
+    const calculator = new DamageCalculator(true);
+    const result = calculator.calculate(attackerStats, defenderStats);
+
+    console.group(`=== Fury of the Ancients Execute (${character.name}) ===`);
+    console.log(`Base Damage: ${avgDamage} (${minDamage}-${maxDamage})`);
+    console.log(`Hits: ${hits}`);
+    console.log(`Damage Type: ${damageType}`);
+    if (buffSources.length > 0) {
+      console.log(`Active Buffs: ${buffSources.map(b => b.name).join(', ')}`);
+    }
+    calculator.printLogs();
+    console.groupEnd();
+
+    // Update battle state
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            totalDamageDealt: state.battleState.totalDamageDealt + result.damage,
+            team: state.battleState.team.map((c) =>
+              c.id === characterId
+                ? { ...c, totalDamageDealt: c.totalDamageDealt + result.damage, hasUsedFuryOfTheAncientsThisTurn: true }
+                : c
+            ),
+          }
+        : null,
+    }));
+
+    // Build damage breakdown
+    const damageBreakdown: DamageBreakdown = {
+      damage: result.damage,
+      perHitDamage: result.perHitDamage,
+      hits: result.totalHits,
+      baseDamage: avgDamage,
+      flatModifiers: result.flatModifiers,
+      flatModifierSources: result.flatModifierSources || [],
+      critBonus: result.critBonus,
+      critChanceSources: result.critChanceSources || [],
+      critDamageSources: result.critDamageSources || [],
+      extraHits: result.extraHits,
+      extraHitsSources: result.extraHitsSources || [],
+      damVarMod: result.damVarMod,
+      targetArmor: bossArmor,
+      armorIgnored: result.armorIgnored,
+      armorIgnoredSources: result.armorIgnoredSources,
+      effectiveArmor: result.effectiveArmor,
+      afterArmor: result.afterArmor,
+      pierceRatio: result.pierceRatio,
+      effectivePierceRatio: result.effectivePierceRatio,
+      pierceRatioBonus: result.pierceRatioBonus,
+      pierceRatioBonusSources: result.pierceRatioBonusSources,
+      pierceFloor: result.pierceFloor,
+      afterArmorPierce: result.afterArmorPierce,
+      globalMultiplier: result.globalMultiplier,
+      globalMultiplierSources: result.globalMultiplierSources || [],
+      baseCritChance: equipmentStats.critChance || 0,
+      baseCritDamage: equipmentStats.critDmg || 0,
+      critChanceBonus: equipmentStats.critChanceBonus || 0,
+      critDmgBonus: equipmentStats.critDmgBonus || 0,
+      critChance: result.effectiveCritChance,
+      critDamage: result.effectiveCritDamage,
+      expectedBlocks: result.expectedBlocks,
+      blockReductionPerHit: result.blockReductionPerHit,
+      totalBlockReduction: result.totalBlockReduction,
+    };
+
+    return {
+      timestamp: Date.now(),
+      characterId,
+      characterName: character.name,
+      characterIconUrl: character.iconUrl,
+      action: 'ability' as const,
+      damage: result.damage,
+      damageBreakdown,
+      damageType: damageType,
+      attackType: 'melee' as const,
+      message: `Fury of the Ancients deals ${result.damage.toLocaleString()} damage (${hits}x ${damageType})`,
+    };
+  },
+
+  /**
+   * Execute The Quickening (Mephiston)
+   * Target Blood Angels character performs a melee attack with dmgPct% damage, capped at maxDmg
+   * Ends Mephiston's turn
+   */
+  executeTheQuickening: (casterId, targetId) => {
+    const { battleState, executeAttack } = get();
+    if (!battleState || !battleState.boss) {
+      return {
+        timestamp: Date.now(),
+        characterId: casterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'No battle in progress',
+      };
+    }
+
+    const caster = battleState.team.find((c) => c.id === casterId);
+    const target = battleState.team.find((c) => c.id === targetId);
+    if (!caster || !target) {
+      return {
+        timestamp: Date.now(),
+        characterId: casterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'Character not found',
+      };
+    }
+
+    // Verify target is Blood Angels
+    if (target.faction !== 'BloodAngels') {
+      return {
+        timestamp: Date.now(),
+        characterId: casterId,
+        characterName: caster.name,
+        characterIconUrl: caster.iconUrl,
+        action: 'ability' as const,
+        message: 'Target must be Blood Angels',
+      };
+    }
+
+    // Get TheQuickening ability values
+    const levelIndex = caster.abilityLevels?.TheQuickening ?? 54;
+    const abilityValues = getAbilityValues('TheQuickening', levelIndex);
+    if (!abilityValues) {
+      return {
+        timestamp: Date.now(),
+        characterId: casterId,
+        characterName: caster.name,
+        characterIconUrl: caster.iconUrl,
+        action: 'ability' as const,
+        message: 'The Quickening ability not found',
+      };
+    }
+
+    const dmgPct = (abilityValues.dmgPct as number) || 100;
+    const maxDmg = (abilityValues.maxDmg as number) || 0;
+
+    // Execute attack for target with damage multiplier and cap
+    const result = executeAttack(targetId, 'boss', 'melee', {
+      damageMultiplier: dmgPct / 100,
+      baseDamageCap: maxDmg,
+      isTheQuickeningAttack: true,  // Flag for special handling
+    });
+
+    // Mark caster's turn as ended and ability as used
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            team: state.battleState.team.map((c) =>
+              c.id === casterId
+                ? { ...c, hasActed: true, hasUsedAbilityThisTurn: true }
+                : c
+            ),
+          }
+        : null,
+    }));
+
+    return {
+      ...result,
+      characterId: casterId,
+      characterName: caster.name,
+      characterIconUrl: caster.iconUrl,
+      message: `The Quickening: ${target.name} attacks for ${result.damage?.toLocaleString() || 0} damage (${dmgPct}% of own damage, max ${maxDmg})`,
+    };
+  },
+
+  /**
+   * Apply Blood Chalice buff (Nicodemus)
+   * Grants +extraPierceRatio% pierce ratio with melee attacks to selected targets for this turn
+   */
+  applyBloodChaliceBuff: (_casterId, targetIds, extraPierceRatio) => {
+    const { battleState } = get();
+    if (!battleState) return;
+
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            team: state.battleState.team.map((char) => {
+              if (targetIds.includes(char.id)) {
+                // Add the Blood Chalice buff to target's activeBuffs
+                return {
+                  ...char,
+                  activeBuffs: [
+                    ...char.activeBuffs,
+                    {
+                      abilityName: 'Blood Chalice',
+                      pierceRatioBonus: extraPierceRatio,
+                      meleeOnly: true,  // Only applies to melee attacks
+                    },
+                  ],
+                };
+              }
+              return char;
+            }),
+          }
+        : null,
+    }));
   },
 }));

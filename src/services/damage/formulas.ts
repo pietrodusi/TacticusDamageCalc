@@ -40,7 +40,8 @@ export function calculateArmorReduction(damVarMod: number, armor: number): numbe
  */
 export function calculatePierceFloor(damVarMod: number, damageType: DamageType, pierceRatioBonus: number = 0): number {
   const basePierceRatio = getPierceRatio(damageType);
-  const effectivePierceRatio = basePierceRatio + (pierceRatioBonus / 100);
+  // Cap effective pierce ratio at 100%
+  const effectivePierceRatio = Math.min(1, basePierceRatio + (pierceRatioBonus / 100));
   return Math.floor(damVarMod * effectivePierceRatio);
 }
 

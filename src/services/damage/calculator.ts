@@ -351,7 +351,8 @@ export class DamageCalculator {
 
     // === STEP 4: Apply Armor/Pierce to BOTH paths ===
     const basePierceRatio = getPierceRatio(attacker.damageType);
-    const effectivePierceRatio = basePierceRatio + (pierceRatioBonus / 100);
+    // Cap effective pierce ratio at 100%
+    const effectivePierceRatio = Math.min(1, basePierceRatio + (pierceRatioBonus / 100));
 
     // Calculate effective armor (reduced by armor ignored, min 0)
     const effectiveArmor = Math.max(0, defender.armor - armorIgnored);

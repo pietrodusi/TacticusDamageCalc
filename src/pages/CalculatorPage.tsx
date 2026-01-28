@@ -4,7 +4,7 @@ import { Play, RotateCcw, Trash2, PackageX } from 'lucide-react';
 import { useTeamStore } from '../stores/teamStore';
 import { useBattleStore } from '../stores/battleStore';
 import { TeamSlot, BossSelector, MachineOfWarSelector } from '../components/battle';
-import type { ActionType, BattleCharacter, BossRank } from '../types';
+import type { ActionType, BattleCharacter, BattleLogEntry, BossRank } from '../types';
 import {
   BattleCharacterCard,
   BattleLog,
@@ -15,6 +15,8 @@ import {
   AttackTypeModal,
   SummonCard,
   InspiredToGreatnessModal,
+  TheQuickeningModal,
+  BloodChaliceModal,
   DarkTalonStrikeModal,
   RitesOfMorkaiModal,
   HealTargetModal,
@@ -81,6 +83,9 @@ export function CalculatorPage() {
     executeSummonAttack,
     executeTheBetrayerBonus,
     executeOverwatchAttack,
+    executeFuryOfTheAncients,
+    executeTheQuickening,
+    applyBloodChaliceBuff,
   } = useBattleStore();
 
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
@@ -112,6 +117,21 @@ export function CalculatorPage() {
     casterId: string;
     hpToHeal: number;
     hpToHeal_2: number;
+  } | null>(null);
+
+  // The Quickening modal state (for Mephiston's active ability)
+  const [theQuickeningModalOpen, setTheQuickeningModalOpen] = useState(false);
+  const [theQuickeningContext, setTheQuickeningContext] = useState<{
+    casterId: string;
+    dmgPct: number;
+    maxDmg: number;
+  } | null>(null);
+
+  // Blood Chalice modal state (for Nicodemus's active ability)
+  const [bloodChaliceModalOpen, setBloodChaliceModalOpen] = useState(false);
+  const [bloodChaliceContext, setBloodChaliceContext] = useState<{
+    casterId: string;
+    extraPierceRatio: number;
   } | null>(null);
 
   // DarkTalonStrike modal state (for Azrael's active ability)
@@ -345,6 +365,73 @@ export function CalculatorPage() {
           break;
         }
 
+        // Special handling for TheQuickening - opens target selection modal
+        if (abilityId === 'TheQuickening') {
+          const tqLevelIndex = character.abilityLevels?.['TheQuickening'] ?? 54;
+          const tqValues = getAbilityValues('TheQuickening', tqLevelIndex);
+          const dmgPct = (tqValues?.dmgPct as number) || 100;
+          const maxDmg = (tqValues?.maxDmg as number) || 0;
+
+          // Check if there are any Blood Angels targets (excluding Mephiston himself)
+          const eligibleTargets = battleState.team.filter(c =>
+            c.id !== characterId && c.faction === 'BloodAngels'
+          );
+
+          if (eligibleTargets.length === 0) {
+            // No valid targets - use ability but it does nothing
+            const targetTurn = activeTurn;
+
+            // Only modify current turn flags if not editing past turn
+            if (!isEditingPastTurn) {
+              setCharacterActed(characterId, true);
+              setCharacterTurnEnded(characterId, true);
+            }
+
+            // Mark ability as used
+            markAbilityUsed(characterId, 'TheQuickening');
+
+            // Add log entry indicating ability was used but had no effect
+            const logEntry: BattleLogEntry = {
+              timestamp: Date.now(),
+              characterId,
+              characterName: character.name,
+              characterIconUrl: character.iconUrl,
+              action: 'ability',
+              message: `${character.name} used The Quickening but there are no Blood Angels teammates to target.`,
+            };
+            setBattleLog((prev) => [...prev, { ...logEntry, turn: targetTurn }]);
+
+            // Auto-trigger Fury of the Ancients if not used this turn
+            if (character.passiveAbilities.includes('FuryOfTheAncients') && !character.hasUsedFuryOfTheAncientsThisTurn) {
+              const furyLog = executeFuryOfTheAncients(characterId);
+              setBattleLog((prev) => [...prev, { ...furyLog, turn: targetTurn }]);
+            }
+            break;
+          }
+
+          setTheQuickeningContext({
+            casterId: characterId,
+            dmgPct,
+            maxDmg,
+          });
+          setTheQuickeningModalOpen(true);
+          break;
+        }
+
+        // Special handling for BloodChalice - opens target selection modal
+        if (abilityId === 'BloodChalice') {
+          const bcLevelIndex = character.abilityLevels?.['BloodChalice'] ?? 54;
+          const bcValues = getAbilityValues('BloodChalice', bcLevelIndex);
+          const extraPierceRatio = (bcValues?.extraPierceRatio as number) || 0;
+
+          setBloodChaliceContext({
+            casterId: characterId,
+            extraPierceRatio,
+          });
+          setBloodChaliceModalOpen(true);
+          break;
+        }
+
         // Special handling for DarkTalonStrike - opens attack type selection modal
         if (abilityId === 'DarkTalonStrike') {
           const dtsLevelIndex = character.abilityLevels?.['DarkTalonStrike'] ?? 54;
@@ -518,6 +605,20 @@ export function CalculatorPage() {
     setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
   };
 
+  // Handle Fury of the Ancients execute action for Mephiston
+  const handleExecuteFuryOfTheAncients = (characterId: string) => {
+    if (!battleState) return;
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) return;
+
+    const targetTurn = activeTurn;
+
+    // Execute Fury of the Ancients bonus attack (does NOT end turn)
+    const executeLog = executeFuryOfTheAncients(characterId);
+    setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
+  };
+
   // Helper to check if character has both melee and ranged attacks
   const hasBothAttacks = (char: BattleCharacter) => {
     const hasMelee = char.meleeHits > 0;
@@ -686,6 +787,106 @@ export function CalculatorPage() {
   const handleInspiredToGreatnessCancel = () => {
     setInspiredToGreatnessModalOpen(false);
     setInspiredToGreatnessContext(null);
+  };
+
+  // Handle The Quickening target selection (Mephiston)
+  const handleTheQuickeningConfirm = (targetId: string) => {
+    if (!theQuickeningContext || !battleState) return;
+
+    const caster = battleState.team.find(c => c.id === theQuickeningContext.casterId);
+    const target = battleState.team.find(c => c.id === targetId);
+    if (!caster || !target) return;
+
+    // Verify target is Blood Angels
+    if (target.faction !== 'BloodAngels') {
+      console.warn('TheQuickening target must be Blood Angels');
+      return;
+    }
+
+    const targetTurn = activeTurn;
+
+    // Only modify current turn flags if not editing past turn
+    if (!isEditingPastTurn) {
+      setCharacterActed(theQuickeningContext.casterId, true);
+      setCharacterTurnEnded(theQuickeningContext.casterId, true);
+    }
+    addAction(theQuickeningContext.casterId, { type: 'ability', characterId: theQuickeningContext.casterId });
+
+    // Mark ability as used
+    markAbilityUsed(theQuickeningContext.casterId, 'TheQuickening');
+
+    // Execute the attack
+    const executeLog = executeTheQuickening(theQuickeningContext.casterId, targetId);
+    setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
+
+    // Auto-trigger Fury of the Ancients if not used this turn
+    if (caster.passiveAbilities.includes('FuryOfTheAncients') && !caster.hasUsedFuryOfTheAncientsThisTurn) {
+      const furyLog = executeFuryOfTheAncients(theQuickeningContext.casterId);
+      setBattleLog((prev) => [...prev, { ...furyLog, turn: targetTurn }]);
+    }
+
+    // Close modal and clear context
+    setTheQuickeningModalOpen(false);
+    setTheQuickeningContext(null);
+  };
+
+  // Cancel The Quickening action
+  const handleTheQuickeningCancel = () => {
+    setTheQuickeningModalOpen(false);
+    setTheQuickeningContext(null);
+  };
+
+  // Handle Blood Chalice target selection (Nicodemus)
+  const handleBloodChaliceConfirm = (targetIds: string[]) => {
+    if (!bloodChaliceContext || !battleState) return;
+
+    const caster = battleState.team.find(c => c.id === bloodChaliceContext.casterId);
+    if (!caster) return;
+
+    const targetTurn = activeTurn;
+
+    // Only modify current turn flags if not editing past turn
+    if (!isEditingPastTurn) {
+      setCharacterActed(bloodChaliceContext.casterId, true);
+      setCharacterTurnEnded(bloodChaliceContext.casterId, true);
+    }
+    addAction(bloodChaliceContext.casterId, { type: 'ability', characterId: bloodChaliceContext.casterId });
+
+    // Mark ability as used
+    markAbilityUsed(bloodChaliceContext.casterId, 'BloodChalice');
+
+    // Apply the buff to selected targets
+    if (targetIds.length > 0) {
+      applyBloodChaliceBuff(bloodChaliceContext.casterId, targetIds, bloodChaliceContext.extraPierceRatio);
+    }
+
+    // Build log message
+    const targetNames = targetIds.map(id => {
+      const char = battleState.team.find(c => c.id === id);
+      return char?.name || 'Unknown';
+    }).join(', ');
+
+    const logEntry: BattleLogEntry = {
+      timestamp: Date.now(),
+      characterId: bloodChaliceContext.casterId,
+      characterName: caster.name,
+      characterIconUrl: caster.iconUrl,
+      action: 'ability',
+      message: targetIds.length > 0
+        ? `Blood Chalice grants +${bloodChaliceContext.extraPierceRatio}% pierce ratio to ${targetNames}`
+        : `Blood Chalice used but no targets selected`,
+    };
+    setBattleLog((prev) => [...prev, { ...logEntry, turn: targetTurn }]);
+
+    // Close modal and clear context
+    setBloodChaliceModalOpen(false);
+    setBloodChaliceContext(null);
+  };
+
+  // Cancel Blood Chalice action
+  const handleBloodChaliceCancel = () => {
+    setBloodChaliceModalOpen(false);
+    setBloodChaliceContext(null);
   };
 
   // Handle DarkTalonStrike attack type selection
@@ -1114,6 +1315,7 @@ export function CalculatorPage() {
                   onToggleAbility={(abilityId, counterValue) => toggleAbility(character.id, abilityId, counterValue)}
                   onExecuteBetrayer={() => handleExecuteBetrayer(character.id)}
                   onExecuteOverwatch={() => handleExecuteOverwatch(character.id)}
+                  onExecuteFuryOfTheAncients={() => handleExecuteFuryOfTheAncients(character.id)}
                 />
               );
             })}
@@ -1241,6 +1443,31 @@ export function CalculatorPage() {
           hpToHeal={inspiredToGreatnessContext.hpToHeal}
           hpToHeal_2={inspiredToGreatnessContext.hpToHeal_2}
           onConfirm={handleInspiredToGreatnessConfirm}
+        />
+      )}
+
+      {/* The Quickening Modal (Mephiston's ability) */}
+      {theQuickeningContext && (
+        <TheQuickeningModal
+          isOpen={theQuickeningModalOpen}
+          onClose={handleTheQuickeningCancel}
+          caster={battleState.team.find(c => c.id === theQuickeningContext.casterId)!}
+          team={battleState.team}
+          dmgPct={theQuickeningContext.dmgPct}
+          maxDmg={theQuickeningContext.maxDmg}
+          onConfirm={handleTheQuickeningConfirm}
+        />
+      )}
+
+      {/* Blood Chalice Modal (Nicodemus's ability) */}
+      {bloodChaliceContext && (
+        <BloodChaliceModal
+          isOpen={bloodChaliceModalOpen}
+          onClose={handleBloodChaliceCancel}
+          caster={battleState.team.find(c => c.id === bloodChaliceContext.casterId)!}
+          team={battleState.team}
+          extraPierceRatio={bloodChaliceContext.extraPierceRatio}
+          onConfirm={handleBloodChaliceConfirm}
         />
       )}
 
