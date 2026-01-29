@@ -23,7 +23,7 @@ export const LordOfTheHostHandler: AuraAbilityHandler = {
     const extraDmg = values.extraDmg as number || 0;
 
     return [
-      // Damage bonus - requires being in range (toggle: In Range of [Dante])
+      // Damage bonus - requires being in range (toggle: Range 2 from [Dante])
       {
         auraId: `LordOfTheHost_${sourceCharacterId}_damage`,
         sourceAbilityId: 'LordOfTheHost',
@@ -33,7 +33,7 @@ export const LordOfTheHostHandler: AuraAbilityHandler = {
         modifiers: {
           baseDamageBonus: extraDmg,
         },
-        toggleLabel: `In Range of ${sourceCharacterName}`,
+        toggleLabel: `Range 2 from ${sourceCharacterName}`,
         bonusText: `+${extraDmg} melee dmg`,
         attackTypeRestriction: 'melee',
       },
@@ -84,7 +84,7 @@ export const FirstAmongTraitorsHandler: AuraAbilityHandler = {
         modifiers: {
           baseDamageBonus: extraDmg,  // Base value, will be scaled in battleStore
         },
-        toggleLabel: `In Range of ${sourceCharacterName}`,
+        toggleLabel: `Range 2 from ${sourceCharacterName}`,
         bonusText: `+${extraDmg} dmg (scales with attacks)`,
         scalingContext: {
           sourceCharacterId,

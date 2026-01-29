@@ -21,6 +21,7 @@ interface BattleCharacterCardProps {
   onExecuteBetrayer?: () => void;  // For Kharn's The Betrayer bonus attack
   onExecuteOverwatch?: () => void;  // For Re'vas's Overwatch attack
   onExecuteFuryOfTheAncients?: () => void;  // For Mephiston's Fury of the Ancients
+  onExecuteMartialSuperiority?: () => void;  // For Jaeger's Martial Superiority
 }
 
 export function BattleCharacterCard({
@@ -38,10 +39,11 @@ export function BattleCharacterCard({
   onExecuteBetrayer,
   onExecuteOverwatch,
   onExecuteFuryOfTheAncients,
+  onExecuteMartialSuperiority,
 }: BattleCharacterCardProps) {
   const [hoveredPassive, setHoveredPassive] = useState<string | null>(null);
   const hasActedThisTurn = character.hasMoved && character.hasActed;
-  const hasAnyAction = character.hasMoved || character.hasActed || character.hasUsedTheBetrayerThisTurn || character.hasUsedAbilityThisTurn || character.hasUsedOverwatchThisTurn || character.hasUsedFuryOfTheAncientsThisTurn;
+  const hasAnyAction = character.hasMoved || character.hasActed || character.hasUsedTheBetrayerThisTurn || character.hasUsedAbilityThisTurn || character.hasUsedOverwatchThisTurn || character.hasUsedFuryOfTheAncientsThisTurn || character.hasUsedMartialSuperiorityThisTurn;
 
   // Helper to get passive ability display name (with phase for Serene Unifier)
   const getPassiveDisplayName = (passiveId: string): string => {
@@ -330,7 +332,7 @@ export function BattleCharacterCard({
       {/* Action Panel (only if selected) */}
       {isSelected && (
         <div className="mt-3 pt-3 border-t border-gray-700">
-          <ActionPanel character={character} team={team} onAction={onAction} onExecuteBetrayer={onExecuteBetrayer} onExecuteOverwatch={onExecuteOverwatch} onExecuteFuryOfTheAncients={onExecuteFuryOfTheAncients} />
+          <ActionPanel character={character} team={team} onAction={onAction} onExecuteBetrayer={onExecuteBetrayer} onExecuteOverwatch={onExecuteOverwatch} onExecuteFuryOfTheAncients={onExecuteFuryOfTheAncients} onExecuteMartialSuperiority={onExecuteMartialSuperiority} />
         </div>
       )}
     </div>

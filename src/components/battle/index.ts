@@ -20,5 +20,6 @@ export { DarkTalonStrikeModal } from './DarkTalonStrikeModal';
 export type { DarkTalonStrikeMode } from './DarkTalonStrikeModal';
 export { RitesOfMorkaiModal } from './RitesOfMorkaiModal';
 export { HealTargetModal } from './HealTargetModal';
+export { UnbreakableDutyModal } from './UnbreakableDutyModal';
 export { ShareBattleModal } from './ShareBattleModal';
 export { SharedBattleView } from './SharedBattleView';

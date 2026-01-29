@@ -19,7 +19,7 @@ const isToggleActive = (value: boolean | number | undefined): boolean => value =
  */
 export interface BuffCondition {
   id: string;              // Unique ID for the toggle (stored in abilityToggles)
-  label: string;           // Display label (e.g., "Charging", "In Range of Dante")
+  label: string;           // Display label (e.g., "Charging", "Range 2 from Dante")
   source: string;          // Source ability/buff name
   sourceCharacter?: string; // Character providing the buff (for auras)
   effect: string;          // Effect description (e.g., "+3 hits, +582 crit dmg")
@@ -881,12 +881,12 @@ function getAuraConditions(
         if (values) {
           const extraDmg = values.extraDmg as number || 0;
 
-          // Damage bonus condition - "In Range of [Dante]"
+          // Damage bonus condition - "Range 2 from [Dante]"
           const dmgToggleId = `LordOfTheHost_${teammate.id}_damage`;
           const isDmgActive = isToggleActive(character.abilityToggles[dmgToggleId]);
           conditions.push({
             id: dmgToggleId,
-            label: `In Range of ${teammate.name}`,
+            label: `Range 2 from ${teammate.name}`,
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmg} melee dmg`,
@@ -924,12 +924,12 @@ function getAuraConditions(
           const extraDmg = values.extraDmg as number || 0;
           const maxDmg = values.maxDmg as number || 0;
 
-          // Damage bonus condition - "In Range of [Abaddon]"
+          // Damage bonus condition - "Range 2 from [Abaddon]"
           const dmgToggleId = `FirstAmongTraitors_${teammate.id}_damage`;
           const isDmgActive = isToggleActive(character.abilityToggles[dmgToggleId]);
           conditions.push({
             id: dmgToggleId,
-            label: `In Range of ${teammate.name}`,
+            label: `Range 2 from ${teammate.name}`,
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmg} to +${maxDmg} dmg`,
@@ -1243,7 +1243,7 @@ function getAuraConditions(
       }
     }
 
-    // Astartes Banner (Thoread) - capped damage bonus to allies
+    // Astartes Banner (Thoread) - additional melee hit with damage cap for allies
     if (teammate.passiveAbilities.includes('AstartesBanner')) {
       if (character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['AstartesBanner'] ?? 54;
@@ -1251,7 +1251,7 @@ function getAuraConditions(
         const abilityName = getAbilityNameSync('AstartesBanner');
 
         if (values) {
-          const extraDmg = values.extraDmg as number || 0;
+          const maxDmg = values.maxDmg as number || 0;
           const toggleId = `AstartesBanner_${teammate.id}_range2`;
 
           conditions.push({
@@ -1259,7 +1259,7 @@ function getAuraConditions(
             label: `Range 2 from ${teammate.name}`,
             source: abilityName,
             sourceCharacter: teammate.name,
-            effect: `+${extraDmg} dmg (cap 500)`,
+            effect: `+1 melee hit (cap ${maxDmg})`,
             isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });
@@ -1662,12 +1662,12 @@ export function getSummonBuffConditions(
         if (values) {
           const extraDmg = values.extraDmg as number || 0;
 
-          // Damage bonus condition - "In Range of [Dante]"
+          // Damage bonus condition - "Range 2 from [Dante]"
           const dmgToggleId = `LordOfTheHost_${teammate.id}_damage`;
           const isDmgActive = isToggleActive(toggles[dmgToggleId]);
           conditions.push({
             id: dmgToggleId,
-            label: `In Range of ${teammate.name}`,
+            label: `Range 2 from ${teammate.name}`,
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmg} melee dmg`,

@@ -617,6 +617,7 @@ interface BattleStore {
   executeTheBetrayerBonus: (characterId: string) => BattleLogEntry;
   executeOverwatchAttack: (characterId: string) => BattleLogEntry;
   executeFuryOfTheAncients: (characterId: string) => BattleLogEntry;
+  executeMartialSuperiority: (characterId: string) => BattleLogEntry;
   executeTheQuickening: (casterId: string, targetId: string) => BattleLogEntry;
   applyBloodChaliceBuff: (casterId: string, targetIds: string[], extraPierceRatio: number) => void;
 }
@@ -843,6 +844,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       hasUsedCalibaniteThisTurn: false,
       // Reset Fury of the Ancients usage for new turn (once per turn ability)
       hasUsedFuryOfTheAncientsThisTurn: false,
+      // Reset Martial Superiority usage for new turn (once per turn ability)
+      hasUsedMartialSuperiorityThisTurn: false,
       // Increment attackTurnsCount if character attacked this turn (for LegacyOfCombat bonus)
       attackTurnsCount: char.attacksThisTurn > 0 ? char.attackTurnsCount + 1 : char.attackTurnsCount,
       // Advance ability cooldowns
@@ -1952,6 +1955,114 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const isNormalAttack = attackType === 'melee' || attackType === 'ranged';
     const isMeleeAttack = attackType === 'melee';
 
+    // AstartesBanner (Thoread): detect if banner is active for inline hit computation
+    // Banner adds +1 hit after EACH melee attack (main + each follow-up), using same stats + finalDamageCap
+    let bannerActive = false;
+    let bannerMaxDmg = 0;
+    if (isMeleeAttack) {
+      const thoread = battleState.team.find(c => c.passiveAbilities.includes('AstartesBanner'));
+      if (thoread && thoread.id !== attacker.id) {
+        const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
+        if (isToggleActive(attacker.abilityToggles[bannerToggleId])) {
+          const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
+          const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex);
+          if (bannerValues) {
+            bannerActive = true;
+            bannerMaxDmg = bannerValues.maxDmg as number || 0;
+          }
+        }
+      }
+    }
+
+    // AstartesBanner: +1 hit after main melee attack (same stats, capped at maxDmg)
+    if (bannerActive) {
+      const bannerStats: AttackerStats = {
+        ...attackerStats,
+        hits: 1,
+        damageCaps: { ...(attackerStats.damageCaps || {}), finalDamageCap: bannerMaxDmg },
+        critChainOffset: result.totalHits,
+        abilityModifiers: attackerStats.abilityModifiers ? {
+          ...attackerStats.abilityModifiers,
+          extraHits: undefined,  // Banner is exactly 1 hit
+        } : undefined,
+      };
+      const bannerCalc = new DamageCalculator(true);
+      const bannerResult = bannerCalc.calculate(bannerStats, defenderStats);
+
+      // Apply Prophet reduction
+      let bannerProphetReduction = 1;
+      if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+        bannerProphetReduction = prophetMultiplier;
+      }
+      const adjustedBannerDamage = Math.round(bannerResult.damage * bannerProphetReduction);
+      // Banner shares crit chain, so no separate prophet counter increment
+
+      totalDamage += adjustedBannerDamage;
+      maxPerHitDamage = Math.max(maxPerHitDamage, bannerResult.perHitDamage);
+
+      // Build breakdown
+      const bannerBreakdown: DamageBreakdown = {
+        damage: bannerResult.damage,
+        perHitDamage: bannerResult.perHitDamage,
+        hits: bannerResult.totalHits,
+        baseDamage: bannerResult.baseDamage,
+        flatModifiers: bannerResult.flatModifiers,
+        flatModifierSources: bannerResult.flatModifierSources,
+        critBonus: bannerResult.critBonus,
+        critChanceSources: bannerResult.critChanceSources,
+        critDamageSources: bannerResult.critDamageSources,
+        extraHits: bannerResult.extraHits,
+        extraHitsSources: bannerResult.extraHitsSources,
+        damVarMod: bannerResult.damVarMod,
+        targetArmor: bossArmor,
+        armorIgnored: bannerResult.armorIgnored,
+        armorIgnoredSources: bannerResult.armorIgnoredSources,
+        effectiveArmor: bannerResult.effectiveArmor,
+        afterArmor: bannerResult.afterArmor,
+        pierceRatio: bannerResult.pierceRatio,
+        effectivePierceRatio: bannerResult.effectivePierceRatio,
+        pierceRatioBonus: bannerResult.pierceRatioBonus,
+        pierceRatioBonusSources: bannerResult.pierceRatioBonusSources,
+        pierceFloor: bannerResult.pierceFloor,
+        afterArmorPierce: bannerResult.afterArmorPierce,
+        globalMultiplier: bannerResult.globalMultiplier,
+        globalMultiplierSources: bannerResult.globalMultiplierSources,
+        baseCritChance: bannerResult.baseCritChance,
+        baseCritDamage: bannerResult.baseCritDamage,
+        critChanceBonus: bannerResult.critChanceTotalBonus,
+        critDmgBonus: bannerResult.critDamageTotalBonus,
+        critChance: bannerResult.effectiveCritChance * 100,
+        critDamage: bannerResult.effectiveCritDamage,
+        traitModifiers: bannerResult.traitModifiers,
+        traitMultiplier: bannerResult.traitMultiplier,
+        expectedBlocks: bannerResult.expectedBlocks,
+        blockReductionPerHit: bannerResult.blockReductionPerHit,
+        totalBlockReduction: bannerResult.totalBlockReduction,
+      };
+      if (bannerProphetReduction < 1) {
+        bannerBreakdown.globalMultiplier = (bannerBreakdown.globalMultiplier || 1) * bannerProphetReduction;
+        bannerBreakdown.globalMultiplierSources = [
+          ...(bannerBreakdown.globalMultiplierSources || []),
+          { name: 'Prophet of Gork and Mork', damageMultiplier: bannerProphetReduction }
+        ];
+        bannerBreakdown.damage = adjustedBannerDamage;
+        bannerBreakdown.perHitDamage = Math.round(bannerBreakdown.perHitDamage * bannerProphetReduction);
+      }
+
+      followUpAttackLogs.push({
+        abilityName: 'Astartes Banner',
+        damage: adjustedBannerDamage,
+        hits: bannerResult.totalHits,
+        damageType: attackerStats.damageType,
+        attackType: 'melee',
+        breakdown: bannerBreakdown,
+      });
+
+      console.log(`\nAstartes Banner (main attack): 1x ${attackerStats.damageType} (cap ${bannerMaxDmg})`);
+      bannerCalc.printLogs();
+      console.log(`Banner Damage: ${adjustedBannerDamage.toLocaleString()}`);
+    }
+
     // Check for WayOfTheShortBlade aura: T'au Empire characters get ranged follow-up after melee
     // if Farsight is on the team and they have the toggle checked
     const allFollowUps = [...passiveResult.followUpAttacks];
@@ -2045,8 +2156,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Track effective attacker state for follow-up evaluations
     let effectiveAttacker = attacker;
     // Track cumulative hits for crit chain offset (for Additional Attacks like Cyclic Ion Blaster)
-    // Starts with the source attack's total hits
-    let cumulativeHitsForCritChain = result.totalHits;
+    // Starts with the source attack's total hits (+ banner hit if active)
+    let cumulativeHitsForCritChain = result.totalHits + (bannerActive ? 1 : 0);
     // Track cumulative boss armor reduction from follow-up attacks (e.g., ChampionOfTheFeast)
     let followUpArmorReductionTotal = 0;
     // Track if any follow-up ranged attack occurred (for Structural Analyser Markerlight)
@@ -2344,6 +2455,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           abilityToggles: attacker.abilityToggles,
           // Pass Fighting Retreat flag for RangedSpecialist override
           fightingRetreatActive: attacker.fightingRetreatActive,
+          // Pass damage caps from follow-up definition (e.g., AstartesBanner finalDamageCap)
+          damageCaps: followUp.damageCaps,
           // Pass bonuses via abilityModifiers for proper source tracking in breakdown
           abilityModifiers: (lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus > 0 || lcExtraHits + auraHitsBonus > 0 || followUpArmorIgnored > 0 || finalFollowUpMultiplier !== 1 || followUpCritChanceBonus > 0 || followUpCritDamageBonus > 0 || followUpTotalPierceRatioBonus > 0) ? {
             baseDamageBonus: lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus > 0 ? lcExtraDmg + auraDmgBonus + conditionalDmgBonus + overwatchDmgBonus : undefined,
@@ -2465,6 +2578,94 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           attackType: effectiveAttackType,  // Include attack type for display
           breakdown: followUpBreakdown,
         });
+
+        // AstartesBanner: +1 hit after melee follow-up (same stats, capped at maxDmg)
+        if (bannerActive && effectiveAttackType === 'melee') {
+          const bannerFollowUpStats: AttackerStats = {
+            ...followUpStats,
+            hits: 1,
+            damageCaps: { ...(followUpStats.damageCaps || {}), finalDamageCap: bannerMaxDmg },
+            critChainOffset: cumulativeHitsForCritChain,
+            abilityModifiers: followUpStats.abilityModifiers ? {
+              ...followUpStats.abilityModifiers,
+              extraHits: undefined,
+            } : undefined,
+          };
+          const bannerFollowUpCalc = new DamageCalculator(true);
+          const bannerFollowUpResult = bannerFollowUpCalc.calculate(bannerFollowUpStats, defenderStats);
+          cumulativeHitsForCritChain += bannerFollowUpResult.totalHits;
+
+          // Apply Prophet reduction (shares crit chain, no separate counter increment)
+          let bannerFollowUpProphetReduction = 1;
+          if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+            bannerFollowUpProphetReduction = prophetMultiplier;
+          }
+          const adjustedBannerFollowUpDamage = Math.round(bannerFollowUpResult.damage * bannerFollowUpProphetReduction);
+
+          totalDamage += adjustedBannerFollowUpDamage;
+          maxPerHitDamage = Math.max(maxPerHitDamage, bannerFollowUpResult.perHitDamage);
+
+          const bannerFollowUpBreakdown: DamageBreakdown = {
+            damage: bannerFollowUpResult.damage,
+            perHitDamage: bannerFollowUpResult.perHitDamage,
+            hits: bannerFollowUpResult.totalHits,
+            baseDamage: bannerFollowUpResult.baseDamage,
+            flatModifiers: bannerFollowUpResult.flatModifiers,
+            flatModifierSources: bannerFollowUpResult.flatModifierSources,
+            critBonus: bannerFollowUpResult.critBonus,
+            critChanceSources: bannerFollowUpResult.critChanceSources,
+            critDamageSources: bannerFollowUpResult.critDamageSources,
+            extraHits: bannerFollowUpResult.extraHits,
+            extraHitsSources: bannerFollowUpResult.extraHitsSources,
+            damVarMod: bannerFollowUpResult.damVarMod,
+            targetArmor: bossArmor,
+            armorIgnored: bannerFollowUpResult.armorIgnored,
+            armorIgnoredSources: bannerFollowUpResult.armorIgnoredSources,
+            effectiveArmor: bannerFollowUpResult.effectiveArmor,
+            afterArmor: bannerFollowUpResult.afterArmor,
+            pierceRatio: bannerFollowUpResult.pierceRatio,
+            effectivePierceRatio: bannerFollowUpResult.effectivePierceRatio,
+            pierceRatioBonus: bannerFollowUpResult.pierceRatioBonus,
+            pierceRatioBonusSources: bannerFollowUpResult.pierceRatioBonusSources,
+            pierceFloor: bannerFollowUpResult.pierceFloor,
+            afterArmorPierce: bannerFollowUpResult.afterArmorPierce,
+            globalMultiplier: bannerFollowUpResult.globalMultiplier,
+            globalMultiplierSources: bannerFollowUpResult.globalMultiplierSources,
+            baseCritChance: bannerFollowUpResult.baseCritChance,
+            baseCritDamage: bannerFollowUpResult.baseCritDamage,
+            critChanceBonus: bannerFollowUpResult.critChanceTotalBonus,
+            critDmgBonus: bannerFollowUpResult.critDamageTotalBonus,
+            critChance: bannerFollowUpResult.effectiveCritChance * 100,
+            critDamage: bannerFollowUpResult.effectiveCritDamage,
+            traitModifiers: bannerFollowUpResult.traitModifiers,
+            traitMultiplier: bannerFollowUpResult.traitMultiplier,
+            expectedBlocks: bannerFollowUpResult.expectedBlocks,
+            blockReductionPerHit: bannerFollowUpResult.blockReductionPerHit,
+            totalBlockReduction: bannerFollowUpResult.totalBlockReduction,
+          };
+          if (bannerFollowUpProphetReduction < 1) {
+            bannerFollowUpBreakdown.globalMultiplier = (bannerFollowUpBreakdown.globalMultiplier || 1) * bannerFollowUpProphetReduction;
+            bannerFollowUpBreakdown.globalMultiplierSources = [
+              ...(bannerFollowUpBreakdown.globalMultiplierSources || []),
+              { name: 'Prophet of Gork and Mork', damageMultiplier: bannerFollowUpProphetReduction }
+            ];
+            bannerFollowUpBreakdown.damage = adjustedBannerFollowUpDamage;
+            bannerFollowUpBreakdown.perHitDamage = Math.round(bannerFollowUpBreakdown.perHitDamage * bannerFollowUpProphetReduction);
+          }
+
+          followUpAttackLogs.push({
+            abilityName: 'Astartes Banner',
+            damage: adjustedBannerFollowUpDamage,
+            hits: bannerFollowUpResult.totalHits,
+            damageType: followUpStats.damageType,
+            attackType: 'melee',
+            breakdown: bannerFollowUpBreakdown,
+          });
+
+          console.log(`\nAstartes Banner (${followUp.abilityName}): 1x ${followUpStats.damageType} (cap ${bannerMaxDmg})`);
+          bannerFollowUpCalc.printLogs();
+          console.log(`Banner Damage: ${adjustedBannerFollowUpDamage.toLocaleString()}`);
+        }
 
         // Accumulate boss armor reduction from follow-ups (e.g., ChampionOfTheFeast)
         if (followUp.armorReduction && followUp.armorReduction > 0) {
@@ -3691,6 +3892,24 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const equipmentStats = calculateEquipmentStats(character.equipment);
       abilityAttackType = result.attackType || 'melee';
 
+      // AstartesBanner detection for multi-component melee abilities
+      let componentBannerActive = false;
+      let componentBannerMaxDmg = 0;
+      if (abilityAttackType === 'melee') {
+        const thoread = battleState.team.find(c => c.passiveAbilities.includes('AstartesBanner'));
+        if (thoread && thoread.id !== character.id) {
+          const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
+          if (isToggleActive(character.abilityToggles[bannerToggleId])) {
+            const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
+            const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex);
+            if (bannerValues) {
+              componentBannerActive = true;
+              componentBannerMaxDmg = bannerValues.maxDmg as number || 0;
+            }
+          }
+        }
+      }
+
       console.group(`=== TURN ${battleState.turn}: ${character.name} uses ${abilityName} ===`);
 
       // Track effective character state for sequential buff evaluations
@@ -3972,6 +4191,72 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           damageType: component.damageProfile,
           breakdown: componentBreakdown,
         });
+
+        // AstartesBanner: +1 hit after each melee component (same stats, capped at maxDmg)
+        if (componentBannerActive) {
+          const bannerComponentStats: AttackerStats = {
+            ...componentStats,
+            hits: 1,
+            damageCaps: { ...(componentStats.damageCaps || {}), finalDamageCap: componentBannerMaxDmg },
+            critChainOffset: componentResult.totalHits,
+            abilityModifiers: componentStats.abilityModifiers ? {
+              ...componentStats.abilityModifiers,
+              extraHits: undefined,
+            } : undefined,
+          };
+          const bannerComponentCalc = new DamageCalculator(true);
+          const bannerComponentResult = bannerComponentCalc.calculate(bannerComponentStats, defenderStats);
+
+          totalDamage += bannerComponentResult.damage;
+          maxPerHitDamage = Math.max(maxPerHitDamage, bannerComponentResult.perHitDamage);
+
+          // Build breakdown
+          const bannerComponentBreakdown: DamageBreakdown = {
+            damage: bannerComponentResult.damage,
+            perHitDamage: bannerComponentResult.perHitDamage,
+            hits: bannerComponentResult.totalHits,
+            baseDamage: bannerComponentResult.baseDamage,
+            flatModifiers: bannerComponentResult.flatModifiers,
+            flatModifierSources: bannerComponentResult.flatModifierSources,
+            critBonus: bannerComponentResult.critBonus,
+            critChanceSources: bannerComponentResult.critChanceSources,
+            critDamageSources: bannerComponentResult.critDamageSources,
+            extraHits: bannerComponentResult.extraHits,
+            extraHitsSources: bannerComponentResult.extraHitsSources,
+            damVarMod: bannerComponentResult.damVarMod,
+            targetArmor: bossArmor,
+            afterArmor: bannerComponentResult.afterArmor,
+            pierceRatio: bannerComponentResult.pierceRatio,
+            pierceRatioBonus: bannerComponentResult.pierceRatioBonus,
+            pierceRatioBonusSources: bannerComponentResult.pierceRatioBonusSources,
+            effectivePierceRatio: bannerComponentResult.effectivePierceRatio,
+            pierceFloor: bannerComponentResult.pierceFloor,
+            afterArmorPierce: bannerComponentResult.afterArmorPierce,
+            globalMultiplier: bannerComponentResult.globalMultiplier,
+            globalMultiplierSources: bannerComponentResult.globalMultiplierSources,
+            baseCritChance: bannerComponentResult.baseCritChance,
+            baseCritDamage: bannerComponentResult.baseCritDamage,
+            critChanceBonus: bannerComponentResult.critChanceTotalBonus,
+            critDmgBonus: bannerComponentResult.critDamageTotalBonus,
+            critChance: bannerComponentResult.effectiveCritChance * 100,
+            critDamage: bannerComponentResult.effectiveCritDamage,
+            traitModifiers: bannerComponentResult.traitModifiers,
+            traitMultiplier: bannerComponentResult.traitMultiplier,
+            expectedBlocks: bannerComponentResult.expectedBlocks,
+            blockReductionPerHit: bannerComponentResult.blockReductionPerHit,
+            totalBlockReduction: bannerComponentResult.totalBlockReduction,
+          };
+
+          componentAttackLogs.push({
+            abilityName: 'Astartes Banner',
+            damage: bannerComponentResult.damage,
+            hits: bannerComponentResult.totalHits,
+            damageType: component.damageProfile,
+            breakdown: bannerComponentBreakdown,
+          });
+
+          console.log(`  Banner hit after ${component.damageProfile}: ${bannerComponentResult.damage.toLocaleString()}`);
+        }
 
         // AFTER each component: Update effective character state for next component's buff evaluation
         // NOTE: hasQualifiedForLCDamage is set AFTER all components complete (not per-component)
@@ -4519,6 +4804,83 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         damageType: result.damageResult.damageProfile,
         breakdown: abilityBreakdown,
       });
+
+      // AstartesBanner: +1 hit after single-component melee ability attack (same stats, capped at maxDmg)
+      if (abilityAttackType === 'melee') {
+        const thoread = battleState.team.find(c => c.passiveAbilities.includes('AstartesBanner'));
+        if (thoread && thoread.id !== character.id) {
+          const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
+          if (isToggleActive(character.abilityToggles[bannerToggleId])) {
+            const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
+            const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex);
+            if (bannerValues) {
+              const singleBannerMaxDmg = bannerValues.maxDmg as number || 0;
+              const bannerAbilityStats: AttackerStats = {
+                ...abilityStats,
+                hits: 1,
+                damageCaps: { ...(abilityStats.damageCaps || {}), finalDamageCap: singleBannerMaxDmg },
+                critChainOffset: abilityResult.totalHits,
+                abilityModifiers: abilityStats.abilityModifiers ? {
+                  ...abilityStats.abilityModifiers,
+                  extraHits: undefined,
+                } : undefined,
+              };
+              const bannerAbilityCalc = new DamageCalculator(true);
+              const bannerAbilityResult = bannerAbilityCalc.calculate(bannerAbilityStats, defenderStats);
+
+              totalDamage += bannerAbilityResult.damage;
+              maxPerHitDamage = Math.max(maxPerHitDamage, bannerAbilityResult.perHitDamage);
+
+              // Build breakdown
+              const bannerAbilityBreakdown: DamageBreakdown = {
+                damage: bannerAbilityResult.damage,
+                perHitDamage: bannerAbilityResult.perHitDamage,
+                hits: bannerAbilityResult.totalHits,
+                baseDamage: bannerAbilityResult.baseDamage,
+                flatModifiers: bannerAbilityResult.flatModifiers,
+                flatModifierSources: bannerAbilityResult.flatModifierSources,
+                critBonus: bannerAbilityResult.critBonus,
+                critChanceSources: bannerAbilityResult.critChanceSources,
+                critDamageSources: bannerAbilityResult.critDamageSources,
+                extraHits: bannerAbilityResult.extraHits,
+                extraHitsSources: bannerAbilityResult.extraHitsSources,
+                damVarMod: bannerAbilityResult.damVarMod,
+                targetArmor: bossArmor,
+                afterArmor: bannerAbilityResult.afterArmor,
+                pierceRatio: bannerAbilityResult.pierceRatio,
+                pierceRatioBonus: bannerAbilityResult.pierceRatioBonus,
+                pierceRatioBonusSources: bannerAbilityResult.pierceRatioBonusSources,
+                effectivePierceRatio: bannerAbilityResult.effectivePierceRatio,
+                pierceFloor: bannerAbilityResult.pierceFloor,
+                afterArmorPierce: bannerAbilityResult.afterArmorPierce,
+                globalMultiplier: bannerAbilityResult.globalMultiplier,
+                globalMultiplierSources: bannerAbilityResult.globalMultiplierSources,
+                baseCritChance: bannerAbilityResult.baseCritChance,
+                baseCritDamage: bannerAbilityResult.baseCritDamage,
+                critChanceBonus: bannerAbilityResult.critChanceTotalBonus,
+                critDmgBonus: bannerAbilityResult.critDamageTotalBonus,
+                critChance: bannerAbilityResult.effectiveCritChance * 100,
+                critDamage: bannerAbilityResult.effectiveCritDamage,
+                traitModifiers: bannerAbilityResult.traitModifiers,
+                traitMultiplier: bannerAbilityResult.traitMultiplier,
+                expectedBlocks: bannerAbilityResult.expectedBlocks,
+                blockReductionPerHit: bannerAbilityResult.blockReductionPerHit,
+                totalBlockReduction: bannerAbilityResult.totalBlockReduction,
+              };
+
+              followUpAttackLogs.push({
+                abilityName: 'Astartes Banner',
+                damage: bannerAbilityResult.damage,
+                hits: bannerAbilityResult.totalHits,
+                damageType: result.damageResult.damageProfile,
+                breakdown: bannerAbilityBreakdown,
+              });
+
+              console.log(`  Banner hit after ${abilityName}: ${bannerAbilityResult.damage.toLocaleString()}`);
+            }
+          }
+        }
+      }
 
       // No main damageBreakdown - shown via followUpAttackLogs with purple shading
       damageBreakdown = undefined;
@@ -5116,6 +5478,25 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       return true;
     });
 
+    // AstartesBanner (Thoread): detect if banner is active for inline hit computation
+    // Banner adds +1 hit after EACH melee follow-up, using same stats + finalDamageCap
+    let abilityBannerActive = false;
+    let abilityBannerMaxDmg = 0;
+    {
+      const thoread = battleState.team.find(c => c.passiveAbilities.includes('AstartesBanner'));
+      if (thoread && thoread.id !== character.id) {
+        const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
+        if (isToggleActive(character.abilityToggles[bannerToggleId])) {
+          const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
+          const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex);
+          if (bannerValues) {
+            abilityBannerActive = true;
+            abilityBannerMaxDmg = bannerValues.maxDmg as number || 0;
+          }
+        }
+      }
+    }
+
     if (eligibleFollowUps.length > 0) {
       console.log('\n--- FOLLOW-UP ATTACKS (from ability) ---');
       const equipmentStats = calculateEquipmentStats(character.equipment);
@@ -5463,6 +5844,81 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           attackType: followUp.followUpAttackType || 'melee',  // Use follow-up's attack type
           breakdown: followUpBreakdown,
         });
+
+        // AstartesBanner: +1 hit after melee follow-up (same stats, capped at maxDmg)
+        if (abilityBannerActive && effectiveAttackType === 'melee') {
+          const bannerFollowUpStats: AttackerStats = {
+            ...followUpStats,
+            hits: 1,
+            damageCaps: { ...(followUpStats.damageCaps || {}), finalDamageCap: abilityBannerMaxDmg },
+            critChainOffset: cumulativeHitsForCritChain,
+            abilityModifiers: followUpStats.abilityModifiers ? {
+              ...followUpStats.abilityModifiers,
+              extraHits: undefined,
+            } : undefined,
+          };
+          const bannerFollowUpCalc = new DamageCalculator(true);
+          const bannerFollowUpResult = bannerFollowUpCalc.calculate(bannerFollowUpStats, defenderStats);
+          cumulativeHitsForCritChain += bannerFollowUpResult.totalHits;
+
+          totalDamage += bannerFollowUpResult.damage;
+          maxPerHitDamage = Math.max(maxPerHitDamage, bannerFollowUpResult.perHitDamage);
+          if (damageBreakdown) {
+            damageBreakdown.damage += bannerFollowUpResult.damage;
+          }
+
+          const bannerFollowUpBreakdown: DamageBreakdown = {
+            damage: bannerFollowUpResult.damage,
+            perHitDamage: bannerFollowUpResult.perHitDamage,
+            hits: bannerFollowUpResult.totalHits,
+            baseDamage: bannerFollowUpResult.baseDamage,
+            flatModifiers: bannerFollowUpResult.flatModifiers,
+            flatModifierSources: bannerFollowUpResult.flatModifierSources,
+            critBonus: bannerFollowUpResult.critBonus,
+            critChanceSources: bannerFollowUpResult.critChanceSources,
+            critDamageSources: bannerFollowUpResult.critDamageSources,
+            extraHits: bannerFollowUpResult.extraHits,
+            extraHitsSources: bannerFollowUpResult.extraHitsSources,
+            damVarMod: bannerFollowUpResult.damVarMod,
+            targetArmor: bossArmorFollowUp,
+            armorIgnored: bannerFollowUpResult.armorIgnored,
+            armorIgnoredSources: bannerFollowUpResult.armorIgnoredSources,
+            effectiveArmor: bannerFollowUpResult.effectiveArmor,
+            afterArmor: bannerFollowUpResult.afterArmor,
+            pierceRatio: bannerFollowUpResult.pierceRatio,
+            effectivePierceRatio: bannerFollowUpResult.effectivePierceRatio,
+            pierceRatioBonus: bannerFollowUpResult.pierceRatioBonus,
+            pierceRatioBonusSources: bannerFollowUpResult.pierceRatioBonusSources,
+            pierceFloor: bannerFollowUpResult.pierceFloor,
+            afterArmorPierce: bannerFollowUpResult.afterArmorPierce,
+            globalMultiplier: bannerFollowUpResult.globalMultiplier,
+            globalMultiplierSources: bannerFollowUpResult.globalMultiplierSources,
+            baseCritChance: bannerFollowUpResult.baseCritChance,
+            baseCritDamage: bannerFollowUpResult.baseCritDamage,
+            critChanceBonus: bannerFollowUpResult.critChanceTotalBonus,
+            critDmgBonus: bannerFollowUpResult.critDamageTotalBonus,
+            critChance: bannerFollowUpResult.effectiveCritChance * 100,
+            critDamage: bannerFollowUpResult.effectiveCritDamage,
+            traitModifiers: bannerFollowUpResult.traitModifiers,
+            traitMultiplier: bannerFollowUpResult.traitMultiplier,
+            expectedBlocks: bannerFollowUpResult.expectedBlocks,
+            blockReductionPerHit: bannerFollowUpResult.blockReductionPerHit,
+            totalBlockReduction: bannerFollowUpResult.totalBlockReduction,
+          };
+
+          followUpAttackLogs.push({
+            abilityName: 'Astartes Banner',
+            damage: bannerFollowUpResult.damage,
+            hits: bannerFollowUpResult.totalHits,
+            damageType: followUpStats.damageType,
+            attackType: 'melee',
+            breakdown: bannerFollowUpBreakdown,
+          });
+
+          console.log(`\nAstartes Banner (${followUp.abilityName}): 1x ${followUpStats.damageType} (cap ${abilityBannerMaxDmg})`);
+          bannerFollowUpCalc.printLogs();
+          console.log(`Banner Damage: ${bannerFollowUpResult.damage.toLocaleString()}`);
+        }
 
         // Accumulate boss armor reduction from follow-ups (e.g., ChampionOfTheFeast)
         if (followUp.armorReduction && followUp.armorReduction > 0) {
@@ -6248,7 +6704,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       (mult, buff) => mult * (buff.baseDamageMultiplier || 1), 1
     ) * (poolBuffEffects.baseDamageMultiplier || 1);
     const buffDamageBonus = character.activeBuffs.reduce(
-      (sum, buff) => sum + (buff.baseDamageBonus || 0), 0
+      (sum, buff) => {
+        if (buff.normalAttackOnly) return sum;  // Skip normalAttackOnly buffs for special attacks
+        return sum + (buff.baseDamageBonus || 0);
+      }, 0
     ) + (poolBuffEffects.baseDamageBonus || 0);
     const poolExtraHits = poolBuffEffects.extraHits || 0;
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
@@ -6708,7 +7167,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       (mult, buff) => mult * (buff.baseDamageMultiplier || 1), 1
     ) * (poolBuffEffects.baseDamageMultiplier || 1);
     const buffDamageBonus = character.activeBuffs.reduce(
-      (sum, buff) => sum + (buff.baseDamageBonus || 0), 0
+      (sum, buff) => {
+        if (buff.normalAttackOnly) return sum;  // Skip normalAttackOnly buffs for special attacks
+        return sum + (buff.baseDamageBonus || 0);
+      }, 0
     ) + (poolBuffEffects.baseDamageBonus || 0);
     const poolExtraHits = poolBuffEffects.extraHits || 0;
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
@@ -6922,6 +7384,301 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       damageType: damageType,
       attackType: 'melee' as const,
       message: `Fury of the Ancients deals ${result.damage.toLocaleString()} damage (${hits}x ${damageType})`,
+    };
+  },
+
+  /**
+   * Execute Martial Superiority attack (Jaeger)
+   * Manual trigger for preemptive strike: 2x Power hits
+   * Does NOT end Jaeger's turn, but can only be used once per turn
+   */
+  executeMartialSuperiority: (characterId) => {
+    const { battleState } = get();
+    if (!battleState || !battleState.boss) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'No battle in progress',
+      };
+    }
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'Character not found',
+      };
+    }
+
+    // Get MartialSuperiority ability values
+    const levelIndex = character.abilityLevels?.MartialSuperiority ?? 54;
+    const abilityValues = getAbilityValues('MartialSuperiority', levelIndex);
+    if (!abilityValues) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: character.name,
+        characterIconUrl: character.iconUrl,
+        action: 'ability' as const,
+        message: 'Martial Superiority ability not found',
+      };
+    }
+
+    const minDamage = abilityValues.minDmg as number || 0;
+    const maxDamage = abilityValues.maxDmg as number || 0;
+    const avgDamage = Math.round((minDamage + maxDamage) / 2);
+    const hits = abilityValues.nrOfHits as number || 2;
+    const damageType: DamageType = 'Power';
+    const attackType = 'melee';
+
+    // Calculate boss armor
+    const bossBaseArmor = battleState.boss.armor || 0;
+    const bossArmorReduction = battleState.bossArmorReduction || 0;
+    const bossArmor = Math.max(0, bossBaseArmor - bossArmorReduction);
+
+    // Get equipment stats for crit calculation
+    const equipmentStats = calculateEquipmentStats(character.equipment);
+    const ignoreCrit = battleState.ignoreCrit || false;
+
+    // === BUFF EVALUATION ===
+    const buffEvalContext: BuffEvaluationContext = {
+      attacker: character,
+      attackType,
+      attackCategory: 'special',
+      target: battleState.boss,
+      battleState,
+    };
+
+    const applicablePoolBuffs = getApplicableBuffs(battleState.buffPool, buffEvalContext);
+    const poolBuffEffects = combineBuffEffects(applicablePoolBuffs);
+
+    const buffCritChanceBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critChanceBonus || 0), 0
+    ) + (poolBuffEffects.critChanceBonus || 0);
+    const buffDamageMultiplier = character.activeBuffs.reduce(
+      (mult, buff) => mult * (buff.baseDamageMultiplier || 1), 1
+    ) * (poolBuffEffects.baseDamageMultiplier || 1);
+    const buffDamageBonus = character.activeBuffs.reduce(
+      (sum, buff) => {
+        if (buff.normalAttackOnly) return sum;  // Skip normalAttackOnly buffs for special attacks
+        return sum + (buff.baseDamageBonus || 0);
+      }, 0
+    ) + (poolBuffEffects.baseDamageBonus || 0);
+    const poolExtraHits = poolBuffEffects.extraHits || 0;
+    const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
+    const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
+    // Blood Chalice and other activeBuffs pierce ratio bonus (check meleeOnly flag)
+    const buffPierceRatioBonus = character.activeBuffs.reduce(
+      (sum, buff) => {
+        if (!buff.pierceRatioBonus) return sum;
+        if (buff.meleeOnly && attackType !== 'melee') return sum;
+        return sum + buff.pierceRatioBonus;
+      }, 0
+    );
+    const poolPierceRatioBonus = (poolBuffEffects.pierceRatioBonus || 0) + buffPierceRatioBonus;
+
+    // War Machine multiplier
+    const warMachineMultiplier = character.abilityToggles['WarMachine'] && battleState.machineOfWar
+      ? 1 + battleState.machineOfWar.extraDmgPct / 100
+      : 1;
+
+    // Build attacker stats
+    const attackerStats: AttackerStats = {
+      baseDamage: avgDamage,
+      damageType,
+      hits,
+      critChance: (equipmentStats.critChance || 0) + (equipmentStats.critChanceBonus || 0),
+      critDamage: (equipmentStats.critDmg || 0) + (equipmentStats.critDmgBonus || 0),
+      critChanceBonus: 0,
+      critDmgBonus: 0,
+      ignoreCrit,
+      traits: character.traits,
+      hasMoved: character.hasMoved,
+      attackType,
+      hasAttackedThisBattle: character.hasAttackedThisBattle,
+      attacksThisTurn: character.attacksThisTurn,
+      firstAttackTurn: character.firstAttackTurn ?? battleState.turn,
+      currentTurn: battleState.turn,
+      abilityToggles: character.abilityToggles,
+    };
+
+    // Evaluate aura bonuses
+    const auraBonuses = getCharacterAuraBonuses(character, battleState.team);
+    const activeAuras = auraBonuses.filter(a => {
+      if (!a.isActive) return false;
+      if (a.attackTypeRestriction && a.attackTypeRestriction !== attackType) return false;
+      return true;
+    });
+    const auraModifiers = activeAuras.map(a => a.modifiers || {});
+
+    // Build buff sources
+    type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number; pierceRatioBonus?: number };
+    const buffSources: BuffSourceType[] = [];
+
+    for (const a of activeAuras) {
+      const source: BuffSourceType = { name: a.abilityName, sourceName: a.sourceCharacterName || 'Unknown' };
+      if (a.modifiers?.baseDamageBonus) source.damageBonus = a.modifiers.baseDamageBonus;
+      if (a.modifiers?.extraHits) source.extraHits = a.modifiers.extraHits;
+      if (a.modifiers?.critChanceBonus) source.critChanceBonus = a.modifiers.critChanceBonus;
+      if (a.modifiers?.critDamageBonus) source.critDamageBonus = a.modifiers.critDamageBonus;
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus) {
+        buffSources.push(source);
+      }
+    }
+
+    for (const poolBuff of applicablePoolBuffs) {
+      const source: BuffSourceType = { name: poolBuff.name };
+      if (poolBuff.effects.baseDamageBonus) source.damageBonus = poolBuff.effects.baseDamageBonus;
+      if (poolBuff.effects.extraHits) source.extraHits = poolBuff.effects.extraHits;
+      if (poolBuff.effects.critChanceBonus) source.critChanceBonus = poolBuff.effects.critChanceBonus;
+      if (poolBuff.effects.critDamageBonus) source.critDamageBonus = poolBuff.effects.critDamageBonus;
+      if (poolBuff.effects.baseDamageMultiplier && poolBuff.effects.baseDamageMultiplier !== 1) {
+        source.damageMultiplier = poolBuff.effects.baseDamageMultiplier;
+      }
+      if (poolBuff.effects.armorIgnored) source.armorIgnored = poolBuff.effects.armorIgnored;
+      if (poolBuff.effects.pierceRatioBonus) source.pierceRatioBonus = poolBuff.effects.pierceRatioBonus;
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus || source.damageMultiplier || source.armorIgnored || source.pierceRatioBonus) {
+        buffSources.push(source);
+      }
+    }
+
+    if (warMachineMultiplier > 1 && battleState.machineOfWar) {
+      buffSources.push({
+        name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
+        damageMultiplier: warMachineMultiplier,
+      });
+    }
+
+    // Add activeBuffs pierce ratio sources (e.g., Blood Chalice)
+    for (const buff of character.activeBuffs) {
+      if (buff.pierceRatioBonus && (!buff.meleeOnly || attackType === 'melee')) {
+        buffSources.push({
+          name: buff.abilityName || 'Active Buff',
+          pierceRatioBonus: buff.pierceRatioBonus,
+        });
+      }
+    }
+
+    // Combine modifiers
+    const combinedMods = combineModifiers(auraModifiers);
+    const totalCritChanceBonus = (combinedMods.critChanceBonus || 0) + buffCritChanceBonus;
+    const buffCritDmgBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critDamageBonus || 0), 0
+    ) + poolCritDmgBonus;
+    const buffExtraHits = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.extraHits || 0), 0
+    ) + poolExtraHits;
+    const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * warMachineMultiplier;
+    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus;
+    const totalArmorIgnored = (combinedMods.armorIgnored || 0) + poolArmorIgnored;
+    const totalPierceRatioBonus = (combinedMods.pierceRatioBonus || 0) + poolPierceRatioBonus;
+
+    attackerStats.abilityModifiers = {
+      ...combinedMods,
+      baseDamageBonus: totalDamageBonus > 0 ? totalDamageBonus : undefined,
+      baseDamageMultiplier: totalDamageMultiplier !== 1 ? totalDamageMultiplier : undefined,
+      critChanceBonus: totalCritChanceBonus > 0 ? totalCritChanceBonus : undefined,
+      critDamageBonus: (combinedMods.critDamageBonus || 0) + buffCritDmgBonus > 0 ? (combinedMods.critDamageBonus || 0) + buffCritDmgBonus : undefined,
+      extraHits: (combinedMods.extraHits || 0) + buffExtraHits > 0 ? (combinedMods.extraHits || 0) + buffExtraHits : undefined,
+      armorIgnored: totalArmorIgnored > 0 ? totalArmorIgnored : undefined,
+      pierceRatioBonus: totalPierceRatioBonus > 0 ? totalPierceRatioBonus : undefined,
+      buffSources,
+    };
+
+    // Daemon block check
+    const hasDaemonTrait = battleState.boss?.traits?.includes('Daemon') ?? false;
+
+    const defenderStats: DefenderStats = {
+      armor: bossArmor,
+      maxHealth: battleState.boss?.health ?? 100000,
+      traits: battleState.boss.traits,
+      daemonBlockChance: hasDaemonTrait ? 0.25 : undefined,
+      daemonBlockMaxAmount: hasDaemonTrait ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
+    };
+
+    // Calculate damage
+    const calculator = new DamageCalculator(true);
+    const result = calculator.calculate(attackerStats, defenderStats);
+
+    console.group(`=== Martial Superiority Execute (${character.name}) ===`);
+    console.log(`Base Damage: ${avgDamage} (${minDamage}-${maxDamage})`);
+    console.log(`Hits: ${hits}`);
+    console.log(`Damage Type: ${damageType}`);
+    if (buffSources.length > 0) {
+      console.log(`Active Buffs: ${buffSources.map(b => b.name).join(', ')}`);
+    }
+    calculator.printLogs();
+    console.groupEnd();
+
+    // Update battle state
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            totalDamageDealt: state.battleState.totalDamageDealt + result.damage,
+            team: state.battleState.team.map((c) =>
+              c.id === characterId
+                ? { ...c, totalDamageDealt: c.totalDamageDealt + result.damage, hasUsedMartialSuperiorityThisTurn: true }
+                : c
+            ),
+          }
+        : null,
+    }));
+
+    // Build damage breakdown
+    const damageBreakdown: DamageBreakdown = {
+      damage: result.damage,
+      perHitDamage: result.perHitDamage,
+      hits: result.totalHits,
+      baseDamage: avgDamage,
+      flatModifiers: result.flatModifiers,
+      flatModifierSources: result.flatModifierSources || [],
+      critBonus: result.critBonus,
+      critChanceSources: result.critChanceSources || [],
+      critDamageSources: result.critDamageSources || [],
+      extraHits: result.extraHits,
+      extraHitsSources: result.extraHitsSources || [],
+      damVarMod: result.damVarMod,
+      targetArmor: bossArmor,
+      armorIgnored: result.armorIgnored,
+      armorIgnoredSources: result.armorIgnoredSources,
+      effectiveArmor: result.effectiveArmor,
+      afterArmor: result.afterArmor,
+      pierceRatio: result.pierceRatio,
+      effectivePierceRatio: result.effectivePierceRatio,
+      pierceRatioBonus: result.pierceRatioBonus,
+      pierceRatioBonusSources: result.pierceRatioBonusSources,
+      pierceFloor: result.pierceFloor,
+      afterArmorPierce: result.afterArmorPierce,
+      globalMultiplier: result.globalMultiplier,
+      globalMultiplierSources: result.globalMultiplierSources || [],
+      baseCritChance: equipmentStats.critChance || 0,
+      baseCritDamage: equipmentStats.critDmg || 0,
+      critChanceBonus: equipmentStats.critChanceBonus || 0,
+      critDmgBonus: equipmentStats.critDmgBonus || 0,
+      critChance: result.effectiveCritChance,
+      critDamage: result.effectiveCritDamage,
+      expectedBlocks: result.expectedBlocks,
+      blockReductionPerHit: result.blockReductionPerHit,
+      totalBlockReduction: result.totalBlockReduction,
+    };
+
+    return {
+      timestamp: Date.now(),
+      characterId,
+      characterName: character.name,
+      characterIconUrl: character.iconUrl,
+      action: 'ability' as const,
+      damage: result.damage,
+      damageBreakdown,
+      damageType: damageType,
+      attackType: 'melee' as const,
+      message: `Martial Superiority deals ${result.damage.toLocaleString()} damage (${hits}x ${damageType})`,
     };
   },
 

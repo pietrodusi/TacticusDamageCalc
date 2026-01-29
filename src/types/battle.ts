@@ -76,6 +76,8 @@ export interface BattleCharacter extends TeamMember {
   hasUsedCalibaniteThisBattle?: boolean;  // Track if ability was used this battle (for LC - only first use counts)
   // Mephiston's Fury of the Ancients manual trigger tracking
   hasUsedFuryOfTheAncientsThisTurn?: boolean;  // When true, FuryOfTheAncients cannot be used again this turn
+  // Jaeger's Martial Superiority manual trigger tracking
+  hasUsedMartialSuperiorityThisTurn?: boolean;  // When true, MartialSuperiority cannot be used again this turn
 }
 
 export interface Buff {

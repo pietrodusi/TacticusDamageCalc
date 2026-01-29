@@ -1199,8 +1199,10 @@ export const BoltstormHandler: AbilityHandler = {
       minDamage,
       maxDamage,
       hits,
-      attackCategory: 'special',
+      attackCategory: 'normal',  // Additional normal attack (like CyclicIonBlaster)
       triggersOnNormalOnly: true,
+      followUpAttackType: 'ranged',  // Always ranged (only triggers on ranged attacks)
+      sharesCritChain: true,  // Additional Attack: continues crit chain from source attack
     } : undefined;
 
     return {
@@ -1249,9 +1251,14 @@ export const MartialSuperiorityHandler: AbilityHandler = {
 
 /**
  * AstartesBanner (Thoread)
- * Aura - allies within 2 hexes get +1 hit on melee attacks, capped at maxDmg per hit
- * Variables: dmg (unused), maxDmg (cap per hit)
+ * Aura - allies within range 2 score an additional hit with melee attacks (shared crit chain)
+ * The additional hit uses the character's own melee damage, capped at maxDmg (Cap 3)
+ * Variables: dmg (unused), maxDmg (per-hit damage cap)
  * Constants: range: 2, extraHits: 1
+ *
+ * This is handled as an aura toggle in buffConditions.ts ("In Range 2 from Thoread")
+ * and as a follow-up attack injected in battleStore.ts (not through this passive handler).
+ * The handler here is a no-op stub since the effect is team-wide.
  */
 export const AstartesBannerHandler: AbilityHandler = {
   abilityId: 'AstartesBanner',
@@ -1259,29 +1266,16 @@ export const AstartesBannerHandler: AbilityHandler = {
   category: 'passive',
   cooldown: -1,
 
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
     const maxDmgPerHit = values.maxDmg as number || 0;
-
-    // Only applies to melee attacks
-    const isMelee = context.attackType === 'melee';
-    // Toggle for whether character is within 2 hexes of Thoread
-    const adjacentToThoread = isToggleActive(context.abilityToggles['AstartesBanner']);
-    const applicable = isMelee && adjacentToThoread;
 
     return {
       abilityId: 'AstartesBanner',
       abilityName: getAbilityNameSync('AstartesBanner'),
-      modifiers: applicable ? {
-        extraHits: 1,
-        // Note: The extra hit is capped at maxDmgPerHit per hit
-        // This cap is implemented via finalDamageCap in damage caps system
-      } : {},
-      applicable,
-      reason: applicable
-        ? `+1 hit (capped at ${maxDmgPerHit} dmg)`
-        : (isMelee ? 'Not within 2 hexes of Thoread' : 'Melee attacks only'),
-      requiresToggle: true,
-      toggleLabel: 'Within 2 hexes of Thoread',
+      modifiers: {},
+      applicable: false,
+      reason: `Aura: +1 melee hit (cap ${maxDmgPerHit}) to allies in range 2`,
+      requiresToggle: false,
     };
   },
 };

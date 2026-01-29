@@ -10,15 +10,17 @@ interface ActionPanelProps {
   onExecuteBetrayer?: () => void;
   onExecuteOverwatch?: () => void;
   onExecuteFuryOfTheAncients?: () => void;
+  onExecuteMartialSuperiority?: () => void;
 }
 
-export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onExecuteOverwatch, onExecuteFuryOfTheAncients }: ActionPanelProps) {
+export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onExecuteOverwatch, onExecuteFuryOfTheAncients, onExecuteMartialSuperiority }: ActionPanelProps) {
   const hasRanged = character.rangedHits !== undefined && character.rangedHits > 0;
   const hasActiveAbility = character.activeAbilities.length > 0;
   const hasMechanicTrait = character.traits.includes('Mechanic');
   const hasHealerTrait = character.traits.includes('Healer');
   const hasTheBetrayerAbility = character.passiveAbilities?.includes('TheBetrayer') ?? false;
   const hasFuryOfTheAncientsAbility = character.passiveAbilities?.includes('FuryOfTheAncients') ?? false;
+  const hasMartialSuperiorityAbility = character.passiveAbilities?.includes('MartialSuperiority') ?? false;
   const isAdjacentToBoss = character.abilityToggles?.['adjacentToBoss'] ?? false;
   // Overwatch check - available for:
   // 1. Characters with Overwatch trait (e.g., Azrael) - always available once per turn
@@ -260,7 +262,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
       </div>
 
       {/* Other Actions */}
-      <div className={`grid gap-2 ${hasMechanicTrait || hasHealerTrait || hasTheBetrayerAbility || showOverwatchButton ? 'grid-cols-2 sm:grid-cols-2' : 'grid-cols-1'}`}>
+      <div className={`grid gap-2 ${hasMechanicTrait || hasHealerTrait || hasTheBetrayerAbility || showOverwatchButton || hasMartialSuperiorityAbility ? 'grid-cols-2 sm:grid-cols-2' : 'grid-cols-1'}`}>
         {/* Repair (only for Mechanic trait) */}
         {hasMechanicTrait && (
           <button
@@ -385,6 +387,26 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
               <span className="text-xs font-medium">Fury of the Ancients</span>
             </div>
             <span className="text-[10px] text-gray-400">2x Psychic</span>
+          </button>
+        )}
+
+        {/* Martial Superiority (bonus attack for Jaeger) */}
+        {hasMartialSuperiorityAbility && onExecuteMartialSuperiority && (
+          <button
+            onClick={() => !character.hasUsedMartialSuperiorityThisTurn && onExecuteMartialSuperiority()}
+            disabled={character.hasUsedMartialSuperiorityThisTurn}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              character.hasUsedMartialSuperiorityThisTurn ? disabledClasses : 'hover:bg-yellow-900/50 hover:border-yellow-600 text-yellow-500'
+            }`}
+            title="Martial Superiority: 2x Power melee attack (once per turn)"
+          >
+            <div className="flex items-center gap-1">
+              {getDamageTypeImageUrl('Power') && (
+                <img src={getDamageTypeImageUrl('Power')} alt="Power" className="w-5 h-5" />
+              )}
+              <span className="text-xs font-medium">Martial Superiority</span>
+            </div>
+            <span className="text-[10px] text-gray-400">2x Power</span>
           </button>
         )}
 

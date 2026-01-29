@@ -4,6 +4,7 @@
  */
 
 import type { DamageType } from '../../types';
+import type { DamageCaps } from '../damage/types';
 
 /**
  * Ability attack range type from abilities.json
@@ -109,6 +110,7 @@ export interface AbilityStatModifier {
 
   // Attack type restrictions
   meleeOnly?: boolean;             // If true, bonus only applies to melee attacks
+  normalAttackOnly?: boolean;      // If true, bonus only applies to normal attacks (not abilities/special)
 
   // Armor bonus (for defensive buffs like DoctrinaImperatives Protector)
   armorBonus?: number;             // Increases character's armor (defensive, doesn't affect damage calc)
@@ -191,6 +193,7 @@ export interface FollowUpAttack {
   triggersOnNormalOnly?: boolean;  // If true, only triggers after normal attacks (not abilities)
   triggersOnMeleeOnly?: boolean;  // If true, only triggers after melee attacks (for WayOfTheShortBlade)
   useCharacterRangedStats?: boolean;  // If true, use character's normal ranged attack stats instead of values here
+  useCharacterMeleeStats?: boolean;   // If true, use character's melee damage/type (for AstartesBanner)
   followUpAttackType?: 'melee' | 'ranged';  // Explicit attack type for buff evaluation (defaults to 'melee')
   // If true, this attack shares a crit chain with the triggering attack (Additional Attack)
   // The crit formula will use hit indices starting after the source attack's hits
@@ -204,6 +207,8 @@ export interface FollowUpAttack {
     amount: number;
     sourceName: string;  // e.g., "Markerlight", "Mechanical", "Mechanical/Markerlight"
   };
+  // Damage caps for the follow-up (e.g., AstartesBanner finalDamageCap)
+  damageCaps?: DamageCaps;
 }
 
 /**

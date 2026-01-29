@@ -1712,9 +1712,9 @@ export const FragstormGrenadeLauncherHandler: AbilityHandler = {
 
 /**
  * HolyDuel (Jaeger)
- * Buff ability - grants +extraDmg to next attack, -dmgReduction from target
- * Challenges target to 1v1 (defensive part not modeled)
- * Variables: extraDmg, dmgReduction
+ * Activates but does nothing relevant for damage calculation.
+ * In-game: challenges target to 1v1, grants +extraDmg and -dmgReduction
+ * but neither effect is modeled in this calculator.
  */
 export const HolyDuelHandler: AbilityHandler = {
   abilityId: 'HolyDuel',
@@ -1723,28 +1723,21 @@ export const HolyDuelHandler: AbilityHandler = {
   cooldown: -1,
   endsTurn: false,
 
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (_values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('HolyDuel');
-    const extraDmg = values.extraDmg as number || 0;
 
     return {
       abilityId: 'HolyDuel',
       abilityName,
       category: 'buff',
-      buffResult: {
-        effect: {
-          baseDamageBonus: extraDmg,
-        },
-        duration: 1,
-      },
-      message: `${abilityName}: +${extraDmg} damage`,
+      message: `${abilityName} activated`,
     };
   },
 };
 
 /**
  * UnbreakableDuty (Thoread)
- * Team buff - grants +extraDmg to allies within range 2
+ * When 2+ friendly Imperial characters are dead, grants +extraDmg to normal attacks for rest of battle
  * Also grants +extraHp and -dmgReductionPct% (defensive, not modeled)
  * Variables: extraDmg, extraHp, dmgReductionPct
  * Constants: range: 2
@@ -1767,10 +1760,11 @@ export const UnbreakableDutyHandler: AbilityHandler = {
       buffResult: {
         effect: {
           baseDamageBonus: extraDmg,
+          normalAttackOnly: true,  // Only applies to normal attacks
         },
         duration: 99,  // Lasts until end of battle
       },
-      message: `${abilityName}: Team +${extraDmg} damage (range 2)`,
+      message: `${abilityName}: +${extraDmg} damage (normal attacks)`,
     };
   },
 };

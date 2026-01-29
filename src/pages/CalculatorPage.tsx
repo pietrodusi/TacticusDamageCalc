@@ -20,6 +20,7 @@ import {
   DarkTalonStrikeModal,
   RitesOfMorkaiModal,
   HealTargetModal,
+  UnbreakableDutyModal,
 } from '../components/battle';
 import type { DarkTalonStrikeMode } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
@@ -84,6 +85,7 @@ export function CalculatorPage() {
     executeTheBetrayerBonus,
     executeOverwatchAttack,
     executeFuryOfTheAncients,
+    executeMartialSuperiority,
     executeTheQuickening,
     applyBloodChaliceBuff,
   } = useBattleStore();
@@ -158,6 +160,13 @@ export function CalculatorPage() {
       critChanceBonus: number;
       critDamageBonus: number;
     };
+  } | null>(null);
+
+  // Unbreakable Duty modal state (for Thoread's active ability)
+  const [unbreakableDutyModalOpen, setUnbreakableDutyModalOpen] = useState(false);
+  const [unbreakableDutyContext, setUnbreakableDutyContext] = useState<{
+    casterId: string;
+    extraDmg: number;
   } | null>(null);
 
   // Get the active turn (editing turn or current turn)
@@ -456,6 +465,20 @@ export function CalculatorPage() {
           }
         }
 
+        // Special handling for UnbreakableDuty - opens Yes/No confirmation modal
+        if (abilityId === 'UnbreakableDuty') {
+          const udLevelIndex = character.abilityLevels?.['UnbreakableDuty'] ?? 54;
+          const udValues = getAbilityValues('UnbreakableDuty', udLevelIndex);
+          const extraDmg = (udValues?.extraDmg as number) || 0;
+
+          setUnbreakableDutyContext({
+            casterId: characterId,
+            extraDmg,
+          });
+          setUnbreakableDutyModalOpen(true);
+          break;
+        }
+
         // Special handling for RitesOfMorkai - opens target selection modal
         if (abilityId === 'RitesOfMorkai') {
           const romLevelIndex = character.abilityLevels?.['RitesOfMorkai'] ?? 54;
@@ -616,6 +639,20 @@ export function CalculatorPage() {
 
     // Execute Fury of the Ancients bonus attack (does NOT end turn)
     const executeLog = executeFuryOfTheAncients(characterId);
+    setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
+  };
+
+  // Handle Martial Superiority execute action for Jaeger
+  const handleExecuteMartialSuperiority = (characterId: string) => {
+    if (!battleState) return;
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) return;
+
+    const targetTurn = activeTurn;
+
+    // Execute Martial Superiority bonus attack (does NOT end turn)
+    const executeLog = executeMartialSuperiority(characterId);
     setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
   };
 
@@ -1132,6 +1169,48 @@ export function CalculatorPage() {
     setHealContext(null);
   };
 
+  // Handle Unbreakable Duty confirmation (Thoread)
+  const handleUnbreakableDutyConfirm = (deadAlliesConfirmed: boolean) => {
+    if (!unbreakableDutyContext || !battleState) return;
+
+    const caster = battleState.team.find(c => c.id === unbreakableDutyContext.casterId);
+    if (!caster) return;
+
+    const targetTurn = activeTurn;
+
+    // Mark ability as used (one-time per battle)
+    markAbilityUsed(unbreakableDutyContext.casterId, 'UnbreakableDuty');
+
+    if (deadAlliesConfirmed) {
+      // Execute the ability to apply buff (UnbreakableDuty handler returns a buff)
+      const abilityLog = executeAbility(unbreakableDutyContext.casterId, 'UnbreakableDuty');
+      setBattleLog((prev) => [...prev, { ...abilityLog, turn: targetTurn }]);
+    } else {
+      // No buff applied - just log that ability was used
+      setBattleLog((prev) => [
+        ...prev,
+        {
+          timestamp: Date.now(),
+          characterId: unbreakableDutyContext.casterId,
+          characterName: caster.name,
+          action: 'ability' as const,
+          message: `${caster.name} used Unbreakable Duty - no dead Imperial allies`,
+          turn: targetTurn,
+        },
+      ]);
+    }
+
+    // Close modal and clear context
+    setUnbreakableDutyModalOpen(false);
+    setUnbreakableDutyContext(null);
+  };
+
+  // Cancel Unbreakable Duty action
+  const handleUnbreakableDutyCancel = () => {
+    setUnbreakableDutyModalOpen(false);
+    setUnbreakableDutyContext(null);
+  };
+
   // Team setup mode
   if (!battleState) {
     return (
@@ -1316,6 +1395,7 @@ export function CalculatorPage() {
                   onExecuteBetrayer={() => handleExecuteBetrayer(character.id)}
                   onExecuteOverwatch={() => handleExecuteOverwatch(character.id)}
                   onExecuteFuryOfTheAncients={() => handleExecuteFuryOfTheAncients(character.id)}
+                  onExecuteMartialSuperiority={() => handleExecuteMartialSuperiority(character.id)}
                 />
               );
             })}
@@ -1505,6 +1585,17 @@ export function CalculatorPage() {
           healAmount={healContext.healAmount}
           buffInfo={healContext.buffInfo}
           onConfirm={handleHealConfirm}
+        />
+      )}
+
+      {/* Unbreakable Duty Modal (Thoread's ability) */}
+      {unbreakableDutyContext && (
+        <UnbreakableDutyModal
+          isOpen={unbreakableDutyModalOpen}
+          onClose={handleUnbreakableDutyCancel}
+          characterName={battleState.team.find(c => c.id === unbreakableDutyContext.casterId)?.name || 'Thoread'}
+          extraDmg={unbreakableDutyContext.extraDmg}
+          onConfirm={handleUnbreakableDutyConfirm}
         />
       )}
     </div>
