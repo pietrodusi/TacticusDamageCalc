@@ -1771,7 +1771,7 @@ export const UnbreakableDutyHandler: AbilityHandler = {
 
 /**
  * ArmoriumCherub (Vindicta)
- * Ranged 4x Flame damage
+ * Ranged 4x Flame damage, does not end turn
  * Variables: minDmg, maxDmg
  * Constants: damageProfile: Flame, nrOfHits: 4, range: 2
  */
@@ -1780,6 +1780,7 @@ export const ArmoriumCherubHandler: AbilityHandler = {
   abilityName: 'Armorium Cherub',
   category: 'damage',
   cooldown: -1,
+  endsTurn: false,
 
   executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('ArmoriumCherub');

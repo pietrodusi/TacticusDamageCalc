@@ -1312,9 +1312,7 @@ export const UnwaveringSentinelHandler: AbilityHandler = {
 
 /**
  * FireOfAbsolution (Vindicta)
- * Ranged attack also deals 3x Flame damage to all units adjacent to the target
- * Variables: dmg
- * Constants: chance: 30, damageProfile: Flame, nrOfHits: 3
+ * Deals Flame damage to adjacent enemies - not relevant for single-target calculator
  */
 export const FireOfAbsolutionHandler: AbilityHandler = {
   abilityId: 'FireOfAbsolution',
@@ -1322,33 +1320,14 @@ export const FireOfAbsolutionHandler: AbilityHandler = {
   category: 'passive',
   cooldown: -1,
 
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
-    const isRanged = context.attackType === 'ranged';
-    const applicable = isRanged;
-    const dmg = values.dmg as number || 0;
-    const hits = values.nrOfHits as number || 3;
-    const chance = values.chance as number || 30;
-
-    // Follow-up AoE damage to adjacent hexes
-    const followUpAttack: FollowUpAttack | undefined = applicable ? {
-      abilityId: 'FireOfAbsolution',
-      abilityName: 'Fire of Absolution',
-      damageProfile: 'Flame',
-      minDamage: dmg,
-      maxDamage: dmg,
-      hits,
-      attackCategory: 'special',
-      triggersOnNormalOnly: false, // Triggers on any ranged attack
-    } : undefined;
-
+  evaluatePassive: (_values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
     return {
       abilityId: 'FireOfAbsolution',
       abilityName: getAbilityNameSync('FireOfAbsolution'),
       modifiers: {},
-      applicable,
-      reason: applicable ? `Adjacent enemies: ${hits}x ${dmg} Flame (${chance}% Fire)` : 'Only triggers on ranged attacks',
+      applicable: false,
+      reason: 'AoE damage to adjacent enemies (not modeled)',
       requiresToggle: false,
-      followUpAttack,
     };
   },
 };
