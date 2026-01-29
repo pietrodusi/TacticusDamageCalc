@@ -366,6 +366,24 @@ export const crusadeOfWrathBuffTemplate: BuffTemplate = {
 };
 
 /**
+ * BrazierOfHolyFire buff template (Roswitha active)
+ * When boss has Daemon trait: all characters get +extraDmgPct_2% damage for 2 turns
+ * Variables: extraDmgPct_2
+ */
+export const brazierOfHolyFireBuffTemplate: BuffTemplate = {
+  buffId: 'brazier_of_holy_fire',
+  name: 'Brazier of Holy Fire',
+  sourceAbilityId: 'BrazierOfHolyFire',
+  defaultTargetCondition: {
+    type: 'allAllies',
+  },
+  getEffects: (values) => ({
+    baseDamageMultiplier: 1 + ((values.extraDmgPct_2 as number) || 10) / 100,
+  }),
+  duration: 2,
+};
+
+/**
  * DestroyTheWitch buff template (Helbrecht passive)
  * Helbrecht and friendly adjacent units deal +extraDmg with melee attacks against Psyker bosses
  * No duration - permanent aura-style buff
@@ -651,6 +669,8 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   doom_aeldari: doomAeldariBuffTemplate,
   // Structural Analyser aura (Darkstrider passive)
   structural_analyser_aura: structuralAnalyserBuffTemplate,
+  // Roswitha abilities
+  BrazierOfHolyFire: brazierOfHolyFireBuffTemplate,
   // Helbrecht abilities
   CrusadeOfWrath: crusadeOfWrathBuffTemplate,
   destroy_the_witch: destroyTheWitchBuffTemplate,

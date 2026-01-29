@@ -397,3 +397,16 @@ export function getAbilityCooldown(abilityId: string): number {
 
   return -1;
 }
+
+export function getAbilityInitialCooldown(abilityId: string): number {
+  const stats = abilitiesStats[abilityId];
+  if (!stats?.constants) return 0;
+
+  const initialCooldownTurns = stats.constants.initialCooldownTurns;
+  if (initialCooldownTurns !== undefined) {
+    const cooldown = parseInt(String(initialCooldownTurns), 10);
+    return isNaN(cooldown) ? 0 : cooldown;
+  }
+
+  return 0;
+}

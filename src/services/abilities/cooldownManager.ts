@@ -4,7 +4,7 @@
  */
 
 import type { AbilityCooldownState } from './types';
-import { getAbilityCooldown } from './abilityDataLoader';
+import { getAbilityCooldown, getAbilityInitialCooldown } from './abilityDataLoader';
 
 /**
  * Initialize cooldown state for a list of abilities
@@ -16,9 +16,10 @@ export function initializeCooldowns(
 
   for (const abilityId of abilityIds) {
     const maxCooldown = getAbilityCooldown(abilityId);
+    const initialCooldown = getAbilityInitialCooldown(abilityId);
     cooldowns[abilityId] = {
       abilityId,
-      currentCooldown: 0, // Ready to use at start
+      currentCooldown: initialCooldown, // 0 = ready at start, >0 = initial cooldown turns
       maxCooldown,
       usedThisBattle: false,
     };
@@ -31,9 +32,9 @@ export function initializeCooldowns(
  * Check if an ability is ready to use
  */
 export function isAbilityReady(cooldownState: AbilityCooldownState): boolean {
-  // One-time abilities can only be used once
+  // One-time abilities can only be used once, and must not be on initial cooldown
   if (cooldownState.maxCooldown === -1) {
-    return !cooldownState.usedThisBattle;
+    return !cooldownState.usedThisBattle && cooldownState.currentCooldown === 0;
   }
 
   // Reusable abilities are ready when cooldown is 0

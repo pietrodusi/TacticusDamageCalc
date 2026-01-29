@@ -766,6 +766,37 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Initialize GeminaeSuperia summon if Celestine is in team
+    const initialSummons: import('../types').BattleSummon[] = [];
+    const celestine = battleCharacters.find(c => c.passiveAbilities.includes('GeminaeSuperia'));
+    if (celestine) {
+      const gsValues = getAbilityValues('GeminaeSuperia', celestine.abilityLevels?.GeminaeSuperia ?? 54);
+      if (gsValues) {
+        const summonData = getSummonUnitData('adeptSmnGeminaeSuperia');
+        if (summonData) {
+          const meleeWeapon = summonData.weapons.find(w => !w.Range);
+          initialSummons.push({
+            id: `summon_adeptSmnGeminaeSuperia_${Date.now()}`,
+            unitId: 'adeptSmnGeminaeSuperia',
+            name: summonData.name,
+            sourceCharacterId: celestine.id,
+            sourceAbilityId: 'GeminaeSuperia',
+            hp: gsValues.summonHp as number || 0,
+            damage: gsValues.summonDmg as number || 0,
+            armor: gsValues.summonArmor as number || 0,
+            meleeHits: meleeWeapon?.hits || 2,
+            meleeDamageType: (meleeWeapon?.DamageProfile as import('../types').DamageType) || 'Power',
+            traits: summonData.traits || [],
+            count: 0,
+            createdAtTurn: 1,
+            iconUrl: getSummonIconUrl('adeptSmnGeminaeSuperia'),
+            activeAbilities: summonData.activeAbilities,
+            totalDamageDealt: 0,
+          });
+        }
+      }
+    }
+
     const newBattleState: BattleState = {
       turn: 1,
       maxTurns: MAX_TURNS,
@@ -789,8 +820,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         machineId: machineOfWar.machineId,
         extraDmgPct: getMachineOfWarDamageBonus(machineOfWar.machineId, machineOfWar.stars),
       } : undefined,
-      // Summoned units (e.g., Ork Boyz from Waaagh!)
-      summons: [],
+      // Summoned units (e.g., Ork Boyz from Waaagh!, Geminae Superia from Celestine)
+      summons: initialSummons,
     };
 
     set({
@@ -1045,6 +1076,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (!state.battleState) return state;
 
       const isCurrentTurn = turn === state.battleState.turn;
+      // Check if the ID belongs to a summon rather than a team character
+      const isSummon = state.battleState.summons.some(s => s.id === characterId);
 
       if (isCurrentTurn) {
         // For current turn, reset character flags and clear current actions
@@ -1068,6 +1101,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                   }
                 : char
             ),
+            // Also reset summon damage if the ID is a summon
+            summons: isSummon
+              ? state.battleState.summons.map(s =>
+                  s.id === characterId
+                    ? { ...s, totalDamageDealt: Math.max(0, s.totalDamageDealt - damageToSubtract) }
+                    : s
+                )
+              : state.battleState.summons,
             totalDamageDealt: Math.max(0, state.battleState.totalDamageDealt - damageToSubtract),
           },
           currentTurnActions: state.currentTurnActions.filter(
@@ -1076,7 +1117,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         };
       }
 
-      // For past turns, update turnHistory and character damage
+      // For past turns, update turnHistory and character/summon damage
       return {
         battleState: {
           ...state.battleState,
@@ -1088,6 +1129,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 }
               : char
           ),
+          // Also reset summon damage if the ID is a summon
+          summons: isSummon
+            ? state.battleState.summons.map(s =>
+                s.id === characterId
+                  ? { ...s, totalDamageDealt: Math.max(0, s.totalDamageDealt - damageToSubtract) }
+                  : s
+              )
+            : state.battleState.summons,
           turnHistory: state.battleState.turnHistory.map((turnRecord) => {
             if (turnRecord.turnNumber !== turn) return turnRecord;
             return {
@@ -4451,8 +4500,16 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           }
         }
       }
-    } else if (result.damageResult) {
-      // Single component damage ability (like Martial Inspiration)
+    } else if (result.damageResult || result.useCharacterMeleeStats) {
+      // Single component damage ability (like Martial Inspiration, SkyStrike)
+      // useCharacterMeleeStats: ability uses character's normal melee weapon stats
+      const effectiveDamageResult = result.damageResult || {
+        minDamage: character.calculatedDamage,
+        maxDamage: character.calculatedDamage,
+        averageDamage: character.calculatedDamage,
+        hits: character.meleeHits,
+        damageProfile: character.meleeDamageType,
+      };
       // Displayed as a special attack with purple shading
       const equipmentStats = calculateEquipmentStats(character.equipment);
 
@@ -4555,8 +4612,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         });
       }
 
-      const baseHits = result.damageResult.hits;
-      const avgDamagePerHit = result.damageResult.averageDamage;
+      const baseHits = effectiveDamageResult.hits;
+      const avgDamagePerHit = effectiveDamageResult.averageDamage;
 
       // Use boss armor if available, accounting for armor reduction
       const baseBossArmor = battleState.boss?.armor ?? 0;
@@ -4694,7 +4751,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
 
       // Supercharge (Sarquael): +pierce ratio bonus for ALL team Plasma attacks this turn
-      const singleAbilitySuperchargeBonus = (battleState.superchargePierceBonus && result.damageResult.damageProfile === 'Plasma')
+      const singleAbilitySuperchargeBonus = (battleState.superchargePierceBonus && effectiveDamageResult.damageProfile === 'Plasma')
         ? battleState.superchargePierceBonus
         : 0;
 
@@ -4722,7 +4779,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // Pass LC + aura bonuses and global multiplier via abilityModifiers for proper source tracking
       const abilityStats: AttackerStats = {
         baseDamage: avgDamagePerHit,
-        damageType: result.damageResult.damageProfile,
+        damageType: effectiveDamageResult.damageProfile,
         hits: baseHits,  // Base hits only, extra hits via abilityModifiers
         // Pre-sum equipment crit values (like normal attacks) - ability bonuses go via abilityModifiers
         critChance: (equipmentStats.critChance || 0) + (equipmentStats.critChanceBonus || 0),
@@ -4801,7 +4858,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         abilityName,
         damage: abilityResult.damage,
         hits: abilityResult.totalHits,
-        damageType: result.damageResult.damageProfile,
+        damageType: effectiveDamageResult.damageProfile,
         breakdown: abilityBreakdown,
       });
 
@@ -4872,7 +4929,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 abilityName: 'Astartes Banner',
                 damage: bannerAbilityResult.damage,
                 hits: bannerAbilityResult.totalHits,
-                damageType: result.damageResult.damageProfile,
+                damageType: effectiveDamageResult.damageProfile,
                 breakdown: bannerAbilityBreakdown,
               });
 

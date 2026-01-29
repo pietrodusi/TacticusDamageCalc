@@ -329,6 +329,10 @@ export interface ActiveAbilityResult {
   // Some abilities like RadBombardment are ranged attacks
   attackType?: 'melee' | 'ranged';
 
+  // If true, use character's normal melee weapon stats (damage, hits, profile) for damage calculation
+  // Used for abilities like SkyStrike that deal "same damage as normal attack" + modifiers
+  useCharacterMeleeStats?: boolean;
+
   // For Overwatch abilities (Re'vas Early Warning Override)
   overwatchResult?: {
     extraDmg: number;  // Extra damage for Overwatch ranged attack

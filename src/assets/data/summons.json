@@ -199,5 +199,17 @@
             }
         ],
         "traits": ["Summon", "Flying"]
+    },
+	"adeptSmnGeminaeSuperia": {
+        "name": "Geminae Superia",
+        "FactionId": "Sisterhood",
+        "GrandAllianceId": "Imperial",
+        "Movement": 4,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Power"
+            }
+        ],
+        "traits": ["Summon", "Flying"]
     }
 }

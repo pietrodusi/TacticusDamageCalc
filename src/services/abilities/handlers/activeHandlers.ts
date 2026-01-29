@@ -1807,9 +1807,9 @@ export const ArmoriumCherubHandler: AbilityHandler = {
 
 /**
  * SanctorumMissile (Morvenn Vahl)
- * Ranged 2x Blast damage + 1 additional hit
+ * Ranged 2x Blast damage
  * Variables: minDmg, maxDmg
- * Constants: damageProfile: Blast, nrOfHits: 2, nrOfHits_2: 1, range: 3
+ * Constants: damageProfile: Blast, nrOfHits: 2, range: 3
  */
 export const SanctorumMissileHandler: AbilityHandler = {
   abilityId: 'SanctorumMissile',
@@ -1822,7 +1822,7 @@ export const SanctorumMissileHandler: AbilityHandler = {
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
-    const hits = (values.nrOfHits as number || 2) + (values.nrOfHits_2 as number || 1);
+    const hits = values.nrOfHits as number || 2;
 
     return {
       abilityId: 'SanctorumMissile',
@@ -1843,7 +1843,8 @@ export const SanctorumMissileHandler: AbilityHandler = {
 
 /**
  * BrazierOfHolyFire (Roswitha)
- * Ranged multi-component: 2x Flame (initial) + 4x Flame (follow-up to target and adjacent)
+ * Ranged 2x Flame damage, or 4x if boss has Daemon trait
+ * If Daemon: also grants +extraDmgPct_2% damage to all characters for 2 turns
  * Variables: minDmg, maxDmg, extraDmgPct, extraDmgPct_2
  * Constants: damageProfile: Flame, nrOfHits: 2, nrOfHits_2: 4
  */
@@ -1853,34 +1854,34 @@ export const BrazierOfHolyFireHandler: AbilityHandler = {
   category: 'damage',
   cooldown: -1,
 
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('BrazierOfHolyFire');
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
-    const hits1 = values.nrOfHits as number || 2;
-    const hits2 = values.nrOfHits_2 as number || 4;
+    const bossIsDaemon = context.bossTraits?.includes('Daemon') ?? false;
+    const hits = bossIsDaemon ? (values.nrOfHits_2 as number || 4) : (values.nrOfHits as number || 2);
 
     return {
       abilityId: 'BrazierOfHolyFire',
       abilityName,
       category: 'damage',
-      damageComponents: [
-        {
-          minDamage: minDmg,
-          maxDamage: maxDmg,
-          averageDamage: avgDmg,
-          hits: hits1,
-          damageProfile: 'Flame' as DamageType,
+      damageResult: {
+        minDamage: minDmg,
+        maxDamage: maxDmg,
+        averageDamage: avgDmg,
+        hits,
+        damageProfile: 'Flame' as DamageType,
+      },
+      // If boss is Daemon, also grant team-wide damage buff
+      ...(bossIsDaemon ? {
+        buffResult: {
+          effect: {
+            baseDamageMultiplier: 1 + ((values.extraDmgPct_2 as number || 10) / 100),
+          },
+          duration: 2,
         },
-        {
-          minDamage: minDmg,
-          maxDamage: maxDmg,
-          averageDamage: avgDmg,
-          hits: hits2,
-          damageProfile: 'Flame' as DamageType,
-        },
-      ],
+      } : {}),
       attackType: 'ranged',
       message: abilityName,
     };
@@ -1889,7 +1890,7 @@ export const BrazierOfHolyFireHandler: AbilityHandler = {
 
 /**
  * SkyStrike (Celestine)
- * Melee attack with +extraDmg bonus
+ * Special melee attack: same damage as normal attack + extraDmg bonus
  * Celestine flies to target and attacks
  * Variables: extraDmg
  * Constants: initialCooldownTurns: 1
@@ -1897,9 +1898,9 @@ export const BrazierOfHolyFireHandler: AbilityHandler = {
 export const SkyStrikeHandler: AbilityHandler = {
   abilityId: 'SkyStrike',
   abilityName: 'Sky Strike',
-  category: 'buff',
+  category: 'damage',
   cooldown: -1,
-  endsTurn: false,
+  endsTurn: true,
 
   executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('SkyStrike');
@@ -1908,14 +1909,14 @@ export const SkyStrikeHandler: AbilityHandler = {
     return {
       abilityId: 'SkyStrike',
       abilityName,
-      category: 'buff',
-      buffResult: {
-        effect: {
-          baseDamageBonus: extraDmg,
-        },
-        duration: 1,
+      category: 'damage',
+      useCharacterMeleeStats: true,
+      attackType: 'melee',
+      abilityModifiers: {
+        abilityName,
+        baseDamageBonus: extraDmg,
       },
-      message: `${abilityName}: +${extraDmg} damage to next attack`,
+      message: abilityName,
     };
   },
 };
@@ -4175,6 +4176,31 @@ export const SentinelDirectivesHandler: AbilityHandler = {
   },
 };
 
+/**
+ * RitesOfRestoration (Isabella)
+ * Healing ability - not relevant for damage calculator
+ * Variables: hpToHeal, hp
+ */
+export const RitesOfRestorationHandler: AbilityHandler = {
+  abilityId: 'RitesOfRestoration',
+  abilityName: 'Rites of Restoration',
+  category: 'healing',
+  cooldown: -1,
+
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('RitesOfRestoration');
+    const hpToHeal = values.hpToHeal as number || 0;
+
+    return {
+      abilityId: 'RitesOfRestoration',
+      abilityName,
+      category: 'healing',
+      healingResult: { amount: hpToHeal },
+      message: abilityName,
+    };
+  },
+};
+
 // Export all active handlers
 export const activeHandlers: AbilityHandler[] = [
   WarHowlHandler,
@@ -4305,4 +4331,6 @@ export const activeHandlers: AbilityHandler[] = [
   GravitonRifleHandler,
   // AdeptusMechanicus
   SentinelDirectivesHandler,
+  // Sisterhood
+  RitesOfRestorationHandler,
 ];

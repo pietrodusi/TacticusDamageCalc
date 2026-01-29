@@ -1423,6 +1423,10 @@ export function CalculatorPage() {
                       setBattleLog((prev) => [...prev, { ...logEntry, turn: targetTurn }]);
                       return logEntry;
                     }}
+                    hasActedThisTurn={battleLog.some(
+                      entry => entry.characterId === summon.id && entry.turn === battleState.turn
+                    )}
+                    onUndo={() => handleUndoActions(summon.id)}
                   />
                 ))}
               </div>

@@ -1,4 +1,4 @@
-import { X, Minus, Plus, Sword, Shield, Heart, Zap, Settings } from 'lucide-react';
+import { X, Minus, Plus, Sword, Shield, Heart, Zap, Settings, RotateCcw } from 'lucide-react';
 import type { BattleSummon, BattleLogEntry, BattleCharacter, SelectedMachineOfWar, PooledBuff } from '../../types';
 import { getSummonBuffConditions, hasSummonBuffConditions } from '../../services/buffConditions';
 import { getDamageTypeImageUrl } from '../../services/dataService';
@@ -13,6 +13,8 @@ interface SummonCardProps {
   onUpdateCount: (summonId: string, count: number) => void;
   onToggleBuffCondition?: (summonId: string, conditionId: string) => void;
   onAttack: (summonId: string, attackType: 'melee' | 'ranged') => BattleLogEntry;
+  hasActedThisTurn?: boolean;
+  onUndo?: () => void;
 }
 
 export function SummonCard({
@@ -25,6 +27,8 @@ export function SummonCard({
   onUpdateCount,
   onToggleBuffCondition,
   onAttack,
+  hasActedThisTurn,
+  onUndo,
 }: SummonCardProps) {
   const hasRanged = summon.rangedHits && summon.rangedHits > 0;
   const hasMelee = summon.meleeHits && summon.meleeHits > 0;
@@ -83,9 +87,23 @@ export function SummonCard({
 
         {/* Name and Source */}
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-green-200 truncate">
-            {summon.name}
-          </h4>
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-semibold text-green-200 truncate">
+              {summon.name}
+            </h4>
+            {hasActedThisTurn && onUndo && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUndo();
+                }}
+                className="p-1 rounded hover:bg-gray-600 transition-colors ml-auto"
+                title="Undo actions"
+              >
+                <RotateCcw size={14} className="text-gray-400 hover:text-imperial-gold" />
+              </button>
+            )}
+          </div>
           <span className="text-xs text-green-400/70">Summon</span>
         </div>
 

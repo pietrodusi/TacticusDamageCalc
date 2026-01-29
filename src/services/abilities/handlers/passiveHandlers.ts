@@ -1383,6 +1383,8 @@ export const RighteousRepugnanceHandler: AbilityHandler = {
       hits,
       attackCategory: 'special',
       triggersOnMeleeOnly: true,
+      triggersOnNormalOnly: true,
+      sharesCritChain: true,
     } : undefined;
 
     return {
@@ -1399,7 +1401,7 @@ export const RighteousRepugnanceHandler: AbilityHandler = {
 
 /**
  * CondemnorStake (Roswitha)
- * Deals +extraDmg against Psykers
+ * All Roswitha's attacks deal +extraDmg if boss has Psyker trait
  * Variables: extraDmg
  */
 export const CondemnorStakeHandler: AbilityHandler = {
@@ -1410,16 +1412,15 @@ export const CondemnorStakeHandler: AbilityHandler = {
 
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
-    const targetIsPsyker = isToggleActive(context.abilityToggles?.['CondemnorStake']);
+    const bossIsPsyker = context.bossTraits?.includes('Psyker') ?? false;
 
     return {
       abilityId: 'CondemnorStake',
       abilityName: getAbilityNameSync('CondemnorStake'),
-      modifiers: targetIsPsyker ? { baseDamageBonus: extraDmg } : {},
-      applicable: targetIsPsyker,
-      reason: targetIsPsyker ? `+${extraDmg} damage vs Psyker` : 'Target is not a Psyker',
-      requiresToggle: true,
-      toggleLabel: 'Target is Psyker',
+      modifiers: bossIsPsyker ? { baseDamageBonus: extraDmg } : {},
+      applicable: bossIsPsyker,
+      reason: bossIsPsyker ? `+${extraDmg} damage vs Psyker` : 'Boss is not a Psyker',
+      requiresToggle: false,
     };
   },
 };
@@ -3115,6 +3116,29 @@ export const AggressiveOnslaughtHandler: AbilityHandler = {
   },
 };
 
+/**
+ * MedicusMinistorum (Isabella)
+ * Adjacent allies regenerate HP after taking damage - not relevant for damage calculator
+ * Variables: hpToHeal
+ */
+export const MedicusMinistorumHandler: AbilityHandler = {
+  abilityId: 'MedicusMinistorum',
+  abilityName: 'Medicus Ministorum',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (_values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    return {
+      abilityId: 'MedicusMinistorum',
+      abilityName: getAbilityNameSync('MedicusMinistorum'),
+      modifiers: {},
+      applicable: false,
+      reason: 'Healing passive - not relevant for damage',
+      requiresToggle: false,
+    };
+  },
+};
+
 // Export all passive handlers
 // Note: LegendaryCommander is now handled via the buff pool system (buffRegistry.ts)
 export const passiveHandlers: AbilityHandler[] = [
@@ -3215,5 +3239,7 @@ export const passiveHandlers: AbilityHandler[] = [
   HeavyGravCannonHandler,
   // Blood Angels
   AggressiveOnslaughtHandler,
+  // Sisterhood
+  MedicusMinistorumHandler,
   // LegendaryCommanderHandler, // Removed: now using buff pool for team-wide LC application
 ];

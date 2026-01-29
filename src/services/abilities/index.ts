@@ -39,6 +39,7 @@ export {
   isDamageAbility,
   isModifierAbility,
   getAbilityCooldown,
+  getAbilityInitialCooldown,
 } from './abilityDataLoader';
 
 // Registry
