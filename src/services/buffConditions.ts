@@ -374,25 +374,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     }
   }
 
-  // Condemnor Stake (Roswitha) - Target is Psyker
-  if (character.passiveAbilities.includes('CondemnorStake')) {
-    const levelIndex = character.abilityLevels?.['CondemnorStake'] ?? 54;
-    const values = getAbilityValues('CondemnorStake', levelIndex);
-    const abilityName = getAbilityNameSync('CondemnorStake');
-
-    if (values) {
-      const extraDmg = values.extraDmg as number || 0;
-
-      conditions.push({
-        id: 'CondemnorStake',
-        label: 'Target is Psyker',
-        source: abilityName,
-        effect: `+${extraDmg} dmg`,
-        isActive: isToggleActive(character.abilityToggles['CondemnorStake']),
-        category: 'self',
-      });
-    }
-  }
+  // CondemnorStake (Roswitha) - automatically checks boss Psyker trait, no toggle needed
 
   // Avalanche of Muscle (Kut) - Charging
   if (character.passiveAbilities.includes('AvalancheOfMuscle')) {

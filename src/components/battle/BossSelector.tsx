@@ -162,6 +162,20 @@ export function BossSelector({
             </span>
           </div>
 
+          {/* Boss Traits */}
+          {selectedBoss.traits && selectedBoss.traits.length > 0 && (
+            <div className="flex flex-wrap gap-1 text-xs">
+              {selectedBoss.traits.map((trait) => (
+                <span
+                  key={trait}
+                  className="px-1.5 py-0.5 bg-purple-900/40 text-purple-300 rounded"
+                >
+                  {trait}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* Minion Killed Checkbox */}
           <label className="flex items-center gap-2 mt-2 cursor-pointer">
             <input
