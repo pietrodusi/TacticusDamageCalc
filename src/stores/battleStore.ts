@@ -116,7 +116,7 @@ function triggerOptimisedGait(params: OptimisedGaitParams): OptimisedGaitResult 
 
   // Get ability values for OptimizedGait
   const ogAbilityLevel = exitorRho.abilityLevels?.OptimizedGait ?? 54;
-  const ogValues = getAbilityValues('OptimizedGait', ogAbilityLevel);
+  const ogValues = getAbilityValues('OptimizedGait', ogAbilityLevel, exitorRho.progressionStepIndex);
   const ogMinDmg = (ogValues?.minDmg as number) || 0;
   const ogMaxDmg = (ogValues?.maxDmg as number) || 0;
   const ogHits = (ogValues?.nrOfHits as number) || 2;
@@ -508,7 +508,7 @@ function createBattleCharacter(character: TeamMember, index: number): BattleChar
   let initialActiveBuffs: import('../services/abilities/types').AbilityStatModifier[] = [];
   if (hasDoctrinaImperatives) {
     doctrinaStance = 'protector';  // Default stance is Protector
-    const doctrinaValues = getAbilityValues('DoctrinaImperatives', character.abilityLevels?.DoctrinaImperatives ?? 54);
+    const doctrinaValues = getAbilityValues('DoctrinaImperatives', character.abilityLevels?.DoctrinaImperatives ?? 54, character.progressionStepIndex);
     if (doctrinaValues) {
       const extraArmor = doctrinaValues.extraArmor as number || 0;
       initialActiveBuffs = [{ abilityName: 'Doctrina Imperatives', armorBonus: extraArmor }];
@@ -639,7 +639,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     if (trajann) {
       const lcDamageTemplate = getBuffTemplate('legendary_commander_damage');
       const lcHitsTemplate = getBuffTemplate('legendary_commander_hits');
-      const lcValues = getAbilityValues('LegendaryCommander', trajann.abilityLevels?.LegendaryCommander ?? 54);
+      const lcValues = getAbilityValues('LegendaryCommander', trajann.abilityLevels?.LegendaryCommander ?? 54, trajann.progressionStepIndex);
 
       if (lcValues && lcDamageTemplate) {
         buffPool = addBuffToPool(buffPool, lcDamageTemplate, trajann, lcValues as Record<string, number>, 1);
@@ -653,7 +653,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const farsight = battleCharacters.find(c => c.passiveAbilities.includes('WayOfTheShortBlade'));
     if (farsight) {
       const wotsTemplate = getBuffTemplate('way_of_the_short_blade_aura');
-      const wotsValues = getAbilityValues('WayOfTheShortBlade', farsight.abilityLevels?.WayOfTheShortBlade ?? 54);
+      const wotsValues = getAbilityValues('WayOfTheShortBlade', farsight.abilityLevels?.WayOfTheShortBlade ?? 54, farsight.progressionStepIndex);
 
       if (wotsValues && wotsTemplate) {
         buffPool = addBuffToPool(buffPool, wotsTemplate, farsight, wotsValues as Record<string, number>, 1);
@@ -665,7 +665,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     if (eldryon) {
       const doomNonAeldariTemplate = getBuffTemplate('doom_non_aeldari');
       const doomAeldariTemplate = getBuffTemplate('doom_aeldari');
-      const doomValues = getAbilityValues('Doom', eldryon.abilityLevels?.Doom ?? 54);
+      const doomValues = getAbilityValues('Doom', eldryon.abilityLevels?.Doom ?? 54, eldryon.progressionStepIndex);
 
       if (doomValues && doomNonAeldariTemplate) {
         buffPool = addBuffToPool(buffPool, doomNonAeldariTemplate, eldryon, doomValues as Record<string, number>, 1);
@@ -679,7 +679,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const darkstrider = battleCharacters.find(c => c.passiveAbilities.includes('StructuralAnalyser'));
     if (darkstrider) {
       const saTemplate = getBuffTemplate('structural_analyser_aura');
-      const saValues = getAbilityValues('StructuralAnalyser', darkstrider.abilityLevels?.StructuralAnalyser ?? 54);
+      const saValues = getAbilityValues('StructuralAnalyser', darkstrider.abilityLevels?.StructuralAnalyser ?? 54, darkstrider.progressionStepIndex);
 
       if (saValues && saTemplate) {
         buffPool = addBuffToPool(buffPool, saTemplate, darkstrider, saValues as Record<string, number>, 1);
@@ -690,7 +690,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const helbrecht = battleCharacters.find(c => c.passiveAbilities.includes('DestroyTheWitch'));
     if (helbrecht) {
       const dtwTemplate = getBuffTemplate('destroy_the_witch');
-      const dtwValues = getAbilityValues('DestroyTheWitch', helbrecht.abilityLevels?.DestroyTheWitch ?? 54);
+      const dtwValues = getAbilityValues('DestroyTheWitch', helbrecht.abilityLevels?.DestroyTheWitch ?? 54, helbrecht.progressionStepIndex);
 
       if (dtwValues && dtwTemplate) {
         buffPool = addBuffToPool(buffPool, dtwTemplate, helbrecht, dtwValues as Record<string, number>, 1);
@@ -701,7 +701,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const atlacoya = battleCharacters.find(c => c.passiveAbilities.includes('DaughterOfTheAbyss'));
     if (atlacoya) {
       const dotaTemplate = getBuffTemplate('daughter_of_the_abyss');
-      const dotaValues = getAbilityValues('DaughterOfTheAbyss', atlacoya.abilityLevels?.DaughterOfTheAbyss ?? 54);
+      const dotaValues = getAbilityValues('DaughterOfTheAbyss', atlacoya.abilityLevels?.DaughterOfTheAbyss ?? 54, atlacoya.progressionStepIndex);
 
       if (dotaValues && dotaTemplate) {
         buffPool = addBuffToPool(buffPool, dotaTemplate, atlacoya, dotaValues as Record<string, number>, 1);
@@ -712,7 +712,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const aesoth = battleCharacters.find(c => c.passiveAbilities.includes('StandVigil'));
     if (aesoth) {
       const svTemplate = getBuffTemplate('stand_vigil');
-      const svValues = getAbilityValues('StandVigil', aesoth.abilityLevels?.StandVigil ?? 54);
+      const svValues = getAbilityValues('StandVigil', aesoth.abilityLevels?.StandVigil ?? 54, aesoth.progressionStepIndex);
 
       if (svValues && svTemplate) {
         buffPool = addBuffToPool(buffPool, svTemplate, aesoth, svValues as Record<string, number>, 1);
@@ -723,7 +723,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const aunShi = battleCharacters.find(c => c.passiveAbilities.includes('SereneUnifier'));
     if (aunShi) {
       const suTemplate = getBuffTemplate('serene_unifier_storm_of_fire');
-      const suValues = getAbilityValues('SereneUnifier', aunShi.abilityLevels?.SereneUnifier ?? 54);
+      const suValues = getAbilityValues('SereneUnifier', aunShi.abilityLevels?.SereneUnifier ?? 54, aunShi.progressionStepIndex);
 
       if (suValues && suTemplate) {
         buffPool = addBuffToPool(buffPool, suTemplate, aunShi, suValues as Record<string, number>, 1);
@@ -734,7 +734,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const vitruvius = battleCharacters.find(c => c.passiveAbilities.includes('MasterAnnihilator'));
     if (vitruvius) {
       const maTemplate = getBuffTemplate('master_annihilator');
-      const maValues = getAbilityValues('MasterAnnihilator', vitruvius.abilityLevels?.MasterAnnihilator ?? 54);
+      const maValues = getAbilityValues('MasterAnnihilator', vitruvius.abilityLevels?.MasterAnnihilator ?? 54, vitruvius.progressionStepIndex);
 
       if (maValues && maTemplate) {
         buffPool = addBuffToPool(buffPool, maTemplate, vitruvius, maValues as Record<string, number>, 1);
@@ -745,7 +745,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     let prophetOfGorkAndMork: BattleState['prophetOfGorkAndMork'] = undefined;
     if (boss?.passiveAbilities?.includes('ProphetOfGorkAndMork')) {
       // Get base values from abilities.json
-      const prophetValues = getAbilityValues('ProphetOfGorkAndMork', 0); // Constants don't vary by level
+      const prophetValues = getAbilityValues('ProphetOfGorkAndMork', 0, 19); // Constants don't vary by level, use max progression
       if (prophetValues) {
         const baseNrOfAttacks = prophetValues.nrOfAttacks as number || 4;
         const baseDmgPctReduction = prophetValues.dmgPctReduction as number || 90;
@@ -770,7 +770,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const initialSummons: import('../types').BattleSummon[] = [];
     const celestine = battleCharacters.find(c => c.passiveAbilities.includes('GeminaeSuperia'));
     if (celestine) {
-      const gsValues = getAbilityValues('GeminaeSuperia', celestine.abilityLevels?.GeminaeSuperia ?? 54);
+      const gsValues = getAbilityValues('GeminaeSuperia', celestine.abilityLevels?.GeminaeSuperia ?? 54, celestine.progressionStepIndex);
       if (gsValues) {
         const summonData = getSummonUnitData('adeptSmnGeminaeSuperia');
         if (summonData) {
@@ -790,6 +790,37 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             count: 0,
             createdAtTurn: 1,
             iconUrl: getSummonIconUrl('adeptSmnGeminaeSuperia'),
+            activeAbilities: summonData.activeAbilities,
+            totalDamageDealt: 0,
+          });
+        }
+      }
+    }
+
+    // Initialize SwornProtector summon if Castellan Creed is in team (Kell with count 0, max 1)
+    const creed = battleCharacters.find(c => c.passiveAbilities.includes('SwornProtector'));
+    if (creed) {
+      const spValues = getAbilityValues('SwornProtector', creed.abilityLevels?.SwornProtector ?? 54, creed.progressionStepIndex);
+      if (spValues) {
+        const summonData = getSummonUnitData('astraSmnKell');
+        if (summonData) {
+          const meleeWeapon = summonData.weapons.find(w => !w.Range);
+          initialSummons.push({
+            id: `summon_astraSmnKell_${Date.now()}`,
+            unitId: 'astraSmnKell',
+            name: summonData.name,
+            sourceCharacterId: creed.id,
+            sourceAbilityId: 'SwornProtector',
+            hp: spValues.summonHp as number || 0,
+            damage: spValues.summonDmg as number || 0,
+            armor: spValues.summonArmor as number || 0,
+            meleeHits: meleeWeapon?.hits || 2,
+            meleeDamageType: (meleeWeapon?.DamageProfile as import('../types').DamageType) || 'Power',
+            traits: summonData.traits || [],
+            count: 0,
+            maxCount: 1,
+            createdAtTurn: 1,
+            iconUrl: getSummonIconUrl('astraSmnKell'),
             activeAbilities: summonData.activeAbilities,
             totalDamageDealt: 0,
           });
@@ -1323,6 +1354,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       attacker.abilityLevels || {},
       {
         characterId: attacker.id,
+        progressionStepIndex: attacker.progressionStepIndex,
         hasMoved: attacker.hasMoved,
         hasActedThisBattle: attacker.hasAttackedThisBattle,
         attacksThisTurn: attacker.attacksThisTurn,
@@ -1583,6 +1615,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       attacker.abilityLevels || {},
       {
         characterId: attacker.id,
+        progressionStepIndex: attacker.progressionStepIndex,
         hasMoved: attacker.hasMoved,
         hasActedThisBattle: attacker.hasAttackedThisBattle,
         attacksThisTurn: attacker.attacksThisTurn,
@@ -1651,7 +1684,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const toggleId = `RitesOfBattle_${teammate.id}_adjacent`;
         if (attacker.abilityToggles[toggleId]) {
           const levelIndex = teammate.abilityLevels?.['RitesOfBattle'] ?? 54;
-          const values = getAbilityValues('RitesOfBattle', levelIndex);
+          const values = getAbilityValues('RitesOfBattle', levelIndex, teammate.progressionStepIndex);
           if (values) {
             const isImperial = attacker.alliance === 'Imperial';
             const extraDmg = isImperial
@@ -2014,7 +2047,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
         if (isToggleActive(attacker.abilityToggles[bannerToggleId])) {
           const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
-          const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex);
+          const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex, thoread.progressionStepIndex);
           if (bannerValues) {
             bannerActive = true;
             bannerMaxDmg = bannerValues.maxDmg as number || 0;
@@ -2147,7 +2180,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             // (CyclicIonBlaster triggers on normal attacks, which includes the WayOfTheShortBlade ranged follow-up)
             if (attacker.passiveAbilities.includes('CyclicIonBlaster')) {
               const cibLevelIndex = attacker.abilityLevels?.['CyclicIonBlaster'] ?? 54;
-              const cibValues = getAbilityValues('CyclicIonBlaster', cibLevelIndex);
+              const cibValues = getAbilityValues('CyclicIonBlaster', cibLevelIndex, attacker.progressionStepIndex);
               if (cibValues) {
                 const cibMinDmg = cibValues.minDmg as number || 0;
                 const cibMaxDmg = cibValues.maxDmg as number || 0;
@@ -3168,7 +3201,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
       // Get FuryOfTheAncients ability values
       const furyLevelIndex = attacker.abilityLevels?.FuryOfTheAncients ?? 54;
-      const furyAbilityValues = getAbilityValues('FuryOfTheAncients', furyLevelIndex);
+      const furyAbilityValues = getAbilityValues('FuryOfTheAncients', furyLevelIndex, attacker.progressionStepIndex);
 
       if (furyAbilityValues) {
         const furyMinDamage = furyAbilityValues.minDmg as number || 0;
@@ -3456,7 +3489,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
               ? true
               : state.battleState.bossHasMasterAnnihilatorMark,
             masterAnnihilatorMaxDmg: attacker.passiveAbilities.includes('MasterAnnihilator')
-              ? (getAbilityValues('MasterAnnihilator', attacker.abilityLevels?.MasterAnnihilator ?? 54)?.maxDmg as number) || 0
+              ? (getAbilityValues('MasterAnnihilator', attacker.abilityLevels?.MasterAnnihilator ?? 54, attacker.progressionStepIndex)?.maxDmg as number) || 0
               : state.battleState.masterAnnihilatorMaxDmg,
             // Remove consumed buffs from the pool
             buffPool: buffsToConsume.length > 0
@@ -3690,7 +3723,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           }
         } else {
           // Create new summon
-          const controlEdictValues = getAbilityValues('ControlEdict', attacker.abilityLevels?.ControlEdict ?? 54) || {};
+          const controlEdictValues = getAbilityValues('ControlEdict', attacker.abilityLevels?.ControlEdict ?? 54, attacker.progressionStepIndex) || {};
           const summonData = getSummonUnitData('admecSmnVanguard');
           if (summonData) {
             const meleeWeapon = summonData.weapons.find(w => !w.Range);
@@ -3867,6 +3900,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Build ability context
     const context = {
       characterId: character.id,
+      progressionStepIndex: character.progressionStepIndex,
       hasMoved: character.hasMoved,
       hasActedThisBattle: character.hasAttackedThisBattle,
       attacksThisTurn: character.attacksThisTurn,
@@ -3950,7 +3984,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
           if (isToggleActive(character.abilityToggles[bannerToggleId])) {
             const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
-            const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex);
+            const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex, thoread.progressionStepIndex);
             if (bannerValues) {
               componentBannerActive = true;
               componentBannerMaxDmg = bannerValues.maxDmg as number || 0;
@@ -4438,7 +4472,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const isCharging = isToggleActive(character.abilityToggles['AggressiveOnslaught']);
         if (isCharging) {
           const aggressiveOnslaughtLevel = character.abilityLevels?.['AggressiveOnslaught'] ?? 54;
-          const aoValues = getAbilityValues('AggressiveOnslaught', aggressiveOnslaughtLevel);
+          const aoValues = getAbilityValues('AggressiveOnslaught', aggressiveOnslaughtLevel, character.progressionStepIndex);
 
           if (aoValues) {
             const summonHp = aoValues.summonHp as number || 0;
@@ -4635,7 +4669,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       let fuelledByFuryBonus = 0;
       if (character.passiveAbilities.includes('FuelledByFury')) {
         const fuelledByFuryLevelIndex = character.abilityLevels?.['FuelledByFury'] ?? 54;
-        const fuelledByFuryValues = getAbilityValues('FuelledByFury', fuelledByFuryLevelIndex);
+        const fuelledByFuryValues = getAbilityValues('FuelledByFury', fuelledByFuryLevelIndex, character.progressionStepIndex);
         if (fuelledByFuryValues) {
           const extraDmgPerAbility = fuelledByFuryValues.extraDmg as number || 0;
           fuelledByFuryBonus = battleState.activeAbilitiesUsedCount * extraDmgPerAbility;
@@ -4655,6 +4689,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         character.abilityLevels || {},
         {
           characterId: character.id,
+          progressionStepIndex: character.progressionStepIndex,
           hasMoved: character.hasMoved,
           hasActedThisBattle: character.hasAttackedThisBattle,
           attacksThisTurn: character.attacksThisTurn,
@@ -4869,7 +4904,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
           if (isToggleActive(character.abilityToggles[bannerToggleId])) {
             const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
-            const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex);
+            const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex, thoread.progressionStepIndex);
             if (bannerValues) {
               const singleBannerMaxDmg = bannerValues.maxDmg as number || 0;
               const bannerAbilityStats: AttackerStats = {
@@ -4966,7 +5001,40 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
       // If this damage ability also provides a buff (like Euphoric Strikes), prepare to add it
       const buffTemplate = result.buffResult ? getBuffTemplate(abilityId) : null;
-      const abilityValuesForBuff = result.buffResult ? (getAbilityValues(abilityId, levelIndex) || {}) : null;
+      const abilityValuesForBuff = result.buffResult ? (getAbilityValues(abilityId, levelIndex, character.progressionStepIndex) || {}) : null;
+
+      // If this damage ability also summons units (like LeadingTheCharge), prepare the summon
+      let damageAbilitySummon: import('../types').BattleSummon | undefined;
+      if (result.summonResult) {
+        const summonData = getSummonUnitData(result.summonResult.unitId);
+        if (summonData) {
+          const summonCount = result.summonResult.count || 1;
+          const meleeWeapon = summonData.weapons.find(w => !w.Range);
+          const rangedWeapon = summonData.weapons.find(w => w.Range);
+          damageAbilitySummon = {
+            id: `summon_${result.summonResult.unitId}_${Date.now()}`,
+            unitId: result.summonResult.unitId,
+            name: summonData.name,
+            sourceCharacterId: characterId,
+            sourceAbilityId: abilityId,
+            hp: result.summonResult.hp,
+            damage: result.summonResult.damage,
+            armor: result.summonResult.armor,
+            meleeHits: meleeWeapon?.hits || 2,
+            meleeDamageType: (meleeWeapon?.DamageProfile as import('../types').DamageType) || 'Physical',
+            rangedHits: rangedWeapon?.hits,
+            rangedDamageType: rangedWeapon?.DamageProfile as import('../types').DamageType | undefined,
+            rangedRange: rangedWeapon?.Range,
+            traits: summonData.traits || [],
+            count: summonCount,
+            createdAtTurn: battleState.turn,
+            iconUrl: getSummonIconUrl(result.summonResult.unitId),
+            activeAbilities: summonData.activeAbilities,
+            totalDamageDealt: 0,
+          };
+          console.log(`[Summon from damage ability: ${summonCount}x ${summonData.name}]`);
+        }
+      }
 
       // Note: Outrage tracking moved to AFTER follow-up attacks so maxPerHitDamage includes follow-ups
       // isAbilityUserChaos is defined in outer scope for this purpose
@@ -4997,6 +5065,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 ...state.battleState,
                 totalDamageDealt: state.battleState.totalDamageDealt + totalDamage,
                 buffPool: newBuffPool,
+                // Add summon from damage ability if present
+                summons: damageAbilitySummon
+                  ? [...state.battleState.summons, damageAbilitySummon]
+                  : state.battleState.summons,
                 activeAbilitiesUsedCount: state.battleState.activeAbilitiesUsedCount + 1,
                 // Supercharge: Store pierce bonus for ALL team Plasma attacks rest of turn
                 ...(result.superchargePierceBonus ? { superchargePierceBonus: result.superchargePierceBonus } : {}),
@@ -5007,7 +5079,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
                     // Check for CordClaw ability - stores follow-up attack buff
                     const isCordClaw = abilityId === 'CordClaw';
-                    const cordClawValues = isCordClaw ? (getAbilityValues('CordClaw', levelIndex) || {}) : null;
+                    const cordClawValues = isCordClaw ? (getAbilityValues('CordClaw', levelIndex, character.progressionStepIndex) || {}) : null;
 
                     return {
                       ...char,
@@ -5051,7 +5123,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
       // Special handling for Drachnyen (Abaddon)
       if (abilityId === 'Drachnyen') {
-        const abilityValues = getAbilityValues(abilityId, levelIndex) || {};
+        const abilityValues = getAbilityValues(abilityId, levelIndex, character.progressionStepIndex) || {};
         const newHp = abilityValues.hp as number || character.currentHealth;
         const minDmg = abilityValues.minDmg as number || 0;
         const maxDmg = abilityValues.maxDmg as number || 0;
@@ -5143,7 +5215,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         // Special handling for Doctrina Imperatives (Tan Gi'da)
         // Toggles between Protector (+armor) and Conqueror stances
         // Only first use counts for LC qualification
-        const abilityValues = getAbilityValues(abilityId, levelIndex) || {};
+        const abilityValues = getAbilityValues(abilityId, levelIndex, character.progressionStepIndex) || {};
         const extraArmor = abilityValues.extraArmor as number || 0;
 
         // Determine new stance based on current stance
@@ -5245,7 +5317,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         });
       } else if (buffTemplate) {
         // Use new buff pool system
-        const abilityValues = getAbilityValues(abilityId, levelIndex) || {};
+        const abilityValues = getAbilityValues(abilityId, levelIndex, character.progressionStepIndex) || {};
         set((state) => ({
           battleState: state.battleState
             ? {
@@ -5382,7 +5454,16 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // Create summons
       const summonData = getSummonUnitData(result.summonResult.unitId);
       if (summonData) {
-        const summonCount = result.summonResult.count || 1;
+        let summonCount = result.summonResult.count || 1;
+
+        // SupremeCommander (Creed): summon 3 Guardsmen if Kell count is 1, otherwise 2
+        if (abilityId === 'SupremeCommander') {
+          const kellSummon = battleState.summons.find(s => s.unitId === 'astraSmnKell');
+          if (kellSummon && kellSummon.count >= 1) {
+            summonCount = 3;
+            console.log(`[SupremeCommander: Kell present (count ${kellSummon.count}), summoning 3 Guardsmen]`);
+          }
+        }
         const meleeWeapon = summonData.weapons.find(w => !w.Range);
         const rangedWeapon = summonData.weapons.find(w => w.Range);
 
@@ -5501,6 +5582,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // LC should see attackTurnsCount + 1 (including current turn)
     const passiveContext = {
       characterId: updatedCharacter.id,
+      progressionStepIndex: updatedCharacter.progressionStepIndex,
       hasMoved: updatedCharacter.hasMoved,
       hasActedThisBattle: true,  // Ability was just used (counts as attack)
       attacksThisTurn: updatedCharacter.attacksThisTurn + 1,  // Just attacked
@@ -5545,7 +5627,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
         if (isToggleActive(character.abilityToggles[bannerToggleId])) {
           const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
-          const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex);
+          const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex, thoread.progressionStepIndex);
           if (bannerValues) {
             abilityBannerActive = true;
             abilityBannerMaxDmg = bannerValues.maxDmg as number || 0;
@@ -6132,7 +6214,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Get GalvanicField ability values from repairer
     const galvanicFieldLevelIndex = repairer.abilityLevels?.['GalvanicField'] ?? 54;
-    const galvanicFieldValues = getAbilityValues('GalvanicField', galvanicFieldLevelIndex);
+    const galvanicFieldValues = getAbilityValues('GalvanicField', galvanicFieldLevelIndex, repairer.progressionStepIndex);
     const dmgPct = (galvanicFieldValues?.dmgPct as number) || 100;
     const maxDmgPerHit = (galvanicFieldValues?.maxDmg as number) || 9999;
 
@@ -6334,7 +6416,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         const waaghBuff = battleState.buffPool.find(b => b.sourceAbilityId === 'Waaagh');
         if (waaghBuff) {
           const levelIndex = sourceCharacter.abilityLevels?.['Waaagh'] ?? 54;
-          const values = getAbilityValues('Waaagh', levelIndex);
+          const values = getAbilityValues('Waaagh', levelIndex, sourceCharacter.progressionStepIndex);
           if (values) {
             const extraDmg = values.extraDmg as number || 0;
             const extraHit = values.extraHit as number || 1;
@@ -6356,7 +6438,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           const phase = ((battleState.turn - 1) % 3) + 1;
           if (phase === 3) {
             const levelIndex = teammate.abilityLevels?.['SereneUnifier'] ?? 54;
-            const values = getAbilityValues('SereneUnifier', levelIndex);
+            const values = getAbilityValues('SereneUnifier', levelIndex, teammate.progressionStepIndex);
             if (values) {
               const extraDmg = values.extraDmg as number || 0;
               flatDamageBonus += extraDmg;
@@ -6372,7 +6454,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const toggleId = `ShockAssault_${sourceCharacter.id}_adjacentToBellator`;
       if (toggles[toggleId]) {
         const levelIndex = sourceCharacter.abilityLevels?.['ShockAssault'] ?? 54;
-        const values = getAbilityValues('ShockAssault', levelIndex);
+        const values = getAbilityValues('ShockAssault', levelIndex, sourceCharacter.progressionStepIndex);
         if (values) {
           const extraDmg = values.extraDmg as number || 0;
           flatDamageBonus += extraDmg;
@@ -6390,7 +6472,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           const dmgToggleId = `LordOfTheHost_${teammate.id}_damage`;
           if (toggles[dmgToggleId]) {
             const levelIndex = teammate.abilityLevels?.['LordOfTheHost'] ?? 54;
-            const values = getAbilityValues('LordOfTheHost', levelIndex);
+            const values = getAbilityValues('LordOfTheHost', levelIndex, teammate.progressionStepIndex);
             if (values) {
               const extraDmg = values.extraDmg as number || 0;
               flatDamageBonus += extraDmg;
@@ -6710,7 +6792,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Get TheBetrayer ability values
     const levelIndex = character.abilityLevels?.TheBetrayer ?? 54;
-    const abilityValues = getAbilityValues('TheBetrayer', levelIndex);
+    const abilityValues = getAbilityValues('TheBetrayer', levelIndex, character.progressionStepIndex);
     if (!abilityValues) {
       return {
         timestamp: Date.now(),
@@ -6821,6 +6903,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       character.abilityLevels || {},
       {
         characterId: character.id,
+        progressionStepIndex: character.progressionStepIndex,
         hasMoved: character.hasMoved,
         hasActedThisBattle: character.hasAttackedThisBattle,
         attacksThisTurn: character.attacksThisTurn,
@@ -7104,7 +7187,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
       if (hasLionHelmBonus) {
         const lionHelmLevelIndex = azrael.abilityLevels?.['LionHelm'] ?? 54;
-        const lionHelmValues = getAbilityValues('LionHelm', lionHelmLevelIndex);
+        const lionHelmValues = getAbilityValues('LionHelm', lionHelmLevelIndex, azrael.progressionStepIndex);
         const lionHelmExtraDmg = (lionHelmValues?.extraDmg as number) || 0;
         if (lionHelmExtraDmg > 0) {
           damageBonusSources.push({
@@ -7177,7 +7260,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Get FuryOfTheAncients ability values
     const levelIndex = character.abilityLevels?.FuryOfTheAncients ?? 54;
-    const abilityValues = getAbilityValues('FuryOfTheAncients', levelIndex);
+    const abilityValues = getAbilityValues('FuryOfTheAncients', levelIndex, character.progressionStepIndex);
     if (!abilityValues) {
       return {
         timestamp: Date.now(),
@@ -7474,7 +7557,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Get MartialSuperiority ability values
     const levelIndex = character.abilityLevels?.MartialSuperiority ?? 54;
-    const abilityValues = getAbilityValues('MartialSuperiority', levelIndex);
+    const abilityValues = getAbilityValues('MartialSuperiority', levelIndex, character.progressionStepIndex);
     if (!abilityValues) {
       return {
         timestamp: Date.now(),
@@ -7782,7 +7865,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Get TheQuickening ability values
     const levelIndex = caster.abilityLevels?.TheQuickening ?? 54;
-    const abilityValues = getAbilityValues('TheQuickening', levelIndex);
+    const abilityValues = getAbilityValues('TheQuickening', levelIndex, caster.progressionStepIndex);
     if (!abilityValues) {
       return {
         timestamp: Date.now(),

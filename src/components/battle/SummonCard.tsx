@@ -133,7 +133,8 @@ export function SummonCard({
           </span>
           <button
             onClick={() => onUpdateCount(summon.id, summon.count + 1)}
-            className="p-1 rounded bg-gray-700 hover:bg-gray-600 transition-colors"
+            disabled={summon.maxCount !== undefined && summon.count >= summon.maxCount}
+            className="p-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Plus size={12} className="text-gray-300" />
           </button>

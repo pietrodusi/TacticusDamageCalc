@@ -111,7 +111,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Saga of the Warrior Born (Ragnar) - Charging condition
   if (character.passiveAbilities.includes('SagaOfTheWarriorBorn')) {
     const levelIndex = character.abilityLevels?.['SagaOfTheWarriorBorn'] ?? 54;
-    const values = getAbilityValues('SagaOfTheWarriorBorn', levelIndex);
+    const values = getAbilityValues('SagaOfTheWarriorBorn', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('SagaOfTheWarriorBorn');
 
     if (values) {
@@ -175,7 +175,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // TacticalPrecision (Titus) - Charging changes ability damage type
   if (character.activeAbilities.includes('TacticalPrecision')) {
     const levelIndex = character.abilityLevels?.['TacticalPrecision'] ?? 54;
-    const values = getAbilityValues('TacticalPrecision', levelIndex);
+    const values = getAbilityValues('TacticalPrecision', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('TacticalPrecision');
 
     if (values) {
@@ -194,7 +194,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Foehammer (Arjac) - Characters defeated counter for bonus damage
   if (character.activeAbilities.includes('Foehammer')) {
     const levelIndex = character.abilityLevels?.['Foehammer'] ?? 54;
-    const values = getAbilityValues('Foehammer', levelIndex);
+    const values = getAbilityValues('Foehammer', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('Foehammer');
 
     if (values) {
@@ -221,7 +221,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Aggressive Onslaught (Mataneo) - Charging to summon Jump Pack Intercessors
   if (character.passiveAbilities.includes('AggressiveOnslaught')) {
     const levelIndex = character.abilityLevels?.['AggressiveOnslaught'] ?? 54;
-    const values = getAbilityValues('AggressiveOnslaught', levelIndex);
+    const values = getAbilityValues('AggressiveOnslaught', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('AggressiveOnslaught');
 
     if (values) {
@@ -243,7 +243,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Hammer of Wrath (Mataneo) - Low HP for 2x damage
   if (character.activeAbilities.includes('HammerOfWrath')) {
     const levelIndex = character.abilityLevels?.['HammerOfWrath'] ?? 54;
-    const values = getAbilityValues('HammerOfWrath', levelIndex);
+    const values = getAbilityValues('HammerOfWrath', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('HammerOfWrath');
 
     if (values) {
@@ -263,7 +263,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Visions of Heresy (Lucien) - Low HP for pierce bonus
   if (character.passiveAbilities.includes('VisionsOfHeresy')) {
     const levelIndex = character.abilityLevels?.['VisionsOfHeresy'] ?? 54;
-    const values = getAbilityValues('VisionsOfHeresy', levelIndex);
+    const values = getAbilityValues('VisionsOfHeresy', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('VisionsOfHeresy');
 
     if (values) {
@@ -284,7 +284,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Black Rage (Lucien) - Charging for damage bonus
   if (character.activeAbilities.includes('BlackRage')) {
     const levelIndex = character.abilityLevels?.['BlackRage'] ?? 54;
-    const values = getAbilityValues('BlackRage', levelIndex);
+    const values = getAbilityValues('BlackRage', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('BlackRage');
 
     if (values) {
@@ -304,7 +304,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Lord of Tempests (Njal) - Ice coverage counter
   if (character.passiveAbilities.includes('LordOfTempests')) {
     const levelIndex = character.abilityLevels?.['LordOfTempests'] ?? 54;
-    const values = getAbilityValues('LordOfTempests', levelIndex);
+    const values = getAbilityValues('LordOfTempests', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('LordOfTempests');
 
     if (values) {
@@ -333,7 +333,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Enmity for the Unworthy (Forcas) - Adjacent units (counter-based)
   if (character.passiveAbilities.includes('EnmityForTheUnworthy')) {
     const levelIndex = character.abilityLevels?.['EnmityForTheUnworthy'] ?? 54;
-    const values = getAbilityValues('EnmityForTheUnworthy', levelIndex);
+    const values = getAbilityValues('EnmityForTheUnworthy', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('EnmityForTheUnworthy');
 
     if (values) {
@@ -379,7 +379,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Avalanche of Muscle (Kut) - Charging
   if (character.passiveAbilities.includes('AvalancheOfMuscle')) {
     const levelIndex = character.abilityLevels?.['AvalancheOfMuscle'] ?? 54;
-    const values = getAbilityValues('AvalancheOfMuscle', levelIndex);
+    const values = getAbilityValues('AvalancheOfMuscle', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('AvalancheOfMuscle');
 
     if (values) {
@@ -399,7 +399,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Summary Execution (Yarrick) - Battle Fatigue
   if (character.passiveAbilities.includes('SummaryExecution')) {
     const levelIndex = character.abilityLevels?.['SummaryExecution'] ?? 54;
-    const values = getAbilityValues('SummaryExecution', levelIndex);
+    const values = getAbilityValues('SummaryExecution', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('SummaryExecution');
 
     if (values) {
@@ -430,7 +430,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Inescapable Accuracy (Maugan Ra) - Did not move
   if (character.passiveAbilities.includes('InescapableAccuracy')) {
     const levelIndex = character.abilityLevels?.['InescapableAccuracy'] ?? 54;
-    const values = getAbilityValues('InescapableAccuracy', levelIndex);
+    const values = getAbilityValues('InescapableAccuracy', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('InescapableAccuracy');
 
     if (values) {
@@ -451,7 +451,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Living Lightning (Thutmose) - Has moved
   if (character.passiveAbilities.includes('LivingLightning')) {
     const levelIndex = character.abilityLevels?.['LivingLightning'] ?? 54;
-    const values = getAbilityValues('LivingLightning', levelIndex);
+    const values = getAbilityValues('LivingLightning', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('LivingLightning');
 
     if (values) {
@@ -472,7 +472,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Power Trip (Snappawrecka) - At full health
   if (character.passiveAbilities.includes('PowerTrip')) {
     const levelIndex = character.abilityLevels?.['PowerTrip'] ?? 54;
-    const values = getAbilityValues('PowerTrip', levelIndex);
+    const values = getAbilityValues('PowerTrip', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('PowerTrip');
 
     if (values) {
@@ -492,7 +492,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Smasha 'Ead (Tanksmasha) - Moved 2+ hexes
   if (character.passiveAbilities.includes('SmashaEad')) {
     const levelIndex = character.abilityLevels?.['SmashaEad'] ?? 54;
-    const values = getAbilityValues('SmashaEad', levelIndex);
+    const values = getAbilityValues('SmashaEad', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('SmashaEad');
 
     if (values) {
@@ -512,7 +512,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Head-Claimer (Haarken) - Killed Character
   if (character.passiveAbilities.includes('HeadClaimer')) {
     const levelIndex = character.abilityLevels?.['HeadClaimer'] ?? 54;
-    const values = getAbilityValues('HeadClaimer', levelIndex);
+    const values = getAbilityValues('HeadClaimer', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('HeadClaimer');
 
     if (values) {
@@ -541,7 +541,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Beacon of Rage (Azkor) - Been attacked
   if (character.passiveAbilities.includes('BeaconOfRage')) {
     const levelIndex = character.abilityLevels?.['BeaconOfRage'] ?? 54;
-    const values = getAbilityValues('BeaconOfRage', levelIndex);
+    const values = getAbilityValues('BeaconOfRage', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('BeaconOfRage');
 
     if (values) {
@@ -561,7 +561,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Skullsmasher (Macer) - Missing HP
   if (character.passiveAbilities.includes('Skullsmasher')) {
     const levelIndex = character.abilityLevels?.['Skullsmasher'] ?? 54;
-    const values = getAbilityValues('Skullsmasher', levelIndex);
+    const values = getAbilityValues('Skullsmasher', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('Skullsmasher');
 
     if (values) {
@@ -581,7 +581,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Trophy Taker (Tarvakh) - Target at low HP
   if (character.passiveAbilities.includes('TrophyTaker')) {
     const levelIndex = character.abilityLevels?.['TrophyTaker'] ?? 54;
-    const values = getAbilityValues('TrophyTaker', levelIndex);
+    const values = getAbilityValues('TrophyTaker', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('TrophyTaker');
 
     if (values) {
@@ -602,7 +602,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Psychic Stalk (Ahriman) - Target on Fire
   if (character.passiveAbilities.includes('PsychicStalk')) {
     const levelIndex = character.abilityLevels?.['PsychicStalk'] ?? 54;
-    const values = getAbilityValues('PsychicStalk', levelIndex);
+    const values = getAbilityValues('PsychicStalk', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('PsychicStalk');
 
     if (values) {
@@ -622,7 +622,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Reality Unbound (Yazaghor) - Enemies hit by Psychic
   if (character.passiveAbilities.includes('RealityUnbound')) {
     const levelIndex = character.abilityLevels?.['RealityUnbound'] ?? 54;
-    const values = getAbilityValues('RealityUnbound', levelIndex);
+    const values = getAbilityValues('RealityUnbound', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('RealityUnbound');
 
     if (values) {
@@ -642,7 +642,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Terrifying Crescendo (Shiron) - Has Crescendo stacks
   if (character.passiveAbilities.includes('TerrifyingCrescendo')) {
     const levelIndex = character.abilityLevels?.['TerrifyingCrescendo'] ?? 54;
-    const values = getAbilityValues('TerrifyingCrescendo', levelIndex);
+    const values = getAbilityValues('TerrifyingCrescendo', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('TerrifyingCrescendo');
 
     if (values) {
@@ -662,7 +662,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Twisted Science (Hollan) - Affected by buff
   if (character.passiveAbilities.includes('TwistedScience')) {
     const levelIndex = character.abilityLevels?.['TwistedScience'] ?? 54;
-    const values = getAbilityValues('TwistedScience', levelIndex);
+    const values = getAbilityValues('TwistedScience', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('TwistedScience');
 
     if (values) {
@@ -683,7 +683,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Decoys and Misdirection (Isaak) - Moved onto decoy
   if (character.passiveAbilities.includes('DecoysAndMisdirection')) {
     const levelIndex = character.abilityLevels?.['DecoysAndMisdirection'] ?? 54;
-    const values = getAbilityValues('DecoysAndMisdirection', levelIndex);
+    const values = getAbilityValues('DecoysAndMisdirection', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('DecoysAndMisdirection');
 
     if (values) {
@@ -703,7 +703,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Cosmic Horror (The Patermine) - Has stacks
   if (character.passiveAbilities.includes('CosmicHorror')) {
     const levelIndex = character.abilityLevels?.['CosmicHorror'] ?? 54;
-    const values = getAbilityValues('CosmicHorror', levelIndex);
+    const values = getAbilityValues('CosmicHorror', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('CosmicHorror');
 
     if (values) {
@@ -723,7 +723,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Heavy Grav-Cannon (Sy-gex) - Target is heavy armor
   if (character.passiveAbilities.includes('HeavyGravCannon')) {
     const levelIndex = character.abilityLevels?.['HeavyGravCannon'] ?? 54;
-    const values = getAbilityValues('HeavyGravCannon', levelIndex);
+    const values = getAbilityValues('HeavyGravCannon', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('HeavyGravCannon');
 
     if (values) {
@@ -747,7 +747,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
   // Deathwing (Baraqiel) - Damage blocked bonus
   if (character.passiveAbilities.includes('Deathwing')) {
     const levelIndex = character.abilityLevels?.['Deathwing'] ?? 54;
-    const values = getAbilityValues('Deathwing', levelIndex);
+    const values = getAbilityValues('Deathwing', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('Deathwing');
 
     if (values) {
@@ -814,7 +814,7 @@ function getAtlacoyaConditions(character: BattleCharacter, team: BattleCharacter
   // Range 2 from Boss (for DaughterOfTheAbyss damage multiplier)
   if (character.passiveAbilities.includes('DaughterOfTheAbyss')) {
     const levelIndex = character.abilityLevels?.['DaughterOfTheAbyss'] ?? 54;
-    const values = getAbilityValues('DaughterOfTheAbyss', levelIndex);
+    const values = getAbilityValues('DaughterOfTheAbyss', levelIndex, character.progressionStepIndex);
     const abilityName = getAbilityNameSync('DaughterOfTheAbyss');
 
     if (values) {
@@ -857,7 +857,7 @@ function getAuraConditions(
 
       if (hasRapidAssault || hasFlying) {
         const levelIndex = teammate.abilityLevels?.['LordOfTheHost'] ?? 54;
-        const values = getAbilityValues('LordOfTheHost', levelIndex);
+        const values = getAbilityValues('LordOfTheHost', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('LordOfTheHost');
 
         if (values) {
@@ -899,7 +899,7 @@ function getAuraConditions(
       // Check if character is Chaos alliance (not Abaddon himself)
       if (character.alliance === 'Chaos') {
         const levelIndex = teammate.abilityLevels?.['FirstAmongTraitors'] ?? 54;
-        const values = getAbilityValues('FirstAmongTraitors', levelIndex);
+        const values = getAbilityValues('FirstAmongTraitors', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('FirstAmongTraitors');
 
         if (values) {
@@ -925,7 +925,7 @@ function getAuraConditions(
     // Way of the Short Blade (Farsight) - provides buffs to ranged attackers and T'au Empire melee
     if (teammate.passiveAbilities.includes('WayOfTheShortBlade')) {
       const levelIndex = teammate.abilityLevels?.['WayOfTheShortBlade'] ?? 54;
-      const values = getAbilityValues('WayOfTheShortBlade', levelIndex);
+      const values = getAbilityValues('WayOfTheShortBlade', levelIndex, teammate.progressionStepIndex);
       const abilityName = getAbilityNameSync('WayOfTheShortBlade');
 
       if (values) {
@@ -981,7 +981,7 @@ function getAuraConditions(
       const hasRangedAttack = character.rangedHits !== undefined && character.rangedHits > 0;
 
       const levelIndex = teammate.abilityLevels?.['StructuralAnalyser'] ?? 54;
-      const values = getAbilityValues('StructuralAnalyser', levelIndex);
+      const values = getAbilityValues('StructuralAnalyser', levelIndex, teammate.progressionStepIndex);
       const abilityName = getAbilityNameSync('StructuralAnalyser');
 
       if (values) {
@@ -1020,7 +1020,7 @@ function getAuraConditions(
       // Don't show for Helbrecht himself (he always gets the bonus)
       if (character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['DestroyTheWitch'] ?? 54;
-        const values = getAbilityValues('DestroyTheWitch', levelIndex);
+        const values = getAbilityValues('DestroyTheWitch', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('DestroyTheWitch');
 
         if (values) {
@@ -1044,7 +1044,7 @@ function getAuraConditions(
     // Only show if Helbrecht has this active ability
     if (teammate.activeAbilities.includes('CrusadeOfWrath')) {
       const levelIndex = teammate.abilityLevels?.['CrusadeOfWrath'] ?? 54;
-      const values = getAbilityValues('CrusadeOfWrath', levelIndex);
+      const values = getAbilityValues('CrusadeOfWrath', levelIndex, teammate.progressionStepIndex);
       const abilityName = getAbilityNameSync('CrusadeOfWrath');
 
       if (values) {
@@ -1070,7 +1070,7 @@ function getAuraConditions(
       // Only show for non-Orks
       if (character.faction !== 'Orks') {
         const levelIndex = teammate.abilityLevels?.['Waaagh'] ?? 54;
-        const values = getAbilityValues('Waaagh', levelIndex);
+        const values = getAbilityValues('Waaagh', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('Waaagh');
 
         if (values) {
@@ -1096,7 +1096,7 @@ function getAuraConditions(
     if (teammate.passiveAbilities.includes('StandVigil')) {
       if (character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['StandVigil'] ?? 54;
-        const values = getAbilityValues('StandVigil', levelIndex);
+        const values = getAbilityValues('StandVigil', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('StandVigil');
 
         if (values) {
@@ -1131,7 +1131,7 @@ function getAuraConditions(
 
       if (isMechanical && character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['DoctrinaImperatives'] ?? 54;
-        const values = getAbilityValues('DoctrinaImperatives', levelIndex);
+        const values = getAbilityValues('DoctrinaImperatives', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('DoctrinaImperatives');
 
         if (values) {
@@ -1156,7 +1156,7 @@ function getAuraConditions(
     if (teammate.passiveAbilities.includes('SereneUnifier')) {
       if (character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['SereneUnifier'] ?? 54;
-        const values = getAbilityValues('SereneUnifier', levelIndex);
+        const values = getAbilityValues('SereneUnifier', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('SereneUnifier');
 
         if (values) {
@@ -1205,7 +1205,7 @@ function getAuraConditions(
 
       if (canPerformOverwatch) {
         const levelIndex = teammate.abilityLevels?.['LionHelm'] ?? 54;
-        const values = getAbilityValues('LionHelm', levelIndex);
+        const values = getAbilityValues('LionHelm', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('LionHelm');
 
         if (values) {
@@ -1229,7 +1229,7 @@ function getAuraConditions(
     if (teammate.passiveAbilities.includes('AstartesBanner')) {
       if (character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['AstartesBanner'] ?? 54;
-        const values = getAbilityValues('AstartesBanner', levelIndex);
+        const values = getAbilityValues('AstartesBanner', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('AstartesBanner');
 
         if (values) {
@@ -1255,7 +1255,7 @@ function getAuraConditions(
       const hasRangedAttack = character.rangedHits !== undefined && character.rangedHits > 0;
       if (hasRangedAttack && character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['SpotterReworked'] ?? 54;
-        const values = getAbilityValues('SpotterReworked', levelIndex);
+        const values = getAbilityValues('SpotterReworked', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('SpotterReworked');
 
         if (values) {
@@ -1293,7 +1293,7 @@ function getAuraConditions(
     if (teammate.passiveAbilities.includes('ExplosiveMaladies')) {
       if (character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['ExplosiveMaladies'] ?? 54;
-        const values = getAbilityValues('ExplosiveMaladies', levelIndex);
+        const values = getAbilityValues('ExplosiveMaladies', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('ExplosiveMaladies');
 
         if (values) {
@@ -1318,7 +1318,7 @@ function getAuraConditions(
       // Only show for Chaos faction characters
       if (character.alliance === 'Chaos' && character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['InfernalPacts'] ?? 54;
-        const values = getAbilityValues('InfernalPacts', levelIndex);
+        const values = getAbilityValues('InfernalPacts', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('InfernalPacts');
 
         if (values) {
@@ -1345,7 +1345,7 @@ function getAuraConditions(
       const hasRangedAttack = character.rangedHits !== undefined && character.rangedHits > 0;
       if (hasRangedAttack && character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['ObsessiveAnnunciation'] ?? 54;
-        const values = getAbilityValues('ObsessiveAnnunciation', levelIndex);
+        const values = getAbilityValues('ObsessiveAnnunciation', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('ObsessiveAnnunciation');
 
         if (values) {
@@ -1370,7 +1370,7 @@ function getAuraConditions(
     if (teammate.passiveAbilities.includes('RitesOfBattle')) {
       if (character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['RitesOfBattle'] ?? 54;
-        const values = getAbilityValues('RitesOfBattle', levelIndex);
+        const values = getAbilityValues('RitesOfBattle', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('RitesOfBattle');
 
         if (values) {
@@ -1441,7 +1441,7 @@ function getAdjacentToBossCondition(
     // For Dark Angels teammates (not Asmodai), show the actual bonus value
     if (character.id !== asmodai.id && character.faction === 'DarkAngels') {
       const levelIndex = asmodai.abilityLevels?.['FearedInterrogator'] ?? 54;
-      const values = getAbilityValues('FearedInterrogator', levelIndex);
+      const values = getAbilityValues('FearedInterrogator', levelIndex, asmodai.progressionStepIndex);
       if (values) {
         const extraDmg = values.extraDmg as number || 0;
         effectParts.push(`Feared Interrogator (+${extraDmg} dmg)`);
@@ -1490,7 +1490,7 @@ function getBossRange2FromEldryonCondition(
 
   // Get Doom values for effect description
   const levelIndex = character.abilityLevels?.['Doom'] ?? 54;
-  const values = getAbilityValues('Doom', levelIndex);
+  const values = getAbilityValues('Doom', levelIndex, character.progressionStepIndex);
   const abilityName = getAbilityNameSync('Doom');
 
   if (values) {
@@ -1581,7 +1581,7 @@ export function getSummonBuffConditions(
     const waaghBuff = options?.buffPool?.find(b => b.sourceAbilityId === 'Waaagh');
     if (waaghBuff) {
       const levelIndex = sourceCharacter.abilityLevels?.['Waaagh'] ?? 54;
-      const values = getAbilityValues('Waaagh', levelIndex);
+      const values = getAbilityValues('Waaagh', levelIndex, sourceCharacter.progressionStepIndex);
       const abilityName = getAbilityNameSync('Waaagh');
 
       if (values) {
@@ -1606,7 +1606,7 @@ export function getSummonBuffConditions(
   // Check source character specifically since Bellator summons Inceptors AND has ShockAssault
   if (summon.unitId === 'ultraSmnInceptor' && sourceCharacter?.passiveAbilities.includes('ShockAssault')) {
     const levelIndex = sourceCharacter.abilityLevels?.['ShockAssault'] ?? 54;
-    const values = getAbilityValues('ShockAssault', levelIndex);
+    const values = getAbilityValues('ShockAssault', levelIndex, sourceCharacter.progressionStepIndex);
     const abilityName = getAbilityNameSync('ShockAssault');
 
     if (values) {
@@ -1638,7 +1638,7 @@ export function getSummonBuffConditions(
 
       if (hasRapidAssault || hasFlying) {
         const levelIndex = teammate.abilityLevels?.['LordOfTheHost'] ?? 54;
-        const values = getAbilityValues('LordOfTheHost', levelIndex);
+        const values = getAbilityValues('LordOfTheHost', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('LordOfTheHost');
 
         if (values) {
@@ -1678,7 +1678,7 @@ export function getSummonBuffConditions(
     // Serene Unifier (Aun'Shi passive) - turn-cycling aura buff
     if (teammate.passiveAbilities.includes('SereneUnifier')) {
       const levelIndex = teammate.abilityLevels?.['SereneUnifier'] ?? 54;
-      const values = getAbilityValues('SereneUnifier', levelIndex);
+      const values = getAbilityValues('SereneUnifier', levelIndex, teammate.progressionStepIndex);
       const abilityName = getAbilityNameSync('SereneUnifier');
 
       if (values) {
@@ -1715,7 +1715,7 @@ export function getSummonBuffConditions(
 
       if (isMechanical && teammate.doctrinaImperativeStance === 'protector') {
         const levelIndex = teammate.abilityLevels?.['DoctrinaImperatives'] ?? 54;
-        const values = getAbilityValues('DoctrinaImperatives', levelIndex);
+        const values = getAbilityValues('DoctrinaImperatives', levelIndex, teammate.progressionStepIndex);
         const abilityName = getAbilityNameSync('DoctrinaImperatives');
 
         if (values) {

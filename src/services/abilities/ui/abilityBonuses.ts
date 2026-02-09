@@ -29,6 +29,7 @@ export function getCharacterPassiveBonuses(
   // Build ability context for evaluation
   const context: AbilityContext = {
     characterId: character.id,
+    progressionStepIndex: character.progressionStepIndex,
     hasMoved: character.hasMoved,
     hasActedThisBattle: character.hasAttackedThisBattle,
     attacksThisTurn: character.attacksThisTurn,
@@ -54,10 +55,10 @@ export function getCharacterPassiveBonuses(
   for (const abilityId of character.passiveAbilities) {
     const handler = getAbilityHandler(abilityId);
     const levelIndex = character.abilityLevels?.[abilityId] ?? defaultLevelIndex;
-    const abilityDescription = getFormattedAbilityDescription(abilityId, levelIndex);
+    const abilityDescription = getFormattedAbilityDescription(abilityId, levelIndex, character.progressionStepIndex);
 
     if (handler?.evaluatePassive) {
-      const values = getAbilityValues(abilityId, levelIndex);
+      const values = getAbilityValues(abilityId, levelIndex, character.progressionStepIndex);
       if (values) {
         const evaluation = handler.evaluatePassive(values, context);
 
@@ -211,7 +212,7 @@ export function getCharacterAuraBonuses(
 
       // Get ability values
       const levelIndex = teammate.abilityLevels?.[abilityId] ?? defaultLevelIndex;
-      const values = getAbilityValues(abilityId, levelIndex);
+      const values = getAbilityValues(abilityId, levelIndex, teammate.progressionStepIndex);
       if (!values) continue;
 
       // Get all aura bonuses this ability provides
@@ -351,7 +352,7 @@ export function getLegendaryCommanderBuffs(
 
   // Get ability values
   const levelIndex = trajann.abilityLevels?.['LegendaryCommander'] ?? 54;
-  const values = getAbilityValues('LegendaryCommander', levelIndex);
+  const values = getAbilityValues('LegendaryCommander', levelIndex, trajann.progressionStepIndex);
   if (!values) return buffs;
 
   const extraDmg = values.extraDmg as number || 0;
@@ -424,7 +425,7 @@ export function getLegendaryCommanderBuffDisplay(
 
   // Get ability values
   const levelIndex = trajann.abilityLevels?.['LegendaryCommander'] ?? 54;
-  const values = getAbilityValues('LegendaryCommander', levelIndex);
+  const values = getAbilityValues('LegendaryCommander', levelIndex, trajann.progressionStepIndex);
   if (!values) return null;
 
   const extraDmg = values.extraDmg as number || 0;

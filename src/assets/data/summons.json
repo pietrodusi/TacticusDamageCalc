@@ -211,5 +211,29 @@
             }
         ],
         "traits": ["Summon", "Flying"]
+    },
+	"astraSmnKell": {
+        "name": "Colour Sergeant Kell",
+        "FactionId": "AstraMilitarum",
+        "GrandAllianceId": "Imperial",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Power"
+            }
+        ],
+        "traits": ["Summon"]
+    },
+	"astraSmnDeathRider": {
+        "name": "Death Rider",
+        "FactionId": "AstraMilitarum",
+        "GrandAllianceId": "Imperial",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Physical"
+            }
+        ],
+        "traits": ["Summon", "Unstoppable"]
     }
 }

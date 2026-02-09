@@ -132,6 +132,7 @@ export interface AbilityStatModifier {
 export interface AbilityContext {
   // Character state
   characterId: string;
+  progressionStepIndex: number;  // For abilityStatMultiplierPct calculation
   hasMoved: boolean;
   hasActedThisBattle: boolean;
   attacksThisTurn: number;

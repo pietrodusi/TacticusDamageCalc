@@ -10,44 +10,13 @@ import type {
   AbilityCategory,
   AbilityRangeType,
 } from './types';
+import { getProgressionStep } from '../dataService';
 
 // Import abilities stats directly (this file doesn't have escape issues)
 import abilitiesStatsData from '../../assets/data/abilities.json';
 
 // Type assertion for the imported data (cast through unknown to handle edge cases like empty objects)
 const abilitiesStats = abilitiesStatsData as unknown as Record<string, RawAbilityStats>;
-
-// Variables that need to be doubled (JSON values are halved)
-const VARIABLES_TO_DOUBLE = new Set([
-  // Damage
-  'minDmg', 'maxDmg', 'extraMaxDmg', 'dmg', 'extraDmg',
-  'blockDmg', 'extraCritDmg',
-  'spawnDmg', 'summonDmg', 'summonCritDmg', 'summonBlockDmg',
-  'dmgReduction',
-  // HP
-  'hp', 'maxHp', 'minHp', 'extraHp',
-  'hpToHeal', 'maxHpToHeal', 'hpToRepair',
-  'spawnHp', 'summonHp', 'shieldHp',
-  // Armor
-  'extraArmor', 'armorReduction', 'armorIgnored',
-  'spawnArmor', 'summonArmor',
-]);
-
-/**
- * Check if a variable should be doubled after loading
- * Handles both base names and suffixed variants (e.g., minDmg_2)
- */
-function shouldDoubleVariable(key: string): boolean {
-  // Check exact match
-  if (VARIABLES_TO_DOUBLE.has(key)) return true;
-
-  // Check for suffixed variants (e.g., minDmg_2, maxDmg_3)
-  for (const baseVar of VARIABLES_TO_DOUBLE) {
-    if (key.startsWith(baseVar + '_')) return true;
-  }
-
-  return false;
-}
 
 // Cache for ability display names (loaded lazily)
 let abilitiesDisplayCache: Record<string, { name: string; description: string }> | null = null;
@@ -139,16 +108,18 @@ function stripStyleTags(text: string): string {
  * Get ability description formatted with values at specified level
  * @param abilityId - The ability ID
  * @param levelIndex - Level index (0-64)
+ * @param progressionStepIndex - Character's progression step (0-19) for abilityStatMultiplierPct
  * @returns Formatted description with values interpolated
  */
 export function getFormattedAbilityDescription(
   abilityId: string,
-  levelIndex: number
+  levelIndex: number,
+  progressionStepIndex: number = 19
 ): string {
   const description = getAbilityDescriptionSync(abilityId);
   if (!description) return '';
 
-  const values = getAbilityValues(abilityId, levelIndex);
+  const values = getAbilityValues(abilityId, levelIndex, progressionStepIndex);
   if (!values) return stripStyleTags(description);
 
   // Replace {[variableName]} placeholders with actual values
@@ -230,18 +201,23 @@ function mapDamageProfile(profile: string | undefined): DamageType | undefined {
  *
  * @param abilityId - The ability ID
  * @param levelIndex - Level index (0-64, where 0 = level 1, 64 = level 65)
- * @param rarityMultiplier - Optional rarity bonus multiplier (default 1.0)
+ * @param progressionStepIndex - Optional progression step index (0-19, default 19 = Mythic 14★)
+ *                               Used to get abilityStatMultiplierPct from progression.json
  */
 export function getAbilityValues(
   abilityId: string,
   levelIndex: number,
-  rarityMultiplier: number = 1.0
+  progressionStepIndex: number = 19
 ): ComputedAbilityValues | null {
   const stats = abilitiesStats[abilityId];
   if (!stats) return null;
 
   const clampedLevel = Math.max(0, Math.min(64, levelIndex));
   const result: ComputedAbilityValues = {};
+
+  // Get abilityStatMultiplierPct from progression data
+  const progressionStep = getProgressionStep(progressionStepIndex);
+  const abilityMultiplier = (progressionStep?.abilityStatMultiplierPct || 100) / 100;
 
   // Extract variables at the specified level
   if (stats.variables) {
@@ -256,14 +232,9 @@ export function getAbilityValues(
         if (typeof rawValue === 'number') {
           let value = rawValue;
 
-          // Double damage-related variables (JSON values are halved)
-          if (shouldDoubleVariable(key)) {
-            value *= 2;
-          }
-
-          // Apply rarity multiplier if applicable
-          if (affectedByRarity.has(key) && rarityMultiplier !== 1.0) {
-            value = Math.round(value * rarityMultiplier);
+          // Apply abilityStatMultiplierPct if this variable is affected by rarity
+          if (affectedByRarity.has(key)) {
+            value = Math.round(value * abilityMultiplier);
           }
           result[key] = value;
         } else {

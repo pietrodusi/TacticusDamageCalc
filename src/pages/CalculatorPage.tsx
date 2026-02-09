@@ -343,7 +343,7 @@ export function CalculatorPage() {
         // Special handling for DefendTheDivineWork - opens repair modal for multi-target selection
         if (abilityId === 'DefendTheDivineWork') {
           const ddwLevelIndex = character.abilityLevels?.['DefendTheDivineWork'] ?? 54;
-          const ddwValues = getAbilityValues('DefendTheDivineWork', ddwLevelIndex);
+          const ddwValues = getAbilityValues('DefendTheDivineWork', ddwLevelIndex, character.progressionStepIndex);
           const hpToRepair = (ddwValues?.hpToRepair as number) || 0;
 
           setRepairContext({
@@ -361,7 +361,7 @@ export function CalculatorPage() {
         // Special handling for InspiredToGreatness - opens target selection modal
         if (abilityId === 'InspiredToGreatness') {
           const itgLevelIndex = character.abilityLevels?.['InspiredToGreatness'] ?? 54;
-          const itgValues = getAbilityValues('InspiredToGreatness', itgLevelIndex);
+          const itgValues = getAbilityValues('InspiredToGreatness', itgLevelIndex, character.progressionStepIndex);
           const hpToHeal = (itgValues?.hpToHeal as number) || 0;
           const hpToHeal_2 = (itgValues?.hpToHeal_2 as number) || 0;
 
@@ -377,7 +377,7 @@ export function CalculatorPage() {
         // Special handling for TheQuickening - opens target selection modal
         if (abilityId === 'TheQuickening') {
           const tqLevelIndex = character.abilityLevels?.['TheQuickening'] ?? 54;
-          const tqValues = getAbilityValues('TheQuickening', tqLevelIndex);
+          const tqValues = getAbilityValues('TheQuickening', tqLevelIndex, character.progressionStepIndex);
           const dmgPct = (tqValues?.dmgPct as number) || 100;
           const maxDmg = (tqValues?.maxDmg as number) || 0;
 
@@ -430,7 +430,7 @@ export function CalculatorPage() {
         // Special handling for BloodChalice - opens target selection modal
         if (abilityId === 'BloodChalice') {
           const bcLevelIndex = character.abilityLevels?.['BloodChalice'] ?? 54;
-          const bcValues = getAbilityValues('BloodChalice', bcLevelIndex);
+          const bcValues = getAbilityValues('BloodChalice', bcLevelIndex, character.progressionStepIndex);
           const extraPierceRatio = (bcValues?.extraPierceRatio as number) || 0;
 
           setBloodChaliceContext({
@@ -444,7 +444,7 @@ export function CalculatorPage() {
         // Special handling for DarkTalonStrike - opens attack type selection modal
         if (abilityId === 'DarkTalonStrike') {
           const dtsLevelIndex = character.abilityLevels?.['DarkTalonStrike'] ?? 54;
-          const dtsValues = getAbilityValues('DarkTalonStrike', dtsLevelIndex);
+          const dtsValues = getAbilityValues('DarkTalonStrike', dtsLevelIndex, character.progressionStepIndex);
 
           if (dtsValues) {
             setDarkTalonStrikeContext({
@@ -468,7 +468,7 @@ export function CalculatorPage() {
         // Special handling for UnbreakableDuty - opens Yes/No confirmation modal
         if (abilityId === 'UnbreakableDuty') {
           const udLevelIndex = character.abilityLevels?.['UnbreakableDuty'] ?? 54;
-          const udValues = getAbilityValues('UnbreakableDuty', udLevelIndex);
+          const udValues = getAbilityValues('UnbreakableDuty', udLevelIndex, character.progressionStepIndex);
           const extraDmg = (udValues?.extraDmg as number) || 0;
 
           setUnbreakableDutyContext({
@@ -482,7 +482,7 @@ export function CalculatorPage() {
         // Special handling for RitesOfMorkai - opens target selection modal
         if (abilityId === 'RitesOfMorkai') {
           const romLevelIndex = character.abilityLevels?.['RitesOfMorkai'] ?? 54;
-          const romValues = getAbilityValues('RitesOfMorkai', romLevelIndex);
+          const romValues = getAbilityValues('RitesOfMorkai', romLevelIndex, character.progressionStepIndex);
           const extraDmg = (romValues?.extraDmg as number) || 0;
 
           setRitesOfMorkaiContext({
@@ -580,7 +580,7 @@ export function CalculatorPage() {
 
         if (hasHealingBalms) {
           const hbLevelIndex = character.abilityLevels?.['HealingBalms'] ?? 54;
-          const hbValues = getAbilityValues('HealingBalms', hbLevelIndex);
+          const hbValues = getAbilityValues('HealingBalms', hbLevelIndex, character.progressionStepIndex);
           if (hbValues) {
             buffInfo = {
               critChanceBonus: (hbValues.extraCritChance as number) || 0,

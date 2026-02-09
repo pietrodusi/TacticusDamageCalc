@@ -61,7 +61,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
 
         if (hasLionHelmBonus) {
           const lionHelmLevelIndex = azrael.abilityLevels?.['LionHelm'] ?? 54;
-          const lionHelmValues = getAbilityValues('LionHelm', lionHelmLevelIndex);
+          const lionHelmValues = getAbilityValues('LionHelm', lionHelmLevelIndex, azrael.progressionStepIndex);
           bonus += (lionHelmValues?.extraDmg as number) || 0;
         }
       }
@@ -82,7 +82,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
   const getAbilityDamagePreview = () => {
     if (!activeAbilityId) return null;
 
-    const values = getAbilityValues(activeAbilityId, abilityLevelIndex);
+    const values = getAbilityValues(activeAbilityId, abilityLevelIndex, character.progressionStepIndex);
     if (!values) return null;
 
     const category = classifyAbility(activeAbilityId);
@@ -91,6 +91,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
     if (category === 'damage') {
       const result = executeActiveAbility(activeAbilityId, abilityLevelIndex, {
         characterId: character.id,
+        progressionStepIndex: character.progressionStepIndex,
         hasMoved: character.hasMoved,
         hasActedThisBattle: character.hasAttackedThisBattle,
         attacksThisTurn: character.attacksThisTurn,
@@ -151,7 +152,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
     if (!hasTheBetrayerAbility) return null;
 
     const levelIndex = character.abilityLevels?.TheBetrayer ?? 54;
-    const values = getAbilityValues('TheBetrayer', levelIndex);
+    const values = getAbilityValues('TheBetrayer', levelIndex, character.progressionStepIndex);
     if (!values) return null;
 
     const minDmg = values.minDmg as number || 0;
@@ -173,7 +174,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
 
   // Get ability description for tooltip
   const activeAbilityDescription = activeAbilityId
-    ? getFormattedAbilityDescription(activeAbilityId, abilityLevelIndex)
+    ? getFormattedAbilityDescription(activeAbilityId, abilityLevelIndex, character.progressionStepIndex)
     : null;
 
   // Get Doctrina Imperatives stance for display

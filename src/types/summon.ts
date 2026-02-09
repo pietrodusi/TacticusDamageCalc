@@ -49,6 +49,7 @@ export interface BattleSummon {
 
   // State
   count: number;                 // Number of summons (user can modify, for display only)
+  maxCount?: number;             // Maximum count allowed (e.g., 1 for Kell)
   createdAtTurn: number;
 
   // Image

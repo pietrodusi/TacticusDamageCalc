@@ -147,29 +147,8 @@ const bossMods = bossModsData as RawBossModsData;
 const bossModDetails = bossModDetailsData as RawBossModDetailsData;
 const bossTraits = bossTraitsData as BossTraitsData;
 
-// Variables that need to be doubled (JSON values are halved)
-const VARIABLES_TO_DOUBLE = new Set([
-  // Damage
-  'minDmg', 'maxDmg', 'extraMaxDmg', 'dmg', 'extraDmg',
-  'blockDmg', 'extraCritDmg',
-  'spawnDmg', 'summonDmg', 'summonCritDmg', 'summonBlockDmg',
-  'dmgReduction',
-  // HP
-  'hp', 'maxHp', 'minHp', 'extraHp',
-  'hpToHeal', 'maxHpToHeal', 'hpToRepair',
-  'spawnHp', 'summonHp', 'shieldHp',
-  // Armor
-  'extraArmor', 'armorReduction', 'armorIgnored',
-  'spawnArmor', 'summonArmor',
-]);
-
-function shouldDoubleVariable(key: string): boolean {
-  if (VARIABLES_TO_DOUBLE.has(key)) return true;
-  for (const baseVar of VARIABLES_TO_DOUBLE) {
-    if (key.startsWith(baseVar + '_')) return true;
-  }
-  return false;
-}
+// Default to max progression step (Mythic 14★) for display purposes
+const DEFAULT_PROGRESSION_STEP_INDEX = 19;
 
 // Ability data - loaded lazily to handle JSON with non-standard escapes
 let abilitiesDisplay: AbilitiesDisplayData | null = null;
@@ -609,11 +588,17 @@ export function getAbilityDisplayLevel(index: number): number {
 function replaceAbilityVariables(
   description: string,
   abilityId: string,
-  levelIndex: number
+  levelIndex: number,
+  progressionStepIndex: number = DEFAULT_PROGRESSION_STEP_INDEX
 ): string {
   if (!abilitiesStats) return description;
   const stats = abilitiesStats[abilityId];
   if (!stats) return description;
+
+  // Get abilityStatMultiplierPct from progression data
+  const progressionStep = getProgressionStep(progressionStepIndex);
+  const abilityMultiplier = (progressionStep?.abilityStatMultiplierPct || 100) / 100;
+  const affectedByRarity = new Set(stats.variablesAffectedByRarityBonus || []);
 
   let result = description;
 
@@ -624,9 +609,9 @@ function replaceAbilityVariables(
       const values = stats.variables[varName];
       const index = Math.min(levelIndex, values.length - 1);
       let value = values[index];
-      // Double damage/HP/armor variables (JSON values are halved)
-      if (typeof value === 'number' && shouldDoubleVariable(varName)) {
-        value = value * 2;
+      // Apply abilityStatMultiplierPct if variable is affected by rarity
+      if (typeof value === 'number' && affectedByRarity.has(varName)) {
+        value = Math.round(value * abilityMultiplier);
       }
       return `{{VAR:${value?.toString() ?? match}}}`;
     }
@@ -655,7 +640,8 @@ function replaceAbilityVariables(
 // Get ability display info (name and description with variables replaced)
 export function getAbilityInfo(
   abilityId: string,
-  levelIndex: number = DEFAULT_ABILITY_LEVEL
+  levelIndex: number = DEFAULT_ABILITY_LEVEL,
+  progressionStepIndex: number = DEFAULT_PROGRESSION_STEP_INDEX
 ): { name: string; description: string } | null {
   if (!abilitiesDisplay) return null;
   const displayData = abilitiesDisplay[abilityId];
@@ -665,7 +651,7 @@ export function getAbilityInfo(
 
   return {
     name: displayData.name,
-    description: replaceAbilityVariables(displayData.description, abilityId, levelIndex),
+    description: replaceAbilityVariables(displayData.description, abilityId, levelIndex, progressionStepIndex),
   };
 }
 

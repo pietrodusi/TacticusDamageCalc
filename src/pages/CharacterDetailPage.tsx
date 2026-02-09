@@ -190,6 +190,7 @@ export function CharacterDetailPage() {
         character={character}
         initialAbilityLevels={abilityLevels}
         onAbilityLevelsChange={handleAbilityLevelsChange}
+        progressionStepIndex={selectedProgressionStep}
       />
 
       {/* Equipment Section */}

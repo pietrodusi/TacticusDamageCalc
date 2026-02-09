@@ -12,6 +12,7 @@ interface AbilitySectionProps {
   character: Character;
   initialAbilityLevels?: Record<string, number>;
   onAbilityLevelsChange?: (abilityLevels: Record<string, number>) => void;
+  progressionStepIndex?: number;
 }
 
 interface AbilityCardProps {
@@ -19,6 +20,7 @@ interface AbilityCardProps {
   type: 'active' | 'passive';
   initialLevel?: number;
   onLevelChange?: (abilityId: string, level: number) => void;
+  progressionStepIndex?: number;
 }
 
 // Parse description with {{VAR:value}} and {{CONST:value}} markers into React elements
@@ -63,12 +65,12 @@ function parseDescription(description: string): ReactNode[] {
   return parts;
 }
 
-function AbilityCard({ abilityId, type, initialLevel, onLevelChange }: AbilityCardProps) {
+function AbilityCard({ abilityId, type, initialLevel, onLevelChange, progressionStepIndex }: AbilityCardProps) {
   const [levelIndex, setLevelIndex] = useState(initialLevel ?? DEFAULT_ABILITY_LEVEL);
 
   const ability = useMemo(
-    () => getAbilityInfo(abilityId, levelIndex),
-    [abilityId, levelIndex]
+    () => getAbilityInfo(abilityId, levelIndex, progressionStepIndex),
+    [abilityId, levelIndex, progressionStepIndex]
   );
 
   if (!ability) return null;
@@ -117,7 +119,7 @@ function AbilityCard({ abilityId, type, initialLevel, onLevelChange }: AbilityCa
   );
 }
 
-export function AbilitySection({ character, initialAbilityLevels, onAbilityLevelsChange }: AbilitySectionProps) {
+export function AbilitySection({ character, initialAbilityLevels, onAbilityLevelsChange, progressionStepIndex }: AbilitySectionProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [abilityLevels, setAbilityLevels] = useState<Record<string, number>>(
     () => initialAbilityLevels ?? {}
@@ -171,6 +173,7 @@ export function AbilitySection({ character, initialAbilityLevels, onAbilityLevel
                 type="active"
                 initialLevel={abilityLevels[abilityId]}
                 onLevelChange={handleAbilityLevelChange}
+                progressionStepIndex={progressionStepIndex}
               />
             ))}
           </div>
@@ -186,6 +189,7 @@ export function AbilitySection({ character, initialAbilityLevels, onAbilityLevel
                 type="passive"
                 initialLevel={abilityLevels[abilityId]}
                 onLevelChange={handleAbilityLevelChange}
+                progressionStepIndex={progressionStepIndex}
               />
             ))}
           </div>

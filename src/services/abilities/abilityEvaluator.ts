@@ -100,7 +100,7 @@ export function evaluatePassiveAbilities(
 
     if (handler?.evaluatePassive) {
       // Use registered handler
-      const values = getAbilityValues(abilityId, levelIndex);
+      const values = getAbilityValues(abilityId, levelIndex, context.progressionStepIndex);
       if (values) {
         const evaluation = handler.evaluatePassive(values, context);
         evaluations.push(evaluation);
@@ -149,7 +149,7 @@ export function executeActiveAbility(
   context: AbilityContext
 ): ActiveAbilityResult | null {
   const handler = getAbilityHandler(abilityId);
-  const values = getAbilityValues(abilityId, levelIndex);
+  const values = getAbilityValues(abilityId, levelIndex, context.progressionStepIndex);
 
   if (!values) {
     console.warn(`No ability data found for ${abilityId}`);

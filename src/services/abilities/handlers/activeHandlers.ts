@@ -2065,7 +2065,7 @@ export const SupremeCommanderHandler: AbilityHandler = {
 
 /**
  * LeadingTheCharge (Dreir)
- * 3x Power damage + summons Death Riders
+ * 3x Power damage + summons 2 Death Riders
  * Variables: minDmg, maxDmg, nrOfSummons, summonHp, summonDmg, summonArmor, extraPierceRatio
  * Constants: damageProfile: Power, range: 4, nrOfHits: 3
  */
@@ -2081,8 +2081,9 @@ export const LeadingTheChargeHandler: AbilityHandler = {
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
     const hits = values.nrOfHits as number || 3;
-    const nrOfSummons = values.nrOfSummons as number || 2;
-    const extraPierceRatio = values.extraPierceRatio as number || 5;
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
 
     return {
       abilityId: 'LeadingTheCharge',
@@ -2095,8 +2096,15 @@ export const LeadingTheChargeHandler: AbilityHandler = {
         hits,
         damageProfile: 'Power' as DamageType,
       },
+      summonResult: {
+        unitId: 'astraSmnDeathRider',
+        hp: summonHp,
+        damage: summonDmg,
+        armor: summonArmor,
+        count: 2,
+      },
       attackType: 'melee',
-      message: `${abilityName}: Summons ${nrOfSummons} Death Riders, AM allies +${extraPierceRatio}% pierce`,
+      message: abilityName,
     };
   },
 };
