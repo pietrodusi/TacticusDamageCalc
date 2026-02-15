@@ -22,6 +22,7 @@ interface BattleCharacterCardProps {
   onExecuteOverwatch?: () => void;  // For Re'vas's Overwatch attack
   onExecuteFuryOfTheAncients?: () => void;  // For Mephiston's Fury of the Ancients
   onExecuteMartialSuperiority?: () => void;  // For Jaeger's Martial Superiority
+  onExecuteUnwaveringSentinel?: () => void;  // For Tyrith's Unwavering Sentinel
 }
 
 export function BattleCharacterCard({
@@ -40,6 +41,7 @@ export function BattleCharacterCard({
   onExecuteOverwatch,
   onExecuteFuryOfTheAncients,
   onExecuteMartialSuperiority,
+  onExecuteUnwaveringSentinel,
 }: BattleCharacterCardProps) {
   const [hoveredPassive, setHoveredPassive] = useState<string | null>(null);
   const hasActedThisTurn = character.hasMoved && character.hasActed;
@@ -332,7 +334,7 @@ export function BattleCharacterCard({
       {/* Action Panel (only if selected) */}
       {isSelected && (
         <div className="mt-3 pt-3 border-t border-gray-700">
-          <ActionPanel character={character} team={team} onAction={onAction} onExecuteBetrayer={onExecuteBetrayer} onExecuteOverwatch={onExecuteOverwatch} onExecuteFuryOfTheAncients={onExecuteFuryOfTheAncients} onExecuteMartialSuperiority={onExecuteMartialSuperiority} />
+          <ActionPanel character={character} team={team} onAction={onAction} onExecuteBetrayer={onExecuteBetrayer} onExecuteOverwatch={onExecuteOverwatch} onExecuteFuryOfTheAncients={onExecuteFuryOfTheAncients} onExecuteMartialSuperiority={onExecuteMartialSuperiority} onExecuteUnwaveringSentinel={onExecuteUnwaveringSentinel} />
         </div>
       )}
     </div>

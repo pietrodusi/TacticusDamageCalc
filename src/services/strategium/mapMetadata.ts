@@ -1,5 +1,9 @@
 import type { MapMetadata, MapMetadataCollection } from '../../types/strategium';
 import mapMetadataJson from '../../assets/data/mapMetadata.json';
+import {
+  getDataDrivenMaps,
+  getDataDrivenMapMetadata,
+} from './boardDataService';
 
 // Import map images using Vite's glob import
 const mapImages = import.meta.glob<{ default: string }>(
@@ -18,32 +22,37 @@ for (const path in mapImages) {
 const mapMetadata = mapMetadataJson as MapMetadataCollection;
 
 /**
- * Get all available maps
+ * Get all available maps (manual + data-driven)
  */
 export function getAllMaps(): MapMetadata[] {
-  return Object.values(mapMetadata.maps);
+  return [...Object.values(mapMetadata.maps), ...getDataDrivenMaps()];
 }
 
 /**
  * Get maps available for a specific boss
  * Supports both legacy bossId and new bossIds array
+ * Includes data-driven maps
  */
 export function getMapMetadataForBoss(bossId: string): MapMetadata[] {
-  return Object.values(mapMetadata.maps).filter((map) => {
-    // Check new bossIds array first
+  const manual = Object.values(mapMetadata.maps).filter((map) => {
     if (map.bossIds && map.bossIds.includes(bossId)) {
       return true;
     }
-    // Fall back to legacy bossId field
     return map.bossId === bossId;
   });
+
+  const dataDriven = getDataDrivenMaps().filter(
+    (m) => m.bossIds?.includes(bossId)
+  );
+
+  return [...dataDriven, ...manual];
 }
 
 /**
- * Get metadata for a specific map
+ * Get metadata for a specific map (manual or data-driven)
  */
 export function getMapMetadata(mapId: string): MapMetadata | null {
-  return mapMetadata.maps[mapId] || null;
+  return mapMetadata.maps[mapId] || getDataDrivenMapMetadata(mapId) || null;
 }
 
 /**

@@ -86,6 +86,7 @@ export function CalculatorPage() {
     executeOverwatchAttack,
     executeFuryOfTheAncients,
     executeMartialSuperiority,
+    executeUnwaveringSentinel,
     executeTheQuickening,
     applyBloodChaliceBuff,
   } = useBattleStore();
@@ -653,6 +654,20 @@ export function CalculatorPage() {
 
     // Execute Martial Superiority bonus attack (does NOT end turn)
     const executeLog = executeMartialSuperiority(characterId);
+    setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
+  };
+
+  // Handle Unwavering Sentinel execute action for Tyrith
+  const handleExecuteUnwaveringSentinel = (characterId: string) => {
+    if (!battleState) return;
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) return;
+
+    const targetTurn = activeTurn;
+
+    // Execute Unwavering Sentinel bonus attack (does NOT end turn, unlimited uses)
+    const executeLog = executeUnwaveringSentinel(characterId);
     setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
   };
 
@@ -1396,6 +1411,7 @@ export function CalculatorPage() {
                   onExecuteOverwatch={() => handleExecuteOverwatch(character.id)}
                   onExecuteFuryOfTheAncients={() => handleExecuteFuryOfTheAncients(character.id)}
                   onExecuteMartialSuperiority={() => handleExecuteMartialSuperiority(character.id)}
+                  onExecuteUnwaveringSentinel={() => handleExecuteUnwaveringSentinel(character.id)}
                 />
               );
             })}

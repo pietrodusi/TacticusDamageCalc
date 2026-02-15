@@ -2004,6 +2004,7 @@ export const VigilanceEternalHandler: AbilityHandler = {
   abilityName: 'Vigilance Eternal',
   category: 'damage',
   cooldown: 2,
+  endsTurn: false,
 
   executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('VigilanceEternal');
@@ -2233,7 +2234,15 @@ export const PsychicMaelstromHandler: AbilityHandler = {
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
-    const chance = values.chance as number || 75;
+
+    // Cascading hit probabilities
+    const c1 = (values.chance as number || 75) / 100;
+    const c2 = (values.chance_2 as number || 50) / 100;
+    const c3 = (values.chance_3 as number || 25) / 100;
+    const c4 = (values.chance_4 as number || 10) / 100;
+
+    // Expected hits: 1 (guaranteed) + p1 + p1*p2 + p1*p2*p3 + p1*p2*p3*p4
+    const expectedHits = 1 + c1 + (c1 * c2) + (c1 * c2 * c3) + (c1 * c2 * c3 * c4);
 
     return {
       abilityId: 'PsychicMaelstrom',
@@ -2243,11 +2252,12 @@ export const PsychicMaelstromHandler: AbilityHandler = {
         minDamage: minDmg,
         maxDamage: maxDmg,
         averageDamage: avgDmg,
-        hits: 1,
+        hits: expectedHits,
         damageProfile: 'Psychic' as DamageType,
       },
+      rawDamage: true,
       attackType: 'ranged',
-      message: `${abilityName}: ${chance}% to chain to adjacent enemies`,
+      message: `${abilityName} (${expectedHits.toFixed(2)} expected hits)`,
     };
   },
 };
@@ -2270,6 +2280,7 @@ export const BasiliskBarrageHandler: AbilityHandler = {
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
     const hits = values.nrOfHits as number || 2;
+    const projectiles = values.nrOfProjectiles as number || 5;
 
     return {
       abilityId: 'BasiliskBarrage',
@@ -2279,11 +2290,11 @@ export const BasiliskBarrageHandler: AbilityHandler = {
         minDamage: minDmg,
         maxDamage: maxDmg,
         averageDamage: avgDmg,
-        hits,
+        hits: hits * projectiles,
         damageProfile: 'Blast' as DamageType,
       },
       attackType: 'ranged',
-      message: `${abilityName}: 5 projectiles, 2x Blast each`,
+      message: `${abilityName}: ${projectiles} projectiles, ${hits}x Blast each`,
     };
   },
 };

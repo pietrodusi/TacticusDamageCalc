@@ -234,7 +234,7 @@ export function getCharacterAuraBonuses(
         }
 
         // Check if toggle is enabled
-        const toggleKey = aura.auraId;
+        const toggleKey = aura.toggleKey || aura.auraId;
         const isToggled = isToggleActive(character.abilityToggles[toggleKey]);
 
         // Calculate scaled modifiers if scaling context exists

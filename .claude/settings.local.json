@@ -33,7 +33,20 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "Skill(add-ability)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(if not exist \"C:\\\\Users\\\\dusip\\\\.claude\" mkdir \"C:\\\\Users\\\\dusip\\\\.claude\")",
+      "WebFetch(domain:www.tacticustable.com)",
+      "Bash(npx:*)",
+      "Bash(claude mcp add:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_click",
+      "Bash(for f in GB_*_Visual.webp)",
+      "Bash(do echo -n \"$f: \")",
+      "Bash(done)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

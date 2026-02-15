@@ -618,6 +618,7 @@ interface BattleStore {
   executeOverwatchAttack: (characterId: string) => BattleLogEntry;
   executeFuryOfTheAncients: (characterId: string) => BattleLogEntry;
   executeMartialSuperiority: (characterId: string) => BattleLogEntry;
+  executeUnwaveringSentinel: (characterId: string) => BattleLogEntry;
   executeTheQuickening: (casterId: string, targetId: string) => BattleLogEntry;
   applyBloodChaliceBuff: (casterId: string, targetIds: string[], extraPierceRatio: number) => void;
 }
@@ -1408,8 +1409,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         return mods;
       });
 
-    // Build buff sources for preview
-    const buffSourcesPreview = activeAurasPreview.map(a => {
+    // Build buff sources for preview (merge entries with same name+source)
+    const rawBuffSourcesPreview = activeAurasPreview.map(a => {
       if (a.modifiers) {
         return {
           name: a.abilityName,
@@ -1427,6 +1428,19 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         extraHits: a.bonusText.includes('hit') ? parseInt(a.bonusText.match(/\+(\d+)/)?.[1] || '0', 10) : undefined,
       };
     });
+    const buffSourcesPreview: typeof rawBuffSourcesPreview = [];
+    for (const src of rawBuffSourcesPreview) {
+      const key = `${src.name}_${src.sourceName}`;
+      const existing = buffSourcesPreview.find(b => `${b.name}_${b.sourceName}` === key);
+      if (existing) {
+        existing.damageBonus = (existing.damageBonus || 0) + (src.damageBonus || 0);
+        existing.extraHits = (existing.extraHits || 0) + (src.extraHits || 0);
+        existing.critChanceBonus = (existing.critChanceBonus || 0) + (src.critChanceBonus || 0);
+        existing.critDamageBonus = (existing.critDamageBonus || 0) + (src.critDamageBonus || 0);
+      } else {
+        buffSourcesPreview.push({ ...src });
+      }
+    }
 
     // Combine all modifiers
     const combinedModsPreview = combineModifiers([...passiveModifiersPreview, ...auraModifiersPreview]);
@@ -1705,7 +1719,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Build buff sources for display in damage breakdown
     // Define BuffSource type inline
     type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number; pierceRatioBonus?: number };
-    const buffSources: BuffSourceType[] = activeAuras.map(a => {
+    const rawBuffSources: BuffSourceType[] = activeAuras.map(a => {
       const source: BuffSourceType = {
         name: a.abilityName,
         sourceName: a.sourceCharacterName || 'Unknown',
@@ -1728,6 +1742,20 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
       return source;
     });
+    // Merge buff sources with the same name+source (e.g. SpotterReworked range2 + heavy)
+    const buffSources: BuffSourceType[] = [];
+    for (const src of rawBuffSources) {
+      const key = `${src.name}_${src.sourceName}`;
+      const existing = buffSources.find(b => `${b.name}_${b.sourceName}` === key);
+      if (existing) {
+        existing.damageBonus = (existing.damageBonus || 0) + (src.damageBonus || 0);
+        existing.extraHits = (existing.extraHits || 0) + (src.extraHits || 0);
+        existing.critChanceBonus = (existing.critChanceBonus || 0) + (src.critChanceBonus || 0);
+        existing.critDamageBonus = (existing.critDamageBonus || 0) + (src.critDamageBonus || 0);
+      } else {
+        buffSources.push({ ...src });
+      }
+    }
 
     // Add passive ability sources (like SagaOfTheWarriorBorn, RefusalToBeOutdone) for display
     for (const evaluation of passiveResult.evaluations) {
@@ -3966,6 +3994,12 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Track attack type for damage abilities (for display in battle log)
     let abilityAttackType: 'melee' | 'ranged' | undefined;
 
+    // Prophet of Gork and Mork: Track attacks for active abilities
+    let prophetAttackCounter = battleState.bossAttacksReceivedThisTurn;
+    const prophetThreshold = battleState.prophetOfGorkAndMork?.attackThreshold ?? Infinity;
+    const prophetReductionPct = battleState.prophetOfGorkAndMork?.damageReductionPct ?? 0;
+    const prophetMultiplier = prophetReductionPct > 0 ? (100 - prophetReductionPct) / 100 : 1;
+
     // Handle damage abilities
     const ignoreCrit = battleState.ignoreCrit;
     if (result.damageComponents && result.damageComponents.length > 0) {
@@ -4223,14 +4257,23 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         componentCalc.printLogs();
         console.log(`Component Damage: ${componentResult.damage.toLocaleString()}`);
 
-        totalDamage += componentResult.damage;
+        // Prophet of Gork and Mork: Apply damage reduction per component (each component = 1 attack)
+        let componentProphetReduction = 1;
+        if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+          componentProphetReduction = prophetMultiplier;
+          console.log(`[Prophet of Gork and Mork: -${prophetReductionPct}% damage on ${component.damageProfile} (attack ${prophetAttackCounter + 1})]`);
+        }
+        const adjustedComponentDamage = Math.round(componentResult.damage * componentProphetReduction);
+        prophetAttackCounter++;
+
+        totalDamage += adjustedComponentDamage;
         // Track max perHitDamage for Laviscus outrage
         maxPerHitDamage = Math.max(maxPerHitDamage, componentResult.perHitDamage);
 
         // Build component breakdown for display
         const componentBreakdown: DamageBreakdown = {
-          damage: componentResult.damage,
-          perHitDamage: componentResult.perHitDamage,
+          damage: adjustedComponentDamage,
+          perHitDamage: componentProphetReduction < 1 ? Math.round(componentResult.perHitDamage * componentProphetReduction) : componentResult.perHitDamage,
           hits: componentResult.totalHits,
           baseDamage: componentResult.baseDamage,
           flatModifiers: componentResult.flatModifiers,
@@ -4265,11 +4308,20 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           totalBlockReduction: componentResult.totalBlockReduction,
         };
 
+        // Add Prophet of Gork and Mork to component breakdown if active
+        if (componentProphetReduction < 1) {
+          componentBreakdown.globalMultiplier = (componentBreakdown.globalMultiplier || 1) * componentProphetReduction;
+          componentBreakdown.globalMultiplierSources = [
+            ...(componentBreakdown.globalMultiplierSources || []),
+            { name: 'Prophet of Gork and Mork', damageMultiplier: componentProphetReduction }
+          ];
+        }
+
         // Add component as a follow-up attack log (displays with purple shading)
         const componentName = `${abilityName} (${component.damageProfile})`;
         componentAttackLogs.push({
           abilityName: componentName,
-          damage: componentResult.damage,
+          damage: adjustedComponentDamage,
           hits: componentResult.totalHits,
           damageType: component.damageProfile,
           breakdown: componentBreakdown,
@@ -4290,13 +4342,20 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           const bannerComponentCalc = new DamageCalculator(true);
           const bannerComponentResult = bannerComponentCalc.calculate(bannerComponentStats, defenderStats);
 
-          totalDamage += bannerComponentResult.damage;
+          // Prophet of Gork and Mork: Apply reduction to banner (shares crit chain, no counter increment)
+          let bannerComponentProphetReduction = 1;
+          if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+            bannerComponentProphetReduction = prophetMultiplier;
+          }
+          const adjustedBannerComponentDamage = Math.round(bannerComponentResult.damage * bannerComponentProphetReduction);
+
+          totalDamage += adjustedBannerComponentDamage;
           maxPerHitDamage = Math.max(maxPerHitDamage, bannerComponentResult.perHitDamage);
 
           // Build breakdown
           const bannerComponentBreakdown: DamageBreakdown = {
-            damage: bannerComponentResult.damage,
-            perHitDamage: bannerComponentResult.perHitDamage,
+            damage: adjustedBannerComponentDamage,
+            perHitDamage: bannerComponentProphetReduction < 1 ? Math.round(bannerComponentResult.perHitDamage * bannerComponentProphetReduction) : bannerComponentResult.perHitDamage,
             hits: bannerComponentResult.totalHits,
             baseDamage: bannerComponentResult.baseDamage,
             flatModifiers: bannerComponentResult.flatModifiers,
@@ -4330,9 +4389,18 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             totalBlockReduction: bannerComponentResult.totalBlockReduction,
           };
 
+          // Add Prophet of Gork and Mork to banner breakdown if active
+          if (bannerComponentProphetReduction < 1) {
+            bannerComponentBreakdown.globalMultiplier = (bannerComponentBreakdown.globalMultiplier || 1) * bannerComponentProphetReduction;
+            bannerComponentBreakdown.globalMultiplierSources = [
+              ...(bannerComponentBreakdown.globalMultiplierSources || []),
+              { name: 'Prophet of Gork and Mork', damageMultiplier: bannerComponentProphetReduction }
+            ];
+          }
+
           componentAttackLogs.push({
             abilityName: 'Astartes Banner',
-            damage: bannerComponentResult.damage,
+            damage: adjustedBannerComponentDamage,
             hits: bannerComponentResult.totalHits,
             damageType: component.damageProfile,
             breakdown: bannerComponentBreakdown,
@@ -4431,13 +4499,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       console.log(`Damage: ${rawResult.damage.toLocaleString()}`);
       console.groupEnd();
 
-      totalDamage = rawResult.damage;
+      // Prophet of Gork and Mork: Apply damage reduction to raw damage ability
+      let rawProphetReduction = 1;
+      if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+        rawProphetReduction = prophetMultiplier;
+        console.log(`[Prophet of Gork and Mork: -${prophetReductionPct}% damage on ${abilityName} (attack ${prophetAttackCounter + 1})]`);
+      }
+      totalDamage = Math.round(rawResult.damage * rawProphetReduction);
+      prophetAttackCounter++;
+
       maxPerHitDamage = Math.max(maxPerHitDamage, rawResult.perHitDamage);
 
       // Build breakdown for display
       damageBreakdown = {
-        damage: rawResult.damage,
-        perHitDamage: rawResult.perHitDamage,
+        damage: totalDamage,
+        perHitDamage: rawProphetReduction < 1 ? Math.round(rawResult.perHitDamage * rawProphetReduction) : rawResult.perHitDamage,
         hits: rawResult.totalHits,
         baseDamage: rawResult.baseDamage,
         flatModifiers: 0,
@@ -4466,6 +4542,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         blockReductionPerHit: rawResult.blockReductionPerHit,
         totalBlockReduction: rawResult.totalBlockReduction,
       };
+
+      // Add Prophet of Gork and Mork to raw damage breakdown if active
+      if (rawProphetReduction < 1) {
+        damageBreakdown.globalMultiplier = (damageBreakdown.globalMultiplier || 1) * rawProphetReduction;
+        damageBreakdown.globalMultiplierSources = [
+          { name: 'Prophet of Gork and Mork', damageMultiplier: rawProphetReduction }
+        ];
+      }
 
       // Handle passive ability summonRequests for HammerOfWrath (triggers AggressiveOnslaught)
       if (abilityId === 'HammerOfWrath' && character.passiveAbilities.includes('AggressiveOnslaught')) {
@@ -4622,14 +4706,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         }
       }
 
-      // Add aura bonus sources
+      // Add aura bonus sources (merge entries with same name, e.g. SpotterReworked range2 + heavy)
       for (const aura of activeAbilityAuras) {
         if (aura.modifiers && (aura.modifiers.baseDamageBonus || aura.modifiers.extraHits)) {
-          abilityBuffSources.push({
-            name: aura.sourceCharacterName ? `${aura.abilityName} (${aura.sourceCharacterName})` : aura.abilityName,
-            damageBonus: aura.modifiers.baseDamageBonus,
-            extraHits: aura.modifiers.extraHits,
-          });
+          const auraSourceName = aura.abilityName;
+          const existing = abilityBuffSources.find(s => s.name === auraSourceName);
+          if (existing) {
+            existing.damageBonus = (existing.damageBonus || 0) + (aura.modifiers.baseDamageBonus || 0);
+            existing.extraHits = (existing.extraHits || 0) + (aura.modifiers.extraHits || 0);
+          } else {
+            abilityBuffSources.push({
+              name: auraSourceName,
+              damageBonus: aura.modifiers.baseDamageBonus,
+              extraHits: aura.modifiers.extraHits,
+            });
+          }
         }
       }
 
@@ -4850,14 +4941,22 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       console.log(`Damage: ${abilityResult.damage.toLocaleString()}`);
       console.groupEnd();
 
-      totalDamage = abilityResult.damage;
+      // Prophet of Gork and Mork: Apply damage reduction to single-component ability
+      let singleAbilityProphetReduction = 1;
+      if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+        singleAbilityProphetReduction = prophetMultiplier;
+        console.log(`[Prophet of Gork and Mork: -${prophetReductionPct}% damage on ${abilityName} (attack ${prophetAttackCounter + 1})]`);
+      }
+      totalDamage = Math.round(abilityResult.damage * singleAbilityProphetReduction);
+      prophetAttackCounter++;
+
       // Track max perHitDamage for Laviscus outrage
       maxPerHitDamage = Math.max(maxPerHitDamage, abilityResult.perHitDamage);
 
       // Build breakdown for display
       const abilityBreakdown: DamageBreakdown = {
-        damage: abilityResult.damage,
-        perHitDamage: abilityResult.perHitDamage,
+        damage: totalDamage,
+        perHitDamage: singleAbilityProphetReduction < 1 ? Math.round(abilityResult.perHitDamage * singleAbilityProphetReduction) : abilityResult.perHitDamage,
         hits: abilityResult.totalHits,
         baseDamage: abilityResult.baseDamage,
         flatModifiers: abilityResult.flatModifiers,
@@ -4888,10 +4987,19 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         traitMultiplier: abilityResult.traitMultiplier,
       };
 
+      // Add Prophet of Gork and Mork to ability breakdown if active
+      if (singleAbilityProphetReduction < 1) {
+        abilityBreakdown.globalMultiplier = (abilityBreakdown.globalMultiplier || 1) * singleAbilityProphetReduction;
+        abilityBreakdown.globalMultiplierSources = [
+          ...(abilityBreakdown.globalMultiplierSources || []),
+          { name: 'Prophet of Gork and Mork', damageMultiplier: singleAbilityProphetReduction }
+        ];
+      }
+
       // Add as a follow-up attack log (displays with purple shading)
       followUpAttackLogs.push({
         abilityName,
-        damage: abilityResult.damage,
+        damage: totalDamage,
         hits: abilityResult.totalHits,
         damageType: effectiveDamageResult.damageProfile,
         breakdown: abilityBreakdown,
@@ -4920,13 +5028,20 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
               const bannerAbilityCalc = new DamageCalculator(true);
               const bannerAbilityResult = bannerAbilityCalc.calculate(bannerAbilityStats, defenderStats);
 
-              totalDamage += bannerAbilityResult.damage;
+              // Prophet of Gork and Mork: Apply reduction to banner (shares crit chain, no counter increment)
+              let bannerAbilityProphetReduction = 1;
+              if (prophetAttackCounter >= prophetThreshold && prophetReductionPct > 0) {
+                bannerAbilityProphetReduction = prophetMultiplier;
+              }
+              const adjustedBannerAbilityDamage = Math.round(bannerAbilityResult.damage * bannerAbilityProphetReduction);
+
+              totalDamage += adjustedBannerAbilityDamage;
               maxPerHitDamage = Math.max(maxPerHitDamage, bannerAbilityResult.perHitDamage);
 
               // Build breakdown
               const bannerAbilityBreakdown: DamageBreakdown = {
-                damage: bannerAbilityResult.damage,
-                perHitDamage: bannerAbilityResult.perHitDamage,
+                damage: adjustedBannerAbilityDamage,
+                perHitDamage: bannerAbilityProphetReduction < 1 ? Math.round(bannerAbilityResult.perHitDamage * bannerAbilityProphetReduction) : bannerAbilityResult.perHitDamage,
                 hits: bannerAbilityResult.totalHits,
                 baseDamage: bannerAbilityResult.baseDamage,
                 flatModifiers: bannerAbilityResult.flatModifiers,
@@ -4960,9 +5075,18 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 totalBlockReduction: bannerAbilityResult.totalBlockReduction,
               };
 
+              // Add Prophet of Gork and Mork to banner breakdown if active
+              if (bannerAbilityProphetReduction < 1) {
+                bannerAbilityBreakdown.globalMultiplier = (bannerAbilityBreakdown.globalMultiplier || 1) * bannerAbilityProphetReduction;
+                bannerAbilityBreakdown.globalMultiplierSources = [
+                  ...(bannerAbilityBreakdown.globalMultiplierSources || []),
+                  { name: 'Prophet of Gork and Mork', damageMultiplier: bannerAbilityProphetReduction }
+                ];
+              }
+
               followUpAttackLogs.push({
                 abilityName: 'Astartes Banner',
-                damage: bannerAbilityResult.damage,
+                damage: adjustedBannerAbilityDamage,
                 hits: bannerAbilityResult.totalHits,
                 damageType: effectiveDamageResult.damageProfile,
                 breakdown: bannerAbilityBreakdown,
@@ -5070,6 +5194,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                   ? [...state.battleState.summons, damageAbilitySummon]
                   : state.battleState.summons,
                 activeAbilitiesUsedCount: state.battleState.activeAbilitiesUsedCount + 1,
+                // Update Prophet of Gork and Mork attack counter
+                bossAttacksReceivedThisTurn: prophetAttackCounter,
                 // Supercharge: Store pierce bonus for ALL team Plasma attacks rest of turn
                 ...(result.superchargePierceBonus ? { superchargePierceBonus: result.superchargePierceBonus } : {}),
                 team: state.battleState.team.map((char) => {
@@ -6463,6 +6589,28 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Summary Execution from Yarrick (for BattleFatigue summons)
+    if (summon.traits?.includes('BattleFatigue')) {
+      const yarrick = battleState.team.find(c => c.passiveAbilities.includes('SummaryExecution'));
+      if (yarrick) {
+        const levelIndex = yarrick.abilityLevels?.['SummaryExecution'] ?? 54;
+        const values = getAbilityValues('SummaryExecution', levelIndex, yarrick.progressionStepIndex);
+        if (values) {
+          const extraDmg = values.extraDmg as number || 0;
+          flatDamageBonus += extraDmg;
+          buffSources.push({ name: 'Summary Execution', damageBonus: extraDmg });
+
+          // Check for Execution happened toggle
+          const toggleId = `SummaryExecution_${yarrick.id}_executed`;
+          if (toggles[toggleId]) {
+            const extraDmg2 = values.extraDmg_2 as number || 0;
+            flatDamageBonus += extraDmg2;
+            buffSources.push({ name: 'Summary Execution (Executed)', damageBonus: extraDmg2 });
+          }
+        }
+      }
+    }
+
     // Lord of the Host from Dante (for Flying/RapidAssault summons)
     const hasFlying = summon.traits?.includes('Flying');
     const hasRapidAssault = summon.traits?.includes('RapidAssault');
@@ -6942,7 +7090,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number; pierceRatioBonus?: number };
     const buffSources: BuffSourceType[] = [];
 
-    // Add aura sources
+    // Add aura sources (merge entries with same name+source, e.g. SpotterReworked range2 + heavy)
     for (const a of activeAuras) {
       const source: BuffSourceType = { name: a.abilityName, sourceName: a.sourceCharacterName || 'Unknown' };
       if (a.modifiers?.baseDamageBonus) source.damageBonus = a.modifiers.baseDamageBonus;
@@ -6950,7 +7098,16 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (a.modifiers?.critChanceBonus) source.critChanceBonus = a.modifiers.critChanceBonus;
       if (a.modifiers?.critDamageBonus) source.critDamageBonus = a.modifiers.critDamageBonus;
       if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus) {
-        buffSources.push(source);
+        const key = `${source.name}_${source.sourceName}`;
+        const existing = buffSources.find(b => `${b.name}_${b.sourceName}` === key);
+        if (existing) {
+          existing.damageBonus = (existing.damageBonus || 0) + (source.damageBonus || 0);
+          existing.extraHits = (existing.extraHits || 0) + (source.extraHits || 0);
+          existing.critChanceBonus = (existing.critChanceBonus || 0) + (source.critChanceBonus || 0);
+          existing.critDamageBonus = (existing.critDamageBonus || 0) + (source.critDamageBonus || 0);
+        } else {
+          buffSources.push(source);
+        }
       }
     }
 
@@ -7364,6 +7521,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number; pierceRatioBonus?: number };
     const buffSources: BuffSourceType[] = [];
 
+    // Merge aura entries with same name+source (e.g. SpotterReworked range2 + heavy)
     for (const a of activeAuras) {
       const source: BuffSourceType = { name: a.abilityName, sourceName: a.sourceCharacterName || 'Unknown' };
       if (a.modifiers?.baseDamageBonus) source.damageBonus = a.modifiers.baseDamageBonus;
@@ -7371,7 +7529,16 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (a.modifiers?.critChanceBonus) source.critChanceBonus = a.modifiers.critChanceBonus;
       if (a.modifiers?.critDamageBonus) source.critDamageBonus = a.modifiers.critDamageBonus;
       if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus) {
-        buffSources.push(source);
+        const key = `${source.name}_${source.sourceName}`;
+        const existing = buffSources.find(b => `${b.name}_${b.sourceName}` === key);
+        if (existing) {
+          existing.damageBonus = (existing.damageBonus || 0) + (source.damageBonus || 0);
+          existing.extraHits = (existing.extraHits || 0) + (source.extraHits || 0);
+          existing.critChanceBonus = (existing.critChanceBonus || 0) + (source.critChanceBonus || 0);
+          existing.critDamageBonus = (existing.critDamageBonus || 0) + (source.critDamageBonus || 0);
+        } else {
+          buffSources.push(source);
+        }
       }
     }
 
@@ -7660,6 +7827,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number; pierceRatioBonus?: number };
     const buffSources: BuffSourceType[] = [];
 
+    // Merge aura entries with same name+source (e.g. SpotterReworked range2 + heavy)
     for (const a of activeAuras) {
       const source: BuffSourceType = { name: a.abilityName, sourceName: a.sourceCharacterName || 'Unknown' };
       if (a.modifiers?.baseDamageBonus) source.damageBonus = a.modifiers.baseDamageBonus;
@@ -7667,7 +7835,16 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (a.modifiers?.critChanceBonus) source.critChanceBonus = a.modifiers.critChanceBonus;
       if (a.modifiers?.critDamageBonus) source.critDamageBonus = a.modifiers.critDamageBonus;
       if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus) {
-        buffSources.push(source);
+        const key = `${source.name}_${source.sourceName}`;
+        const existing = buffSources.find(b => `${b.name}_${b.sourceName}` === key);
+        if (existing) {
+          existing.damageBonus = (existing.damageBonus || 0) + (source.damageBonus || 0);
+          existing.extraHits = (existing.extraHits || 0) + (source.extraHits || 0);
+          existing.critChanceBonus = (existing.critChanceBonus || 0) + (source.critChanceBonus || 0);
+          existing.critDamageBonus = (existing.critDamageBonus || 0) + (source.critDamageBonus || 0);
+        } else {
+          buffSources.push(source);
+        }
       }
     }
 
@@ -7819,6 +7996,308 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       damageType: damageType,
       attackType: 'melee' as const,
       message: `Martial Superiority deals ${result.damage.toLocaleString()} damage (${hits}x ${damageType})`,
+    };
+  },
+
+  /**
+   * Execute Unwavering Sentinel attack (Tyrith)
+   * Bonus ranged attack: 2x Bolter hits
+   * Does NOT end Tyrith's turn, unlimited uses per turn
+   */
+  executeUnwaveringSentinel: (characterId) => {
+    const { battleState } = get();
+    if (!battleState || !battleState.boss) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'No battle in progress',
+      };
+    }
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'Character not found',
+      };
+    }
+
+    // Get UnwaveringSentinel ability values
+    const levelIndex = character.abilityLevels?.UnwaveringSentinel ?? 54;
+    const abilityValues = getAbilityValues('UnwaveringSentinel', levelIndex, character.progressionStepIndex);
+    if (!abilityValues) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: character.name,
+        characterIconUrl: character.iconUrl,
+        action: 'ability' as const,
+        message: 'Unwavering Sentinel ability not found',
+      };
+    }
+
+    const minDamage = abilityValues.minDmg as number || 0;
+    const maxDamage = abilityValues.maxDmg as number || 0;
+    const avgDamage = Math.round((minDamage + maxDamage) / 2);
+    const hits = abilityValues.nrOfHits as number || 2;
+    const damageType: DamageType = 'Bolter';
+    const attackType = 'ranged' as const;
+
+    // Calculate boss armor
+    const bossBaseArmor = battleState.boss.armor || 0;
+    const bossArmorReduction = battleState.bossArmorReduction || 0;
+    const bossArmor = Math.max(0, bossBaseArmor - bossArmorReduction);
+
+    // Get equipment stats for crit calculation
+    const equipmentStats = calculateEquipmentStats(character.equipment);
+    const ignoreCrit = battleState.ignoreCrit || false;
+
+    // === BUFF EVALUATION ===
+    const buffEvalContext: BuffEvaluationContext = {
+      attacker: character,
+      attackType,
+      attackCategory: 'special',
+      target: battleState.boss,
+      battleState,
+    };
+
+    const applicablePoolBuffs = getApplicableBuffs(battleState.buffPool, buffEvalContext);
+    const poolBuffEffects = combineBuffEffects(applicablePoolBuffs);
+
+    const buffCritChanceBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critChanceBonus || 0), 0
+    ) + (poolBuffEffects.critChanceBonus || 0);
+    const buffDamageMultiplier = character.activeBuffs.reduce(
+      (mult, buff) => mult * (buff.baseDamageMultiplier || 1), 1
+    ) * (poolBuffEffects.baseDamageMultiplier || 1);
+    const buffDamageBonus = character.activeBuffs.reduce(
+      (sum, buff) => {
+        if (buff.normalAttackOnly) return sum;
+        return sum + (buff.baseDamageBonus || 0);
+      }, 0
+    ) + (poolBuffEffects.baseDamageBonus || 0);
+    const poolExtraHits = poolBuffEffects.extraHits || 0;
+    const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
+    const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
+    const buffPierceRatioBonus = character.activeBuffs.reduce(
+      (sum, buff) => {
+        if (!buff.pierceRatioBonus) return sum;
+        if (buff.meleeOnly) return sum;  // Skip melee-only buffs for ranged attack
+        return sum + buff.pierceRatioBonus;
+      }, 0
+    );
+    const poolPierceRatioBonus = (poolBuffEffects.pierceRatioBonus || 0) + buffPierceRatioBonus;
+
+    // War Machine multiplier
+    const warMachineMultiplier = character.abilityToggles['WarMachine'] && battleState.machineOfWar
+      ? 1 + battleState.machineOfWar.extraDmgPct / 100
+      : 1;
+
+    // Build attacker stats
+    const attackerStats: AttackerStats = {
+      baseDamage: avgDamage,
+      damageType,
+      hits,
+      critChance: (equipmentStats.critChance || 0) + (equipmentStats.critChanceBonus || 0),
+      critDamage: (equipmentStats.critDmg || 0) + (equipmentStats.critDmgBonus || 0),
+      critChanceBonus: 0,
+      critDmgBonus: 0,
+      ignoreCrit,
+      traits: character.traits,
+      hasMoved: character.hasMoved,
+      attackType: 'ranged',
+      hasAttackedThisBattle: character.hasAttackedThisBattle,
+      attacksThisTurn: character.attacksThisTurn,
+      firstAttackTurn: character.firstAttackTurn ?? battleState.turn,
+      currentTurn: battleState.turn,
+      abilityToggles: character.abilityToggles,
+    };
+
+    // Evaluate aura bonuses
+    const auraBonuses = getCharacterAuraBonuses(character, battleState.team);
+    const activeAuras = auraBonuses.filter(a => {
+      if (!a.isActive) return false;
+      if (a.attackTypeRestriction && a.attackTypeRestriction !== 'ranged') return false;
+      return true;
+    });
+    const auraModifiers = activeAuras.map(a => a.modifiers || {});
+
+    // Build buff sources
+    type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number; pierceRatioBonus?: number };
+    const buffSources: BuffSourceType[] = [];
+
+    for (const a of activeAuras) {
+      const source: BuffSourceType = { name: a.abilityName, sourceName: a.sourceCharacterName || 'Unknown' };
+      if (a.modifiers?.baseDamageBonus) source.damageBonus = a.modifiers.baseDamageBonus;
+      if (a.modifiers?.extraHits) source.extraHits = a.modifiers.extraHits;
+      if (a.modifiers?.critChanceBonus) source.critChanceBonus = a.modifiers.critChanceBonus;
+      if (a.modifiers?.critDamageBonus) source.critDamageBonus = a.modifiers.critDamageBonus;
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus) {
+        const key = `${source.name}_${source.sourceName}`;
+        const existing = buffSources.find(b => `${b.name}_${b.sourceName}` === key);
+        if (existing) {
+          existing.damageBonus = (existing.damageBonus || 0) + (source.damageBonus || 0);
+          existing.extraHits = (existing.extraHits || 0) + (source.extraHits || 0);
+          existing.critChanceBonus = (existing.critChanceBonus || 0) + (source.critChanceBonus || 0);
+          existing.critDamageBonus = (existing.critDamageBonus || 0) + (source.critDamageBonus || 0);
+        } else {
+          buffSources.push(source);
+        }
+      }
+    }
+
+    for (const poolBuff of applicablePoolBuffs) {
+      const source: BuffSourceType = { name: poolBuff.name };
+      if (poolBuff.effects.baseDamageBonus) source.damageBonus = poolBuff.effects.baseDamageBonus;
+      if (poolBuff.effects.extraHits) source.extraHits = poolBuff.effects.extraHits;
+      if (poolBuff.effects.critChanceBonus) source.critChanceBonus = poolBuff.effects.critChanceBonus;
+      if (poolBuff.effects.critDamageBonus) source.critDamageBonus = poolBuff.effects.critDamageBonus;
+      if (poolBuff.effects.baseDamageMultiplier && poolBuff.effects.baseDamageMultiplier !== 1) {
+        source.damageMultiplier = poolBuff.effects.baseDamageMultiplier;
+      }
+      if (poolBuff.effects.armorIgnored) source.armorIgnored = poolBuff.effects.armorIgnored;
+      if (poolBuff.effects.pierceRatioBonus) source.pierceRatioBonus = poolBuff.effects.pierceRatioBonus;
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus || source.damageMultiplier || source.armorIgnored || source.pierceRatioBonus) {
+        buffSources.push(source);
+      }
+    }
+
+    if (warMachineMultiplier > 1 && battleState.machineOfWar) {
+      buffSources.push({
+        name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
+        damageMultiplier: warMachineMultiplier,
+      });
+    }
+
+    for (const buff of character.activeBuffs) {
+      if (buff.pierceRatioBonus && !buff.meleeOnly) {
+        buffSources.push({
+          name: buff.abilityName || 'Active Buff',
+          pierceRatioBonus: buff.pierceRatioBonus,
+        });
+      }
+    }
+
+    // Combine modifiers
+    const combinedMods = combineModifiers(auraModifiers);
+    const totalCritChanceBonus = (combinedMods.critChanceBonus || 0) + buffCritChanceBonus;
+    const buffCritDmgBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critDamageBonus || 0), 0
+    ) + poolCritDmgBonus;
+    const buffExtraHits = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.extraHits || 0), 0
+    ) + poolExtraHits;
+    const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * warMachineMultiplier;
+    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus;
+    const totalArmorIgnored = (combinedMods.armorIgnored || 0) + poolArmorIgnored;
+    const totalPierceRatioBonus = (combinedMods.pierceRatioBonus || 0) + poolPierceRatioBonus;
+
+    attackerStats.abilityModifiers = {
+      ...combinedMods,
+      baseDamageBonus: totalDamageBonus > 0 ? totalDamageBonus : undefined,
+      baseDamageMultiplier: totalDamageMultiplier !== 1 ? totalDamageMultiplier : undefined,
+      critChanceBonus: totalCritChanceBonus > 0 ? totalCritChanceBonus : undefined,
+      critDamageBonus: (combinedMods.critDamageBonus || 0) + buffCritDmgBonus > 0 ? (combinedMods.critDamageBonus || 0) + buffCritDmgBonus : undefined,
+      extraHits: (combinedMods.extraHits || 0) + buffExtraHits > 0 ? (combinedMods.extraHits || 0) + buffExtraHits : undefined,
+      armorIgnored: totalArmorIgnored > 0 ? totalArmorIgnored : undefined,
+      pierceRatioBonus: totalPierceRatioBonus > 0 ? totalPierceRatioBonus : undefined,
+      buffSources,
+    };
+
+    // Daemon block check
+    const hasDaemonTrait = battleState.boss?.traits?.includes('Daemon') ?? false;
+
+    const defenderStats: DefenderStats = {
+      armor: bossArmor,
+      maxHealth: battleState.boss?.health ?? 100000,
+      traits: battleState.boss.traits,
+      daemonBlockChance: hasDaemonTrait ? 0.25 : undefined,
+      daemonBlockMaxAmount: hasDaemonTrait ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
+    };
+
+    // Calculate damage
+    const calculator = new DamageCalculator(true);
+    const result = calculator.calculate(attackerStats, defenderStats);
+
+    console.group(`=== Unwavering Sentinel Execute (${character.name}) ===`);
+    console.log(`Base Damage: ${avgDamage} (${minDamage}-${maxDamage})`);
+    console.log(`Hits: ${hits}`);
+    console.log(`Damage Type: ${damageType}`);
+    if (buffSources.length > 0) {
+      console.log(`Active Buffs: ${buffSources.map(b => b.name).join(', ')}`);
+    }
+    calculator.printLogs();
+    console.groupEnd();
+
+    // Update battle state - no hasUsed flag (unlimited uses per turn)
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            totalDamageDealt: state.battleState.totalDamageDealt + result.damage,
+            team: state.battleState.team.map((c) =>
+              c.id === characterId
+                ? { ...c, totalDamageDealt: c.totalDamageDealt + result.damage }
+                : c
+            ),
+          }
+        : null,
+    }));
+
+    // Build damage breakdown
+    const damageBreakdown: DamageBreakdown = {
+      damage: result.damage,
+      perHitDamage: result.perHitDamage,
+      hits: result.totalHits,
+      baseDamage: avgDamage,
+      flatModifiers: result.flatModifiers,
+      flatModifierSources: result.flatModifierSources || [],
+      critBonus: result.critBonus,
+      critChanceSources: result.critChanceSources || [],
+      critDamageSources: result.critDamageSources || [],
+      extraHits: result.extraHits,
+      extraHitsSources: result.extraHitsSources || [],
+      damVarMod: result.damVarMod,
+      targetArmor: bossArmor,
+      armorIgnored: result.armorIgnored,
+      armorIgnoredSources: result.armorIgnoredSources,
+      effectiveArmor: result.effectiveArmor,
+      afterArmor: result.afterArmor,
+      pierceRatio: result.pierceRatio,
+      effectivePierceRatio: result.effectivePierceRatio,
+      pierceRatioBonus: result.pierceRatioBonus,
+      pierceRatioBonusSources: result.pierceRatioBonusSources,
+      pierceFloor: result.pierceFloor,
+      afterArmorPierce: result.afterArmorPierce,
+      globalMultiplier: result.globalMultiplier,
+      globalMultiplierSources: result.globalMultiplierSources || [],
+      baseCritChance: equipmentStats.critChance || 0,
+      baseCritDamage: equipmentStats.critDmg || 0,
+      critChanceBonus: equipmentStats.critChanceBonus || 0,
+      critDmgBonus: equipmentStats.critDmgBonus || 0,
+      critChance: result.effectiveCritChance,
+      critDamage: result.effectiveCritDamage,
+      expectedBlocks: result.expectedBlocks,
+      blockReductionPerHit: result.blockReductionPerHit,
+      totalBlockReduction: result.totalBlockReduction,
+    };
+
+    return {
+      timestamp: Date.now(),
+      characterId,
+      characterName: character.name,
+      characterIconUrl: character.iconUrl,
+      action: 'ability' as const,
+      damage: result.damage,
+      damageBreakdown,
+      damageType: damageType,
+      attackType: 'ranged' as const,
+      message: `Unwavering Sentinel deals ${result.damage.toLocaleString()} damage (${hits}x ${damageType})`,
     };
   },
 

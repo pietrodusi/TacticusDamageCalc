@@ -5,7 +5,7 @@
  */
 
 import type { BattleCharacter, SelectedMachineOfWar, BattleSummon, PooledBuff } from '../types';
-import { getAbilityValues, getAbilityNameSync } from './abilities';
+import { getAbilityValues, getAbilityNameSync, getAbilityRangeType } from './abilities';
 import { getTeamRequiredToggles } from './buffs/buffRegistry';
 import { getMachineOfWarDamageBonus, getMachineOfWarDisplayName } from './dataService';
 
@@ -396,37 +396,6 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     }
   }
 
-  // Summary Execution (Yarrick) - Battle Fatigue
-  if (character.passiveAbilities.includes('SummaryExecution')) {
-    const levelIndex = character.abilityLevels?.['SummaryExecution'] ?? 54;
-    const values = getAbilityValues('SummaryExecution', levelIndex, character.progressionStepIndex);
-    const abilityName = getAbilityNameSync('SummaryExecution');
-
-    if (values) {
-      const extraDmg = values.extraDmg as number || 0;
-      const extraDmg2 = values.extraDmg_2 as number || 0;
-
-      conditions.push({
-        id: 'SummaryExecution',
-        label: 'Has Battle Fatigue',
-        source: abilityName,
-        effect: `+${extraDmg} dmg`,
-        isActive: isToggleActive(character.abilityToggles['SummaryExecution']),
-        category: 'self',
-      });
-
-      conditions.push({
-        id: 'SummaryExecution_Executed',
-        label: 'Execution happened',
-        source: abilityName,
-        effect: `+${extraDmg2} additional dmg`,
-        isActive: isToggleActive(character.abilityToggles['SummaryExecution_Executed']),
-        category: 'self',
-        dependsOn: 'SummaryExecution',
-      });
-    }
-  }
-
   // Inescapable Accuracy (Maugan Ra) - Did not move
   if (character.passiveAbilities.includes('InescapableAccuracy')) {
     const levelIndex = character.abilityLevels?.['InescapableAccuracy'] ?? 54;
@@ -715,27 +684,6 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
         source: abilityName,
         effect: `+${extraDmg} dmg`,
         isActive: isToggleActive(character.abilityToggles['CosmicHorror']),
-        category: 'self',
-      });
-    }
-  }
-
-  // Heavy Grav-Cannon (Sy-gex) - Target is heavy armor
-  if (character.passiveAbilities.includes('HeavyGravCannon')) {
-    const levelIndex = character.abilityLevels?.['HeavyGravCannon'] ?? 54;
-    const values = getAbilityValues('HeavyGravCannon', levelIndex, character.progressionStepIndex);
-    const abilityName = getAbilityNameSync('HeavyGravCannon');
-
-    if (values) {
-      const extraDmg = values.extraDmg as number || 0;
-      const extraPierceRatio = values.extraPierceRatio as number || 40;
-
-      conditions.push({
-        id: 'HeavyGravCannon',
-        label: 'Target is Gravis/Terminator/Mechanical',
-        source: abilityName,
-        effect: `+${extraDmg} dmg, +${extraPierceRatio}% pierce`,
-        isActive: isToggleActive(character.abilityToggles['HeavyGravCannon']),
         category: 'self',
       });
     }
@@ -1251,8 +1199,10 @@ function getAuraConditions(
 
     // Spotter (Thaddeus) - ranged damage bonus to allies
     if (teammate.passiveAbilities.includes('SpotterReworked')) {
-      // Only show for characters with ranged attacks (and not Thaddeus himself)
-      const hasRangedAttack = character.rangedHits !== undefined && character.rangedHits > 0;
+      // Only show for characters with ranged attacks or ranged abilities (and not Thaddeus himself)
+      const hasRangedNormal = character.rangedHits !== undefined && character.rangedHits > 0;
+      const hasRangedAbility = character.activeAbilities.some(a => getAbilityRangeType(a) === 'Ranged');
+      const hasRangedAttack = hasRangedNormal || hasRangedAbility;
       if (hasRangedAttack && character.id !== teammate.id) {
         const levelIndex = teammate.abilityLevels?.['SpotterReworked'] ?? 54;
         const values = getAbilityValues('SpotterReworked', levelIndex, teammate.progressionStepIndex);
@@ -1262,28 +1212,17 @@ function getAuraConditions(
           const extraDmg = values.extraDmg as number || 0;
           const extraDmgHeavy = values.extraDmg_2 as number || 0;
           const toggleId = `SpotterReworked_${teammate.id}_range2`;
-          const heavyToggleId = `SpotterReworked_${teammate.id}_heavy`;
+          const isHeavyWeapon = character.traits.includes('HeavyWeapon');
+          const effectDmg = isHeavyWeapon ? extraDmgHeavy : extraDmg;
 
           conditions.push({
             id: toggleId,
             label: `Range 2 from ${teammate.name}`,
             source: abilityName,
             sourceCharacter: teammate.name,
-            effect: `+${extraDmg} ranged dmg`,
+            effect: `+${effectDmg} ranged dmg`,
             isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
-          });
-
-          // Heavy weapon bonus (depends on being in range)
-          conditions.push({
-            id: heavyToggleId,
-            label: 'Has Heavy Weapon',
-            source: abilityName,
-            sourceCharacter: teammate.name,
-            effect: `+${extraDmgHeavy - extraDmg} additional dmg`,
-            isActive: isToggleActive(character.abilityToggles[heavyToggleId]),
-            category: 'aura',
-            dependsOn: toggleId,
           });
         }
       }
@@ -1622,6 +1561,32 @@ export function getSummonBuffConditions(
         isActive: isToggleActive(toggles[toggleId]),
         category: 'aura',
       });
+    }
+  }
+
+  // Summary Execution (Yarrick) - bonus damage for BattleFatigue summons
+  if (summon.traits?.includes('BattleFatigue')) {
+    const yarrick = team.find(c => c.passiveAbilities.includes('SummaryExecution'));
+    if (yarrick) {
+      const levelIndex = yarrick.abilityLevels?.['SummaryExecution'] ?? 54;
+      const values = getAbilityValues('SummaryExecution', levelIndex, yarrick.progressionStepIndex);
+      const abilityName = getAbilityNameSync('SummaryExecution');
+
+      if (values) {
+        const extraDmg = values.extraDmg as number || 0;
+        const extraDmg2 = values.extraDmg_2 as number || 0;
+        const toggleId = `SummaryExecution_${yarrick.id}_executed`;
+
+        conditions.push({
+          id: toggleId,
+          label: 'Execution happened',
+          source: abilityName,
+          sourceCharacter: yarrick.name,
+          effect: `+${extraDmg2} dmg (base: +${extraDmg} auto)`,
+          isActive: isToggleActive(toggles[toggleId]),
+          category: 'aura',
+        });
+      }
     }
   }
 

@@ -11,9 +11,10 @@ interface ActionPanelProps {
   onExecuteOverwatch?: () => void;
   onExecuteFuryOfTheAncients?: () => void;
   onExecuteMartialSuperiority?: () => void;
+  onExecuteUnwaveringSentinel?: () => void;
 }
 
-export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onExecuteOverwatch, onExecuteFuryOfTheAncients, onExecuteMartialSuperiority }: ActionPanelProps) {
+export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onExecuteOverwatch, onExecuteFuryOfTheAncients, onExecuteMartialSuperiority, onExecuteUnwaveringSentinel }: ActionPanelProps) {
   const hasRanged = character.rangedHits !== undefined && character.rangedHits > 0;
   const hasActiveAbility = character.activeAbilities.length > 0;
   const hasMechanicTrait = character.traits.includes('Mechanic');
@@ -21,6 +22,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
   const hasTheBetrayerAbility = character.passiveAbilities?.includes('TheBetrayer') ?? false;
   const hasFuryOfTheAncientsAbility = character.passiveAbilities?.includes('FuryOfTheAncients') ?? false;
   const hasMartialSuperiorityAbility = character.passiveAbilities?.includes('MartialSuperiority') ?? false;
+  const hasUnwaveringSentinelAbility = character.passiveAbilities?.includes('UnwaveringSentinel') ?? false;
   const isAdjacentToBoss = character.abilityToggles?.['adjacentToBoss'] ?? false;
   // Overwatch check - available for:
   // 1. Characters with Overwatch trait (e.g., Azrael) - always available once per turn
@@ -164,6 +166,23 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
 
   const executePreview = hasTheBetrayerAbility ? getExecuteDamagePreview() : null;
 
+  // Get Unwavering Sentinel damage preview for Tyrith
+  const getSentinelDamagePreview = () => {
+    if (!hasUnwaveringSentinelAbility) return null;
+
+    const levelIndex = character.abilityLevels?.UnwaveringSentinel ?? 54;
+    const values = getAbilityValues('UnwaveringSentinel', levelIndex, character.progressionStepIndex);
+    if (!values) return null;
+
+    const minDmg = values.minDmg as number || 0;
+    const maxDmg = values.maxDmg as number || 0;
+    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = values.nrOfHits as number || 2;
+    return { avg: avgDmg, hits, total: avgDmg * hits };
+  };
+
+  const sentinelPreview = hasUnwaveringSentinelAbility ? getSentinelDamagePreview() : null;
+
   // Check if turn is ended (all actions disabled)
   const isTurnEnded = character.turnEnded;
 
@@ -263,7 +282,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
       </div>
 
       {/* Other Actions */}
-      <div className={`grid gap-2 ${hasMechanicTrait || hasHealerTrait || hasTheBetrayerAbility || showOverwatchButton || hasMartialSuperiorityAbility ? 'grid-cols-2 sm:grid-cols-2' : 'grid-cols-1'}`}>
+      <div className={`grid gap-2 ${hasMechanicTrait || hasHealerTrait || hasTheBetrayerAbility || showOverwatchButton || hasMartialSuperiorityAbility || hasUnwaveringSentinelAbility ? 'grid-cols-2 sm:grid-cols-2' : 'grid-cols-1'}`}>
         {/* Repair (only for Mechanic trait) */}
         {hasMechanicTrait && (
           <button
@@ -408,6 +427,26 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
               <span className="text-xs font-medium">Martial Superiority</span>
             </div>
             <span className="text-[10px] text-gray-400">2x Power</span>
+          </button>
+        )}
+
+        {/* Unwavering Sentinel (bonus attack for Tyrith) */}
+        {hasUnwaveringSentinelAbility && onExecuteUnwaveringSentinel && (
+          <button
+            onClick={() => !isTurnEnded && onExecuteUnwaveringSentinel()}
+            disabled={isTurnEnded}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              isTurnEnded ? disabledClasses : 'hover:bg-cyan-900/50 hover:border-cyan-600 text-cyan-500'
+            }`}
+            title={`Unwavering Sentinel: 2x Bolter ranged attack (unlimited per turn)${sentinelPreview ? ` ~${sentinelPreview.total.toLocaleString()} avg` : ''}`}
+          >
+            <div className="flex items-center gap-1">
+              {getDamageTypeImageUrl('Bolter') && (
+                <img src={getDamageTypeImageUrl('Bolter')} alt="Bolter" className="w-5 h-5" />
+              )}
+              <span className="text-xs font-medium">Sentinel</span>
+            </div>
+            <span className="text-[10px] text-gray-400">2x Bolter</span>
           </button>
         )}
 

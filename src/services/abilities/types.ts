@@ -408,6 +408,7 @@ export interface AuraBonus {
   requiredAlliance?: string;  // Alliance the target must have (e.g., "Chaos")
   requiresLowHealth?: boolean;  // If true, only applies below 50% health
   modifiers: AbilityStatModifier;
+  toggleKey?: string;         // If set, use this key instead of auraId for toggle lookup
   toggleLabel: string;      // Label for the toggle
   bonusText: string;        // Display text for the bonus
   attackTypeRestriction?: 'melee' | 'ranged';  // If set, only applies to this attack type

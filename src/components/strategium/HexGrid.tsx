@@ -16,6 +16,7 @@ import {
   getHexLevel,
 } from '../../services/strategium/hexUtils';
 import type { GridOverrides } from './CalibrationPanel';
+import type { HexCellData } from '../../types/boardData';
 
 interface HexGridProps {
   mapId: string;
@@ -34,6 +35,8 @@ interface HexGridProps {
   calibrationMode?: boolean;
   gridOverrides?: GridOverrides;
   gridOpacity?: number;
+  // Data-driven map cell data (terrain, spawns, playability)
+  cellData?: Map<string, HexCellData>;
   // Hex selection for calibration (supports multi-select with Ctrl)
   selectedCalibrationHexes?: HexCoord[];
   onCalibrationHexSelect?: (hex: HexCoord, isMultiSelect: boolean) => void;
@@ -64,6 +67,7 @@ export function HexGrid({
   calibrationMode = false,
   gridOverrides,
   gridOpacity = 0,
+  cellData,
   selectedCalibrationHexes = [],
   onCalibrationHexSelect,
 }: HexGridProps) {
@@ -104,9 +108,19 @@ export function HexGrid({
     return mapData?.hexLevels ?? {};
   }, [calibrationMode, gridOverrides, mapData]);
 
-  // Generate hex grid
+  // Generate hex grid - use cellData for data-driven maps (only playable hexes)
   const hexes = useMemo(() => {
     if (!effectiveHexGrid) return [];
+
+    // Data-driven: only render playable hexes from board data
+    if (cellData) {
+      return Array.from(cellData.entries())
+        .filter(([, cell]) => cell.isPlayable)
+        .map(([key]) => {
+          const [q, r] = key.split(',').map(Number);
+          return { q, r };
+        });
+    }
 
     const { rows, cols } = effectiveHexGrid;
     const result: HexCoord[] = [];
@@ -119,7 +133,7 @@ export function HexGrid({
     }
 
     return result;
-  }, [effectiveHexGrid]);
+  }, [effectiveHexGrid, cellData]);
 
   // Get boss hexes for current turn
   const bossHexes = useMemo(() => {
@@ -222,7 +236,7 @@ export function HexGrid({
 
   // Use actual image dimensions for SVG viewBox to preserve aspect ratio
   const svgWidth = imageWidth;
-  const svgHeight = 1787;
+  const svgHeight = mapData.imageHeight || 1787;
 
   // Convert screen coordinates to SVG coordinates (works with both mouse and touch via PointerEvent)
   const screenToSvg = useCallback((clientX: number, clientY: number): Point | null => {
@@ -403,6 +417,120 @@ export function HexGrid({
             );
           })}
         </g>
+
+        {/* Terrain overlay for data-driven maps */}
+        {cellData && (
+          <g className="terrain-overlay" pointerEvents="none">
+            {hexes.map((hex) => {
+              const key = `${hex.q},${hex.r}`;
+              const cell = cellData.get(key);
+              if (!cell || cell.terrain === 'Grass') return null;
+
+              const hexLevel = getHexLevel(hex, hexLevels);
+              const center = hexToPixel(hex, hexSize, { x: originX, y: originY }, verticalScale, hexLevel, levelYOffset);
+
+              const terrainColors: Record<string, string> = {
+                DryBush: '#a16207',
+                Swamp: '#4d7c0f',
+                Fire: '#ea580c',
+                Water: '#0284c7',
+                FirstAid: '#16a34a',
+                Trench: '#78350f',
+              };
+
+              const terrainLabels: Record<string, string> = {
+                DryBush: 'B',
+                Swamp: 'S',
+                Fire: 'F',
+                Water: 'W',
+                FirstAid: '+',
+                Trench: 'T',
+              };
+
+              const color = terrainColors[cell.terrain] || '#6b7280';
+              const label = terrainLabels[cell.terrain] || '?';
+              const r = hexSize * 0.18;
+              const offsetX = hexSize * 0.35;
+              const offsetY = -hexSize * verticalScale * 0.35;
+
+              return (
+                <g key={`terrain-${key}`}>
+                  <circle
+                    cx={center.x + offsetX}
+                    cy={center.y + offsetY}
+                    r={r}
+                    fill={color}
+                    stroke="rgba(0,0,0,0.5)"
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={center.x + offsetX}
+                    y={center.y + offsetY}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="white"
+                    fontSize={hexSize * 0.16}
+                    fontWeight="bold"
+                  >
+                    {label}
+                  </text>
+                </g>
+              );
+            })}
+          </g>
+        )}
+
+        {/* Spawn indicators for data-driven maps */}
+        {cellData && (
+          <g className="spawn-indicators" pointerEvents="none">
+            {hexes.map((hex) => {
+              const key = `${hex.q},${hex.r}`;
+              const cell = cellData.get(key);
+              if (!cell || !cell.spawnRole) return null;
+
+              const hexLevel = getHexLevel(hex, hexLevels);
+              const center = hexToPixel(hex, hexSize, { x: originX, y: originY }, verticalScale, hexLevel, levelYOffset);
+
+              if (cell.spawnRole === 'player') {
+                return (
+                  <text
+                    key={`spawn-${key}`}
+                    x={center.x}
+                    y={center.y}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="#818cf8"
+                    fontSize={hexSize * 0.35}
+                    fontWeight="bold"
+                    opacity={0.8}
+                  >
+                    {cell.spawnIndex || '?'}
+                  </text>
+                );
+              }
+
+              if (cell.spawnRole === 'boss') {
+                return (
+                  <text
+                    key={`spawn-${key}`}
+                    x={center.x}
+                    y={center.y}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="#d946ef"
+                    fontSize={hexSize * 0.3}
+                    fontWeight="bold"
+                    opacity={0.7}
+                  >
+                    B
+                  </text>
+                );
+              }
+
+              return null;
+            })}
+          </g>
+        )}
 
         {/* Movement arrows (from previous turn) */}
         <g className="movement-arrows">

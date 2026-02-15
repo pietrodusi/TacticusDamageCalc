@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2, Map, Settings, GripVertical, X, RotateCcw, LogOut } from 'lucide-react';
 import { useStrategiumStore } from '../stores/strategiumStore';
@@ -9,6 +9,7 @@ import type { GridOverrides } from '../components/strategium';
 import type { BossRank, MachineOfWarStars } from '../types';
 import type { HexCoord } from '../types/strategium';
 import { getMapWithImage } from '../services/strategium/mapMetadata';
+import { isDataDrivenMap, getDataDrivenCellData } from '../services/strategium/boardDataService';
 
 export function StrategiumPage() {
   // Team, boss, and machine of war from teamStore (shared with Calculator)
@@ -61,6 +62,12 @@ export function StrategiumPage() {
 
   // Get map data for calibration
   const mapData = selectedMapId ? getMapWithImage(selectedMapId) : null;
+
+  // Get cell data for data-driven maps (terrain, spawns)
+  const cellData = useMemo(() => {
+    if (!selectedMapId || !isDataDrivenMap(selectedMapId)) return undefined;
+    return getDataDrivenCellData(selectedMapId) ?? undefined;
+  }, [selectedMapId]);
 
   const handleStartCalibration = () => {
     if (mapData) {
@@ -413,7 +420,8 @@ export function StrategiumPage() {
               onBossRotate={rotateBoss}
               calibrationMode={isCalibrating}
               gridOverrides={gridOverrides ?? undefined}
-              gridOpacity={gridOpacity}
+              gridOpacity={gridOpacity || (cellData ? 0.5 : 0)}
+              cellData={cellData}
               selectedCalibrationHexes={selectedCalibrationHexes}
               onCalibrationHexSelect={handleCalibrationHexSelect}
             />

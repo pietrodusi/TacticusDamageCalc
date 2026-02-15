@@ -373,7 +373,7 @@ export function BattleLog({ entries, currentTurn, editingTurn, isComplete, team,
                                             damageType={entry.damageType}
                                           />
                                         )
-                                      ) : entry.damage !== undefined && entry.damage > 0 ? (
+                                      ) : entry.action !== 'ability' && entry.damage !== undefined && entry.damage > 0 ? (
                                         <p className="text-red-400 text-xs">
                                           -{entry.damage.toLocaleString()} damage
                                         </p>

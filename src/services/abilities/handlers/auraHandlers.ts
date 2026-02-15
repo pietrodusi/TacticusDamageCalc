@@ -98,10 +98,55 @@ export const FirstAmongTraitorsHandler: AuraAbilityHandler = {
   },
 };
 
+/**
+ * SpotterReworked (Thaddeus)
+ * Allies within range 2 get +extraDmg with ranged attacks
+ * Heavy Weapon allies get +extraDmg_2 instead
+ * Variables: extraDmg, extraDmg_2
+ * Constants: range: 2
+ */
+export const SpotterReworkedHandler: AuraAbilityHandler = {
+  abilityId: 'SpotterReworked',
+  abilityName: 'Spotter',
+
+  getAuraBonuses: (
+    values: ComputedAbilityValues,
+    sourceCharacterId: string,
+    sourceCharacterName: string
+  ): AuraBonus[] => {
+    const extraDmg = values.extraDmg as number || 0;
+    const extraDmgHeavy = values.extraDmg_2 as number || 0;
+
+    return [
+      {
+        auraId: `SpotterReworked_${sourceCharacterId}_range2`,
+        sourceAbilityId: 'SpotterReworked',
+        sourceAbilityName: 'Spotter',
+        modifiers: { baseDamageBonus: extraDmg },
+        toggleLabel: `Range 2 from ${sourceCharacterName}`,
+        bonusText: `+${extraDmg} ranged dmg`,
+        attackTypeRestriction: 'ranged',
+      },
+      {
+        auraId: `SpotterReworked_${sourceCharacterId}_heavy`,
+        sourceAbilityId: 'SpotterReworked',
+        sourceAbilityName: 'Spotter',
+        requiredTraits: ['HeavyWeapon'],
+        toggleKey: `SpotterReworked_${sourceCharacterId}_range2`,
+        modifiers: { baseDamageBonus: extraDmgHeavy - extraDmg },
+        toggleLabel: 'Has Heavy Weapon',
+        bonusText: `+${extraDmgHeavy - extraDmg} additional ranged dmg`,
+        attackTypeRestriction: 'ranged',
+      },
+    ];
+  },
+};
+
 // Export all aura handlers
 export const auraHandlers: AuraAbilityHandler[] = [
   LordOfTheHostHandler,
   FirstAmongTraitorsHandler,
+  SpotterReworkedHandler,
 ];
 
 // Map for quick lookup by ability ID

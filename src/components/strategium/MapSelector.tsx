@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, Map, X } from 'lucide-react';
 import { getMapsForBossWithImages, type MapMetadataWithImage } from '../../services/strategium/mapMetadata';
+import { isDataDrivenMap } from '../../services/strategium/boardDataService';
 
 interface MapSelectorProps {
   bossId: string;
@@ -129,7 +130,12 @@ function MapCard({ map, isSelected, onSelect }: MapCardProps) {
         </div>
       )}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-        <span className="text-xs text-white font-medium">{map.displayName}</span>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-white font-medium">{map.displayName}</span>
+          {isDataDrivenMap(map.mapId) && (
+            <span className="text-[10px] bg-green-600 text-white px-1 rounded leading-tight">GD</span>
+          )}
+        </div>
       </div>
     </button>
   );

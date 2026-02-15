@@ -1282,8 +1282,7 @@ export const AstartesBannerHandler: AbilityHandler = {
 
 /**
  * UnwaveringSentinel (Tyrith)
- * Reaction - deals 2x Bolter damage when attacked (during enemy turn)
- * Note: Reaction timing during enemy turn is not directly modeled
+ * Bonus attack - deals 2x Bolter damage, unlimited uses per turn
  * Variables: minDmg, maxDmg
  * Constants: damageProfile: Bolter, nrOfHits: 2, range: 2
  */
@@ -1296,15 +1295,13 @@ export const UnwaveringSentinelHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
-    const avgDmg = Math.round((minDmg + maxDmg) / 2);
 
-    // Reaction during enemy turn - not directly modeled
     return {
       abilityId: 'UnwaveringSentinel',
       abilityName: getAbilityNameSync('UnwaveringSentinel'),
       modifiers: {},
-      applicable: false,  // Reaction timing not modeled
-      reason: `Reaction: 2x ${avgDmg} Bolter (enemy turn)`,
+      applicable: true,
+      reason: `Bonus attack: 2x ${minDmg}-${maxDmg} Bolter`,
       requiresToggle: false,
     };
   },
@@ -1542,40 +1539,7 @@ export const NightshroudHandler: AbilityHandler = {
   },
 };
 
-/**
- * SpotterReworked (Thaddeus)
- * Allies within range +extraDmg with ranged attacks
- * Variables: extraDmg, extraDmg_2 (for Heavy Weapon)
- * Constants: range: 2
- */
-export const SpotterReworkedHandler: AbilityHandler = {
-  abilityId: 'SpotterReworked',
-  abilityName: 'Spotter',
-  category: 'passive',
-  cooldown: -1,
-
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
-    const extraDmg = values.extraDmg as number || 0;
-    const extraDmgHeavy = values.extraDmg_2 as number || 0;
-    const isRanged = context.attackType === 'ranged';
-    const withinRange = isToggleActive(context.abilityToggles?.['SpotterReworked']);
-    const hasHeavyWeapon = isToggleActive(context.abilityToggles?.['SpotterReworked_Heavy']);
-    const applicable = isRanged && withinRange;
-    const damageBonus = hasHeavyWeapon ? extraDmgHeavy : extraDmg;
-
-    return {
-      abilityId: 'SpotterReworked',
-      abilityName: getAbilityNameSync('SpotterReworked'),
-      modifiers: applicable ? { baseDamageBonus: damageBonus } : {},
-      applicable,
-      reason: applicable
-        ? `+${damageBonus} ranged damage${hasHeavyWeapon ? ' (Heavy Weapon)' : ''}`
-        : (isRanged ? 'Not within range 2 of Thaddeus' : 'Only applies to ranged attacks'),
-      requiresToggle: true,
-      toggleLabel: 'Within 2 hexes of Thaddeus',
-    };
-  },
-};
+// SpotterReworked moved to auraHandlers.ts (team-wide aura)
 
 /**
  * SummaryExecution (Yarrick)
@@ -1588,23 +1552,14 @@ export const SummaryExecutionHandler: AbilityHandler = {
   category: 'passive',
   cooldown: -1,
 
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
-    const extraDmg = values.extraDmg as number || 0;
-    const extraDmg2 = values.extraDmg_2 as number || 0;
-    const hasBattleFatigue = isToggleActive(context.abilityToggles?.['SummaryExecution']);
-    const executionHappened = isToggleActive(context.abilityToggles?.['SummaryExecution_Executed']);
-    const totalBonus = hasBattleFatigue ? extraDmg + (executionHappened ? extraDmg2 : 0) : 0;
-
+  evaluatePassive: (_values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
     return {
       abilityId: 'SummaryExecution',
       abilityName: getAbilityNameSync('SummaryExecution'),
-      modifiers: hasBattleFatigue ? { baseDamageBonus: totalBonus } : {},
-      applicable: hasBattleFatigue,
-      reason: hasBattleFatigue
-        ? `+${totalBonus} damage (Battle Fatigue${executionHappened ? ' + Execution' : ''})`
-        : 'Unit does not have Battle Fatigue',
-      requiresToggle: true,
-      toggleLabel: 'Has Battle Fatigue',
+      modifiers: {},
+      applicable: false,
+      reason: 'Buffs summons with Battle Fatigue (see summon cards)',
+      requiresToggle: false,
     };
   },
 };
@@ -3023,8 +2978,7 @@ export const HeavyGravCannonHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
     const extraPierceRatio = values.extraPierceRatio as number || 40;
-    // Toggle indicates target is Gravis, Terminator, or Mechanical
-    const validTarget = isToggleActive(context.abilityToggles?.['HeavyGravCannon']);
+    const validTarget = hasMechanicalTrait(context.bossTraits);
 
     return {
       abilityId: 'HeavyGravCannon',
@@ -3035,10 +2989,9 @@ export const HeavyGravCannonHandler: AbilityHandler = {
       } : {},
       applicable: validTarget,
       reason: validTarget
-        ? `vs Gravis/Terminator/Mechanical: +${extraDmg} dmg, +${extraPierceRatio}% pierce`
-        : `Ranged vs Gravis/Terminator/Mechanical: +${extraDmg} dmg, +${extraPierceRatio}% pierce`,
-      requiresToggle: true,
-      toggleLabel: 'Target is Gravis/Terminator/Mechanical',
+        ? `+${extraDmg} dmg, +${extraPierceRatio}% pierce vs Mechanical`
+        : 'Boss is not Mechanical',
+      requiresToggle: false,
     };
   },
 };
@@ -3159,7 +3112,6 @@ export const passiveHandlers: AbilityHandler[] = [
   ToughToKillHandler,
   AvalancheOfMuscleHandler,
   NightshroudHandler,
-  SpotterReworkedHandler,
   SummaryExecutionHandler,
   DefenderOfTheGreaterGoodHandler,
   PathOfCommandHandler,
