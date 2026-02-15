@@ -1576,18 +1576,22 @@ export const DefenderOfTheGreaterGoodHandler: AbilityHandler = {
   category: 'passive',
   cooldown: -1,
 
-  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
     const chance = values.chance as number || 25;
+    const extraHitProc = isToggleActive(context.abilityToggles?.['DefenderOfTheGreaterGood_extraHit']);
 
     return {
       abilityId: 'DefenderOfTheGreaterGood',
       abilityName: getAbilityNameSync('DefenderOfTheGreaterGood'),
       modifiers: {
         baseDamageBonus: extraDmg,
+        ...(extraHitProc ? { extraHits: 1 } : {}),
       },
       applicable: true,
-      reason: `+${extraDmg} damage, ${chance}% chance for +1 hit`,
+      reason: extraHitProc
+        ? `+${extraDmg} damage, +1 hit (${chance}% proc)`
+        : `+${extraDmg} damage, ${chance}% chance for +1 hit`,
       requiresToggle: false,
     };
   },
@@ -2428,31 +2432,16 @@ export const ExplosiveMaladiesHandler: AbilityHandler = {
   abilityName: 'Explosive Maladies',
   category: 'passive',
   cooldown: -1,
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
-    const adjacentToPestillian = isToggleActive(context.abilityToggles?.['ExplosiveMaladies']);
-
-    const followUp: FollowUpAttack | undefined = adjacentToPestillian ? {
-      abilityId: 'ExplosiveMaladies',
-      abilityName: getAbilityNameSync('ExplosiveMaladies'),
-      hits: 1,
-      minDamage: extraDmg,
-      maxDamage: extraDmg,
-      damageProfile: 'Blast' as DamageType,
-      attackCategory: 'special',
-    } : undefined;
-
+    // Teammate aura - follow-up is handled in battleStore via toggle on the attacker
     return {
       abilityId: 'ExplosiveMaladies',
       abilityName: getAbilityNameSync('ExplosiveMaladies'),
       modifiers: {},
-      applicable: adjacentToPestillian,
-      reason: adjacentToPestillian
-        ? `+1x ${extraDmg} Blast on ranged (Chaos: also melee). Overkills`
-        : `Not adjacent to Pestillian`,
-      requiresToggle: true,
-      toggleLabel: 'Adjacent to Pestillian',
-      followUpAttack: followUp,
+      applicable: false,
+      reason: `Adjacent allies: +1x ${extraDmg} Blast on ranged (Chaos: also melee)`,
+      requiresToggle: false,
     };
   },
 };
@@ -2497,32 +2486,17 @@ export const InfernalPactsHandler: AbilityHandler = {
   abilityName: 'Infernal Pacts',
   category: 'passive',
   cooldown: -1,
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
-    const adjacentToAbraxas = isToggleActive(context.abilityToggles?.['InfernalPacts']);
-
-    const followUp: FollowUpAttack | undefined = adjacentToAbraxas ? {
-      abilityId: 'InfernalPacts',
-      abilityName: getAbilityNameSync('InfernalPacts'),
-      hits: 1,
-      minDamage: minDmg,
-      maxDamage: maxDmg,
-      damageProfile: 'Psychic' as DamageType,
-      attackCategory: 'special',
-    } : undefined;
-
+    // Teammate aura - follow-up is handled in battleStore via toggle on the attacker
     return {
       abilityId: 'InfernalPacts',
       abilityName: getAbilityNameSync('InfernalPacts'),
       modifiers: {},
-      applicable: adjacentToAbraxas,
-      reason: adjacentToAbraxas
-        ? `+1x ${minDmg}-${maxDmg} Psychic on ranged (Daemons: also melee)`
-        : `Not adjacent to Abraxas`,
-      requiresToggle: true,
-      toggleLabel: 'Adjacent to Abraxas',
-      followUpAttack: followUp,
+      applicable: false,
+      reason: `Adjacent Chaos allies: +1x ${minDmg}-${maxDmg} Psychic on ranged (Daemons: also melee)`,
+      requiresToggle: false,
     };
   },
 };
@@ -2655,23 +2629,16 @@ export const ObsessiveAnnunciationHandler: AbilityHandler = {
   abilityName: 'Obsessive Annunciation',
   category: 'passive',
   cooldown: -1,
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
     const extraCritDmg = values.extraCritDmg as number || 0;
-    const adjacentToAdamatar = isToggleActive(context.abilityToggles?.['ObsessiveAnnunciation']);
-
     return {
       abilityId: 'ObsessiveAnnunciation',
       abilityName: getAbilityNameSync('ObsessiveAnnunciation'),
-      modifiers: adjacentToAdamatar ? {
-        baseDamageBonus: extraDmg,
-      } : {},
-      applicable: adjacentToAdamatar,
-      reason: adjacentToAdamatar
-        ? `Enemies adj to Adamatar take +${extraDmg} dmg from ranged. If overkill: +${extraCritDmg} crit dmg from Chaos`
-        : `Target not adjacent to Adamatar`,
-      requiresToggle: true,
-      toggleLabel: 'Target adj to Adamatar',
+      modifiers: {},
+      applicable: false,
+      reason: `Ranged allies: +${extraDmg} dmg vs enemies adj to Adamatar. If overkill: +${extraCritDmg} crit dmg from Chaos`,
+      requiresToggle: false,
     };
   },
 };
@@ -2687,16 +2654,32 @@ export const EcstaticSlaughterHandler: AbilityHandler = {
   abilityName: 'Ecstatic Slaughter',
   category: 'passive',
   cooldown: -1,
-  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
+    const triggered = isToggleActive(context.abilityToggles?.['EcstaticSlaughter']);
+
+    const followUpAttack: FollowUpAttack | undefined = triggered ? {
+      abilityId: 'EcstaticSlaughter',
+      abilityName: 'Ecstatic Slaughter',
+      damageProfile: 'Eviscerate' as DamageType,
+      minDamage: minDmg,
+      maxDamage: maxDmg,
+      hits: 3,
+      attackCategory: 'special',
+    } : undefined;
+
     return {
       abilityId: 'EcstaticSlaughter',
       abilityName: getAbilityNameSync('EcstaticSlaughter'),
       modifiers: {},
-      applicable: false, // Trigger on Thrilled/overkill - not a modifier
-      reason: `On Thrilled or adj overkill: 3x ${minDmg}-${maxDmg} Eviscerate to adj enemy. Taunts survivor 1 round`,
-      requiresToggle: false,
+      applicable: triggered,
+      reason: triggered
+        ? `3x ${minDmg}-${maxDmg} Eviscerate follow-up`
+        : 'Trigger: Thrilled or adj overkill',
+      requiresToggle: true,
+      toggleLabel: 'Thrilled / Adj Overkill',
+      followUpAttack,
     };
   },
 };

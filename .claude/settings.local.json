@@ -52,7 +52,9 @@
       "mcp__playwright__browser_snapshot",
       "mcp__playwright__browser_run_code",
       "Bash(python3:*)",
-      "Bash(sort:*)"
+      "Bash(sort:*)",
+      "Bash(for ability in SorcerousFacade RealityUnbound HellfyreMissileRack TimeFlux MasterOfTheTutelaries InfernalPacts AttemptedPossession ArcaneShield Doombolt PsychicStalk AetherStride InfernalCannon CabalOfSorcerers)",
+      "Bash(do echo -n \"$ability: \")"
     ],
     "deny": [],
     "ask": []

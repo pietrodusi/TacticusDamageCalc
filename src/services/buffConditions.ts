@@ -625,6 +625,45 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     }
   }
 
+  // DefenderOfTheGreaterGood (Shadowsun) - Extra hit proc
+  if (character.passiveAbilities.includes('DefenderOfTheGreaterGood')) {
+    const levelIndex = character.abilityLevels?.['DefenderOfTheGreaterGood'] ?? 54;
+    const values = getAbilityValues('DefenderOfTheGreaterGood', levelIndex, character.progressionStepIndex);
+    const abilityName = getAbilityNameSync('DefenderOfTheGreaterGood');
+    if (values) {
+      const chance = values.chance as number || 25;
+      conditions.push({
+        id: 'DefenderOfTheGreaterGood_extraHit',
+        label: `Extra hit proc (${chance}%)`,
+        source: abilityName,
+        effect: '+1 hit',
+        isActive: isToggleActive(character.abilityToggles['DefenderOfTheGreaterGood_extraHit']),
+        category: 'self',
+      });
+    }
+  }
+
+  // Ecstatic Slaughter (Hascule) - Thrilled or adjacent overkill
+  if (character.passiveAbilities.includes('EcstaticSlaughter')) {
+    const levelIndex = character.abilityLevels?.['EcstaticSlaughter'] ?? 54;
+    const values = getAbilityValues('EcstaticSlaughter', levelIndex, character.progressionStepIndex);
+    const abilityName = getAbilityNameSync('EcstaticSlaughter');
+
+    if (values) {
+      const minDmg = values.minDmg as number || 0;
+      const maxDmg = values.maxDmg as number || 0;
+
+      conditions.push({
+        id: 'EcstaticSlaughter',
+        label: 'Thrilled / Adj Overkill',
+        source: abilityName,
+        effect: `3x ${minDmg}-${maxDmg} Eviscerate follow-up`,
+        isActive: isToggleActive(character.abilityToggles['EcstaticSlaughter']),
+        category: 'self',
+      });
+    }
+  }
+
   // Twisted Science (Hollan) - Affected by buff
   if (character.passiveAbilities.includes('TwistedScience')) {
     const levelIndex = character.abilityLevels?.['TwistedScience'] ?? 54;
@@ -1296,6 +1335,29 @@ function getAuraConditions(
             source: abilityName,
             sourceCharacter: teammate.name,
             effect: `+${extraDmg} dmg (ranged)`,
+            isActive: isToggleActive(character.abilityToggles[toggleId]),
+            category: 'aura',
+          });
+        }
+      }
+    }
+
+    // Path of Command (Aethana) - damage and crit for Aeldari allies
+    if (teammate.passiveAbilities.includes('PathOfCommand')) {
+      if (character.faction === 'Aeldari' && character.id !== teammate.id) {
+        const levelIndex = teammate.abilityLevels?.['PathOfCommand'] ?? 54;
+        const values = getAbilityValues('PathOfCommand', levelIndex, teammate.progressionStepIndex);
+        const abilityName = getAbilityNameSync('PathOfCommand');
+        if (values) {
+          const extraDmg_2 = values.extraDmg_2 as number || 0;
+          const extraCritChance = values.extraCritChance as number || 0;
+          const toggleId = `PathOfCommand_${teammate.id}_aeldari`;
+          conditions.push({
+            id: toggleId,
+            label: `Range 2 from ${teammate.name}`,
+            source: abilityName,
+            sourceCharacter: teammate.name,
+            effect: `+${extraDmg_2} dmg, +${extraCritChance}% crit`,
             isActive: isToggleActive(character.abilityToggles[toggleId]),
             category: 'aura',
           });

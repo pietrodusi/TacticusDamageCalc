@@ -25,3 +25,5 @@ export { ShareBattleModal } from './ShareBattleModal';
 export { SharedBattleView } from './SharedBattleView';
 export { PossessionSummonModal } from './PossessionSummonModal';
 export { FrenziedFiringModal } from './FrenziedFiringModal';
+export { FoulInfusionModal } from './FoulInfusionModal';
+export { SorcerousFacadeModal } from './SorcerousFacadeModal';

@@ -946,6 +946,29 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         cordClawMaxDmg: undefined,
         cordClawHits: undefined,
       } : {}),
+      // Decrement Foul Infusion buff duration and clear if expired
+      foulInfusionTurnsRemaining: char.foulInfusionActive
+        ? Math.max(0, (char.foulInfusionTurnsRemaining || 0) - 1)
+        : undefined,
+      foulInfusionActive: char.foulInfusionActive && (char.foulInfusionTurnsRemaining || 0) > 1
+        ? true
+        : false,
+      // Clear Foul Infusion values when buff expires
+      ...((char.foulInfusionActive && (char.foulInfusionTurnsRemaining || 0) <= 1) ? {
+        foulInfusionDmg: undefined,
+      } : {}),
+      // Decrement Sorcerous Facade buff duration and clear if expired
+      sorcerousFacadeTurnsRemaining: char.sorcerousFacadeActive
+        ? Math.max(0, (char.sorcerousFacadeTurnsRemaining || 0) - 1)
+        : undefined,
+      sorcerousFacadeActive: char.sorcerousFacadeActive && (char.sorcerousFacadeTurnsRemaining || 0) > 1
+        ? true
+        : false,
+      // Clear Sorcerous Facade values when buff expires
+      ...((char.sorcerousFacadeActive && (char.sorcerousFacadeTurnsRemaining || 0) <= 1) ? {
+        sorcerousFacadeMinDmg: undefined,
+        sorcerousFacadeMaxDmg: undefined,
+      } : {}),
     }));
 
     // Expire buffs in the pool (decrement duration, remove expired)
@@ -1726,6 +1749,31 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // ObsessiveAnnunciation (Adamatar) - ranged damage bonus vs enemies adj to Adamatar
+    let obsessiveAnnunciationDmgBonus = 0;
+    let obsessiveAnnunciationSource: { name: string; sourceName: string; damageBonus: number } | null = null;
+    if (attackType === 'ranged') {
+      for (const teammate of battleState.team) {
+        if (teammate.id === attacker.id) continue;
+        if (teammate.passiveAbilities.includes('ObsessiveAnnunciation')) {
+          const toggleId = `ObsessiveAnnunciation_${teammate.id}_targetAdj`;
+          if (isToggleActive(attacker.abilityToggles[toggleId])) {
+            const levelIndex = teammate.abilityLevels?.['ObsessiveAnnunciation'] ?? 54;
+            const values = getAbilityValues('ObsessiveAnnunciation', levelIndex, teammate.progressionStepIndex);
+            if (values) {
+              obsessiveAnnunciationDmgBonus = values.extraDmg as number || 0;
+              obsessiveAnnunciationSource = {
+                name: 'Obsessive Annunciation',
+                sourceName: teammate.name,
+                damageBonus: obsessiveAnnunciationDmgBonus,
+              };
+            }
+            break;
+          }
+        }
+      }
+    }
+
     // Build buff sources for display in damage breakdown
     // Define BuffSource type inline
     type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number; pierceRatioBonus?: number };
@@ -1846,6 +1894,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       buffSources.push(ritesOfBattleSource);
     }
 
+    // Add ObsessiveAnnunciation source for display
+    if (obsessiveAnnunciationSource) {
+      buffSources.push(obsessiveAnnunciationSource);
+    }
+
     // LegendaryCommander is now handled via the buff pool system
     // LC damage and +2 hits bonuses come from poolBuffEffects via getApplicableBuffs
     // For normal attacks, LC +2 hits doesn't apply (only for special attacks)
@@ -1871,7 +1924,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const optionsDamageBonus = optionsDamageBonusSources.length > 0
       ? optionsDamageBonusSources.reduce((sum, src) => sum + src.bonus, 0)
       : (options?.baseDamageBonus || 0);
-    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus + optionsDamageBonus + ritesOfBattleDmgBonus;
+    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus + optionsDamageBonus + ritesOfBattleDmgBonus + obsessiveAnnunciationDmgBonus;
 
     // Add options damage bonus sources for display (Overwatch with detailed breakdown)
     if (optionsDamageBonusSources.length > 0) {
@@ -2262,6 +2315,88 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           }
         }
       }
+    }
+
+    // Check for teammate aura follow-ups (ExplosiveMaladies, InfernalPacts)
+    for (const teammate of battleState.team) {
+      if (teammate.id === attacker.id) continue;
+
+      // ExplosiveMaladies (Pestillian): +1x Blast follow-up on ranged (Chaos: also melee)
+      if (teammate.passiveAbilities.includes('ExplosiveMaladies')) {
+        const toggleId = `ExplosiveMaladies_${teammate.id}_adjacent`;
+        if (isToggleActive(attacker.abilityToggles[toggleId])) {
+          const levelIndex = teammate.abilityLevels?.['ExplosiveMaladies'] ?? 54;
+          const values = getAbilityValues('ExplosiveMaladies', levelIndex, teammate.progressionStepIndex);
+          if (values) {
+            const extraDmg = values.extraDmg as number || 0;
+            const isChaos = attacker.alliance === 'Chaos';
+            if (attackType === 'ranged' || (attackType === 'melee' && isChaos)) {
+              allFollowUps.push({
+                abilityId: 'ExplosiveMaladies',
+                abilityName: 'Explosive Maladies',
+                damageProfile: 'Blast' as DamageType,
+                minDamage: extraDmg,
+                maxDamage: extraDmg,
+                hits: 1,
+                attackCategory: 'special',
+              });
+            }
+          }
+        }
+      }
+
+      // InfernalPacts (Abraxas): +1x Psychic follow-up on ranged (Daemons: also melee)
+      if (teammate.passiveAbilities.includes('InfernalPacts')) {
+        const toggleId = `InfernalPacts_${teammate.id}_adjacent`;
+        if (isToggleActive(attacker.abilityToggles[toggleId])) {
+          const levelIndex = teammate.abilityLevels?.['InfernalPacts'] ?? 54;
+          const values = getAbilityValues('InfernalPacts', levelIndex, teammate.progressionStepIndex);
+          if (values) {
+            const minDmg = values.minDmg as number || 0;
+            const maxDmg = values.maxDmg as number || 0;
+            const isDaemon = attacker.traits?.includes('Daemon') ?? false;
+            if (attackType === 'ranged' || (attackType === 'melee' && isDaemon)) {
+              allFollowUps.push({
+                abilityId: 'InfernalPacts',
+                abilityName: 'Infernal Pacts',
+                damageProfile: 'Psychic' as DamageType,
+                minDamage: minDmg,
+                maxDamage: maxDmg,
+                hits: 1,
+                attackCategory: 'special',
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // FoulInfusion (Pestillian): +1x Toxic follow-up on melee attacks
+    if (attacker.foulInfusionActive && isMeleeAttack) {
+      const dmg = attacker.foulInfusionDmg || 0;
+      allFollowUps.push({
+        abilityId: 'FoulInfusion',
+        abilityName: 'Foul Infusion',
+        damageProfile: 'Toxic' as DamageType,
+        minDamage: dmg,
+        maxDamage: dmg,
+        hits: 1,
+        attackCategory: 'special',
+        triggersOnMeleeOnly: true,
+      });
+    }
+
+    // SorcerousFacade (Yazaghor): +1x Psychic follow-up on attacks
+    if (attacker.sorcerousFacadeActive) {
+      allFollowUps.push({
+        abilityId: 'SorcerousFacade',
+        abilityName: 'Sorcerous Facade',
+        damageProfile: 'Psychic' as DamageType,
+        minDamage: attacker.sorcerousFacadeMinDmg || 0,
+        maxDamage: attacker.sorcerousFacadeMaxDmg || 0,
+        hits: 1,
+        attackCategory: 'special',
+      });
     }
 
     const eligibleFollowUps = allFollowUps.filter(followUp => {
@@ -5757,8 +5892,95 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       passiveContext
     );
 
+    // Collect follow-ups from passive abilities and teammate auras
+    const allAbilityFollowUps = [...passiveResult.followUpAttacks];
+
+    // Check for teammate aura follow-ups (ExplosiveMaladies, InfernalPacts)
+    for (const teammate of battleState.team) {
+      if (teammate.id === character.id) continue;
+
+      // ExplosiveMaladies (Pestillian): +1x Blast follow-up on ranged (Chaos: also melee)
+      if (teammate.passiveAbilities.includes('ExplosiveMaladies')) {
+        const toggleId = `ExplosiveMaladies_${teammate.id}_adjacent`;
+        if (isToggleActive(character.abilityToggles[toggleId])) {
+          const levelIndex = teammate.abilityLevels?.['ExplosiveMaladies'] ?? 54;
+          const values = getAbilityValues('ExplosiveMaladies', levelIndex, teammate.progressionStepIndex);
+          if (values) {
+            const extraDmg = values.extraDmg as number || 0;
+            const isChaos = character.alliance === 'Chaos';
+            // Ability attacks: only trigger for Chaos (melee-equivalent)
+            if (isChaos) {
+              allAbilityFollowUps.push({
+                abilityId: 'ExplosiveMaladies',
+                abilityName: 'Explosive Maladies',
+                damageProfile: 'Blast' as DamageType,
+                minDamage: extraDmg,
+                maxDamage: extraDmg,
+                hits: 1,
+                attackCategory: 'special',
+              });
+            }
+          }
+        }
+      }
+
+      // InfernalPacts (Abraxas): +1x Psychic follow-up on ranged (Daemons: also melee)
+      if (teammate.passiveAbilities.includes('InfernalPacts')) {
+        const toggleId = `InfernalPacts_${teammate.id}_adjacent`;
+        if (isToggleActive(character.abilityToggles[toggleId])) {
+          const levelIndex = teammate.abilityLevels?.['InfernalPacts'] ?? 54;
+          const values = getAbilityValues('InfernalPacts', levelIndex, teammate.progressionStepIndex);
+          if (values) {
+            const minDmg = values.minDmg as number || 0;
+            const maxDmg = values.maxDmg as number || 0;
+            const isDaemon = character.traits?.includes('Daemon') ?? false;
+            // Ability attacks: only trigger for Daemons (melee-equivalent)
+            if (isDaemon) {
+              allAbilityFollowUps.push({
+                abilityId: 'InfernalPacts',
+                abilityName: 'Infernal Pacts',
+                damageProfile: 'Psychic' as DamageType,
+                minDamage: minDmg,
+                maxDamage: maxDmg,
+                hits: 1,
+                attackCategory: 'special',
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // FoulInfusion (Pestillian): +1x Toxic follow-up on melee ability attacks
+    // Note: abilities are melee-equivalent, so this triggers
+    if (character.foulInfusionActive) {
+      const dmg = character.foulInfusionDmg || 0;
+      allAbilityFollowUps.push({
+        abilityId: 'FoulInfusion',
+        abilityName: 'Foul Infusion',
+        damageProfile: 'Toxic' as DamageType,
+        minDamage: dmg,
+        maxDamage: dmg,
+        hits: 1,
+        attackCategory: 'special',
+      });
+    }
+
+    // SorcerousFacade (Yazaghor): +1x Psychic follow-up on ability attacks
+    if (character.sorcerousFacadeActive) {
+      allAbilityFollowUps.push({
+        abilityId: 'SorcerousFacade',
+        abilityName: 'Sorcerous Facade',
+        damageProfile: 'Psychic' as DamageType,
+        minDamage: character.sorcerousFacadeMinDmg || 0,
+        maxDamage: character.sorcerousFacadeMaxDmg || 0,
+        hits: 1,
+        attackCategory: 'special',
+      });
+    }
+
     // Filter follow-ups that trigger on ability attacks
-    const eligibleFollowUps = passiveResult.followUpAttacks.filter(followUp => {
+    const eligibleFollowUps = allAbilityFollowUps.filter(followUp => {
       if (followUp.triggersOnNormalOnly) {
         return false;  // Skip if this follow-up only triggers on normal attacks
       }

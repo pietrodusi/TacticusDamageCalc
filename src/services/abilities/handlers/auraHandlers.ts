@@ -142,11 +142,47 @@ export const SpotterReworkedHandler: AuraAbilityHandler = {
   },
 };
 
+/**
+ * PathOfCommand (Aethana)
+ * Aeldari allies within range 2: +extraDmg_2 damage, +extraCritChance% crit chance
+ * Variables: extraDmg_2 (ally bonus), extraCritChance
+ * Constants: range: 2
+ * Note: Self-buff is handled by passive handler in passiveHandlers.ts
+ */
+export const PathOfCommandAuraHandler: AuraAbilityHandler = {
+  abilityId: 'PathOfCommand',
+  abilityName: 'Path of Command',
+
+  getAuraBonuses: (
+    values: ComputedAbilityValues,
+    sourceCharacterId: string,
+    sourceCharacterName: string
+  ): AuraBonus[] => {
+    const extraDmg_2 = values.extraDmg_2 as number || 0;
+    const extraCritChance = values.extraCritChance as number || 0;
+
+    return [
+      {
+        auraId: `PathOfCommand_${sourceCharacterId}_aeldari`,
+        sourceAbilityId: 'PathOfCommand',
+        sourceAbilityName: 'Path of Command',
+        modifiers: {
+          baseDamageBonus: extraDmg_2,
+          critChanceBonus: extraCritChance,
+        },
+        toggleLabel: `Range 2 from ${sourceCharacterName}`,
+        bonusText: `+${extraDmg_2} dmg, +${extraCritChance}% crit`,
+      },
+    ];
+  },
+};
+
 // Export all aura handlers
 export const auraHandlers: AuraAbilityHandler[] = [
   LordOfTheHostHandler,
   FirstAmongTraitorsHandler,
   SpotterReworkedHandler,
+  PathOfCommandAuraHandler,
 ];
 
 // Map for quick lookup by ability ID

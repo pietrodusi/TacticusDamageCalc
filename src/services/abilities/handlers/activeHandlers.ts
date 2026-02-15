@@ -2361,7 +2361,7 @@ export const SeekerMissileFrequencyLockHandler: AbilityHandler = {
         maxDamage: maxDmg,
         averageDamage: avgDmg,
         hits: 1,
-        damageProfile: 'Heavy' as DamageType,
+        damageProfile: 'HeavyRound' as DamageType,
       },
       attackType: 'ranged',
       message: `${abilityName}: Range 5`,
@@ -2632,12 +2632,14 @@ export const HarvesterOfSoulsHandler: AbilityHandler = {
   category: 'damage',
   cooldown: -1,
 
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('HarvesterOfSouls');
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
-    const hits = values.nrOfHits as number || 2;
+    const baseHits = values.nrOfHits as number || 2;
+    const extraHit = !context.hasMoved ? 1 : 0;
+    const hits = baseHits + extraHit;
 
     return {
       abilityId: 'HarvesterOfSouls',
@@ -2651,7 +2653,7 @@ export const HarvesterOfSoulsHandler: AbilityHandler = {
         damageProfile: 'Heavy' as DamageType,
       },
       attackType: 'ranged',
-      message: `${abilityName}: Range 3, hits adjacent enemies. +1 hit if not moved`,
+      message: `${abilityName}: ${hits} hits${!context.hasMoved ? ' (stationary +1)' : ''}`,
     };
   },
 };
@@ -2964,16 +2966,30 @@ export const CrushingClawsHandler: AbilityHandler = {
   cooldown: -1,
   executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('CrushingClaws');
-    const minDmg = values.minDmg as number || 0;
-    const maxDmg = values.maxDmg as number || 0;
-    const avgDmg = Math.round((minDmg + maxDmg) / 2);
+
+    const piercing: DamageComponent = {
+      minDamage: values.minDmg as number || 0,
+      maxDamage: values.maxDmg as number || 0,
+      averageDamage: Math.round(((values.minDmg as number || 0) + (values.maxDmg as number || 0)) / 2),
+      hits: values.nrOfHits as number || 2,
+      damageProfile: 'Piercing' as DamageType,
+    };
+
+    const physical: DamageComponent = {
+      minDamage: values.minDmg_2 as number || 0,
+      maxDamage: values.maxDmg_2 as number || 0,
+      averageDamage: Math.round(((values.minDmg_2 as number || 0) + (values.maxDmg_2 as number || 0)) / 2),
+      hits: values.nrOfHits_2 as number || 1,
+      damageProfile: 'Physical' as DamageType,
+    };
+
     return {
       abilityId: 'CrushingClaws',
       abilityName,
       category: 'damage',
-      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 2, damageProfile: 'Piercing' as DamageType },
+      damageComponents: [piercing, physical],
       attackType: 'melee',
-      message: `${abilityName}: 2x Piercing + 2x Physical`,
+      message: abilityName,
     };
   },
 };
@@ -3566,7 +3582,7 @@ export const FoulInfusionHandler: AbilityHandler = {
         effect: {},
         duration: 2, // This round and next
       },
-      message: `${abilityName}: Chaos allies in Contagion get +1x ${dmg} Toxic on melee (2 rounds). Then melee random adjacent`,
+      message: `${abilityName}: +1x ${dmg} Toxic on melee (2 turns)`,
     };
   },
 };
@@ -3794,7 +3810,7 @@ export const SorcerousFacadeHandler: AbilityHandler = {
   abilityName: 'Sorcerous Facade',
   category: 'buff',
   cooldown: -1,
-  endsTurn: true,
+  endsTurn: false,
   executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('SorcerousFacade');
     const minDmg = values.minDmg as number || 0;
@@ -3909,7 +3925,7 @@ export const DaemonicPatronsHandler: AbilityHandler = {
   abilityId: 'DaemonicPatrons',
   abilityName: 'Daemonic Patrons',
   category: 'buff',
-  cooldown: 0, // Reusable if kills Taunted enemy
+  cooldown: -1,
   endsTurn: false,
   executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('DaemonicPatrons');
@@ -3921,7 +3937,7 @@ export const DaemonicPatronsHandler: AbilityHandler = {
       abilityName,
       category: 'buff',
       buffResult: {
-        effect: {},
+        effect: { baseDamageBonus: extraDmg },
         duration: 1,
       },
       message: `${abilityName}: Taunt adj enemy. +${extraDmg} dmg, -${dmgReductionPct}% taken per Taunted. Reuse on Taunted kill, else -${hpPct}% HP`,

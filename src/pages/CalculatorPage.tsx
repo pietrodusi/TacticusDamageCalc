@@ -23,6 +23,8 @@ import {
   UnbreakableDutyModal,
   PossessionSummonModal,
   FrenziedFiringModal,
+  FoulInfusionModal,
+  SorcerousFacadeModal,
 } from '../components/battle';
 import type { DarkTalonStrikeMode } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
@@ -182,6 +184,21 @@ export default function CalculatorPage() {
   const [frenziedFiringModalOpen, setFrenziedFiringModalOpen] = useState(false);
   const [frenziedFiringContext, setFrenziedFiringContext] = useState<{
     casterId: string;
+  } | null>(null);
+
+  // FoulInfusion modal state (for Pestillian's active ability)
+  const [foulInfusionModalOpen, setFoulInfusionModalOpen] = useState(false);
+  const [foulInfusionContext, setFoulInfusionContext] = useState<{
+    casterId: string;
+    dmg: number;
+  } | null>(null);
+
+  // SorcerousFacade modal state (for Yazaghor's active ability)
+  const [sorcerousFacadeModalOpen, setSorcerousFacadeModalOpen] = useState(false);
+  const [sorcerousFacadeContext, setSorcerousFacadeContext] = useState<{
+    casterId: string;
+    minDmg: number;
+    maxDmg: number;
   } | null>(null);
 
   // Get the active turn (editing turn or current turn)
@@ -505,6 +522,36 @@ export default function CalculatorPage() {
             extraDmg,
           });
           setRitesOfMorkaiModalOpen(true);
+          break;
+        }
+
+        // Special handling for FoulInfusion - opens Chaos ally selection modal
+        if (abilityId === 'FoulInfusion') {
+          const fiLevelIndex = character.abilityLevels?.['FoulInfusion'] ?? 54;
+          const fiValues = getAbilityValues('FoulInfusion', fiLevelIndex, character.progressionStepIndex);
+          const dmg = (fiValues?.dmg as number) || 0;
+
+          setFoulInfusionContext({
+            casterId: characterId,
+            dmg,
+          });
+          setFoulInfusionModalOpen(true);
+          break;
+        }
+
+        // Special handling for SorcerousFacade - opens Psyker ally selection modal
+        if (abilityId === 'SorcerousFacade') {
+          const sfLevelIndex = character.abilityLevels?.['SorcerousFacade'] ?? 54;
+          const sfValues = getAbilityValues('SorcerousFacade', sfLevelIndex, character.progressionStepIndex);
+          const sfMinDmg = (sfValues?.minDmg as number) || 0;
+          const sfMaxDmg = (sfValues?.maxDmg as number) || 0;
+
+          setSorcerousFacadeContext({
+            casterId: characterId,
+            minDmg: sfMinDmg,
+            maxDmg: sfMaxDmg,
+          });
+          setSorcerousFacadeModalOpen(true);
           break;
         }
 
@@ -1045,6 +1092,137 @@ export default function CalculatorPage() {
   const handleFrenziedFiringCancel = () => {
     setFrenziedFiringModalOpen(false);
     setFrenziedFiringContext(null);
+  };
+
+  // Handle Foul Infusion target selection confirm
+  const handleFoulInfusionConfirm = (targetIds: string[]) => {
+    if (!foulInfusionContext || !battleState) return;
+
+    const caster = battleState.team.find(c => c.id === foulInfusionContext.casterId);
+    if (!caster) return;
+
+    const targetTurn = activeTurn;
+    const dmg = foulInfusionContext.dmg;
+
+    // Only modify current turn flags if not editing past turn
+    if (!isEditingPastTurn) {
+      // Apply FoulInfusion buff to selected targets
+      useBattleStore.setState((state) => ({
+        battleState: state.battleState ? {
+          ...state.battleState,
+          team: state.battleState.team.map((char) =>
+            targetIds.includes(char.id)
+              ? {
+                  ...char,
+                  foulInfusionActive: true,
+                  foulInfusionDmg: dmg,
+                  foulInfusionTurnsRemaining: 2,
+                }
+              : char
+          ),
+        } : null,
+      }));
+
+      // Mark ability as used (one-time) and end turn
+      markAbilityUsed(foulInfusionContext.casterId, 'FoulInfusion');
+      setCharacterActed(foulInfusionContext.casterId, true);
+      setCharacterTurnEnded(foulInfusionContext.casterId, true);
+    }
+    addAction(foulInfusionContext.casterId, { type: 'ability', characterId: foulInfusionContext.casterId });
+
+    // Build target names for log message
+    const buffedTargetNames = targetIds.map(id => {
+      const target = battleState.team.find(c => c.id === id);
+      return target?.name || 'Unknown';
+    });
+
+    // Log the Foul Infusion action
+    setBattleLog((prev) => [
+      ...prev,
+      {
+        timestamp: Date.now(),
+        characterId: foulInfusionContext.casterId,
+        characterName: caster.name,
+        action: 'ability' as ActionType,
+        message: `Foul Infusion: ${buffedTargetNames.join(', ')} +1x ${dmg} Toxic on melee (2 turns)`,
+        turn: targetTurn,
+      },
+    ]);
+
+    // Close modal and clear context
+    setFoulInfusionModalOpen(false);
+    setFoulInfusionContext(null);
+  };
+
+  // Cancel FoulInfusion action
+  const handleFoulInfusionCancel = () => {
+    setFoulInfusionModalOpen(false);
+    setFoulInfusionContext(null);
+  };
+
+  // Handle Sorcerous Facade target selection confirm
+  const handleSorcerousFacadeConfirm = (targetIds: string[]) => {
+    if (!sorcerousFacadeContext || !battleState) return;
+
+    const caster = battleState.team.find(c => c.id === sorcerousFacadeContext.casterId);
+    if (!caster) return;
+
+    const targetTurn = activeTurn;
+    const { minDmg, maxDmg } = sorcerousFacadeContext;
+
+    // Only modify current turn flags if not editing past turn
+    if (!isEditingPastTurn) {
+      // Apply SorcerousFacade buff to selected targets
+      useBattleStore.setState((state) => ({
+        battleState: state.battleState ? {
+          ...state.battleState,
+          team: state.battleState.team.map((char) =>
+            targetIds.includes(char.id)
+              ? {
+                  ...char,
+                  sorcerousFacadeActive: true,
+                  sorcerousFacadeMinDmg: minDmg,
+                  sorcerousFacadeMaxDmg: maxDmg,
+                  sorcerousFacadeTurnsRemaining: 1,
+                }
+              : char
+          ),
+        } : null,
+      }));
+
+      // Mark ability as used (one-time) - does NOT end turn
+      markAbilityUsed(sorcerousFacadeContext.casterId, 'SorcerousFacade');
+    }
+    addAction(sorcerousFacadeContext.casterId, { type: 'ability', characterId: sorcerousFacadeContext.casterId });
+
+    // Build target names for log message
+    const buffedTargetNames = targetIds.map(id => {
+      const target = battleState.team.find(c => c.id === id);
+      return target?.name || 'Unknown';
+    });
+
+    // Log the Sorcerous Facade action
+    setBattleLog((prev) => [
+      ...prev,
+      {
+        timestamp: Date.now(),
+        characterId: sorcerousFacadeContext.casterId,
+        characterName: caster.name,
+        action: 'ability' as ActionType,
+        message: `Sorcerous Facade: ${buffedTargetNames.join(', ')} +1x ${minDmg}-${maxDmg} Psychic on attacks (1 turn)`,
+        turn: targetTurn,
+      },
+    ]);
+
+    // Close modal and clear context
+    setSorcerousFacadeModalOpen(false);
+    setSorcerousFacadeContext(null);
+  };
+
+  // Cancel SorcerousFacade action
+  const handleSorcerousFacadeCancel = () => {
+    setSorcerousFacadeModalOpen(false);
+    setSorcerousFacadeContext(null);
   };
 
   // Handle Rites of Morkai target selection confirm
@@ -1693,6 +1871,31 @@ export default function CalculatorPage() {
           isOpen={frenziedFiringModalOpen}
           onClose={handleFrenziedFiringCancel}
           onConfirm={handleFrenziedFiringConfirm}
+        />
+      )}
+
+      {/* Foul Infusion Modal (Pestillian's active ability) */}
+      {foulInfusionContext && (
+        <FoulInfusionModal
+          isOpen={foulInfusionModalOpen}
+          onClose={handleFoulInfusionCancel}
+          caster={battleState.team.find(c => c.id === foulInfusionContext.casterId)!}
+          team={battleState.team}
+          dmg={foulInfusionContext.dmg}
+          onConfirm={handleFoulInfusionConfirm}
+        />
+      )}
+
+      {/* Sorcerous Facade Modal (Yazaghor's active ability) */}
+      {sorcerousFacadeContext && (
+        <SorcerousFacadeModal
+          isOpen={sorcerousFacadeModalOpen}
+          onClose={handleSorcerousFacadeCancel}
+          caster={battleState.team.find(c => c.id === sorcerousFacadeContext.casterId)!}
+          team={battleState.team}
+          minDmg={sorcerousFacadeContext.minDmg}
+          maxDmg={sorcerousFacadeContext.maxDmg}
+          onConfirm={handleSorcerousFacadeConfirm}
         />
       )}
 
