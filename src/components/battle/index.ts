@@ -23,3 +23,5 @@ export { HealTargetModal } from './HealTargetModal';
 export { UnbreakableDutyModal } from './UnbreakableDutyModal';
 export { ShareBattleModal } from './ShareBattleModal';
 export { SharedBattleView } from './SharedBattleView';
+export { PossessionSummonModal } from './PossessionSummonModal';
+export { FrenziedFiringModal } from './FrenziedFiringModal';

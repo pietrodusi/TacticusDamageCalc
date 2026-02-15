@@ -17,7 +17,7 @@ import type { Boss, BossRank } from '../types/boss';
 import type { MachineOfWarWithBonus, MachineOfWarStars } from '../types/machineOfWar';
 import { SharedBattleView } from '../components/battle/SharedBattleView';
 
-export function SharedBattlePage() {
+export default function SharedBattlePage() {
   const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

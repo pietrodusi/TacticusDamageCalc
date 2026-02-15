@@ -46,7 +46,13 @@
       "Bash(for f in GB_*_Visual.webp)",
       "Bash(do echo -n \"$f: \")",
       "Bash(done)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "mcp__playwright__browser_network_requests",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_run_code",
+      "Bash(python3:*)",
+      "Bash(sort:*)"
     ],
     "deny": [],
     "ask": []

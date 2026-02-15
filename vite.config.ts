@@ -18,6 +18,8 @@ export default defineConfig({
           // Split large data files
           'data-bosses': ['./src/assets/data/guildBossUnits.json'],
           'data-characters': ['./src/assets/data/characters.json'],
+          'data-abilities': ['./src/assets/data/abilities.json'],
+          'data-items': ['./src/assets/data/items.json'],
         },
       },
     },

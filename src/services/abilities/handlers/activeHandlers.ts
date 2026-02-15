@@ -3308,6 +3308,7 @@ export const HeraldOfTheApocalypseHandler: AbilityHandler = {
       category: 'damage',
       damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 2, damageProfile: 'Piercing' as DamageType },
       attackType: 'melee',
+      bossDebuff: { extraDmg },
       message: `${abilityName}: 2x Piercing + enemy behind. +${extraDmg} to next attack on target. Battle Fatigue`,
     };
   },
@@ -3324,18 +3325,20 @@ export const FrenziedFiringHandler: AbilityHandler = {
   abilityName: 'Frenzied Firing',
   category: 'damage',
   cooldown: -1,
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('FrenziedFiring');
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const freeHexes = context.abilityToggles?.['FrenziedFiring_freeHexes'] as number || 0;
+    const hits = Math.min(1 + freeHexes, 10);
     return {
       abilityId: 'FrenziedFiring',
       abilityName,
       category: 'damage',
-      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'Heavy' as DamageType },
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits, damageProfile: 'HeavyRound' as DamageType },
       attackType: 'ranged',
-      message: `${abilityName}: 1x Heavy + adjacent enemies. +1 hit per free hex (max 10). FleshmetalGuns bonus`,
+      message: `${abilityName}: ${hits}x HeavyRound (${freeHexes} free hexes). FleshmetalGuns bonus`,
     };
   },
 };

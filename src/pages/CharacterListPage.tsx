@@ -7,7 +7,7 @@ import { LoadingSpinner } from '../components/ui';
 import { getFactionsByAlliance, getAllianceOrder, getFactionImageUrl, getFactionDisplayName } from '../services/dataService';
 import { useTeamStore } from '../stores/teamStore';
 
-export function CharacterListPage() {
+export default function CharacterListPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { data: characters, isLoading, error } = useCharacterList();
@@ -134,7 +134,6 @@ export function CharacterListPage() {
                           <h3 className="text-lg font-display font-semibold text-imperial-gold">
                             {getFactionDisplayName(faction)}
                           </h3>
-                          <span className="text-sm text-gray-500">({factionCharacters.length})</span>
                         </div>
 
                         {/* Faction Characters Grid */}

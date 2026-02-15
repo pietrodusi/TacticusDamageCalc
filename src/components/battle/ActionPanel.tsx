@@ -11,10 +11,12 @@ interface ActionPanelProps {
   onExecuteOverwatch?: () => void;
   onExecuteFuryOfTheAncients?: () => void;
   onExecuteMartialSuperiority?: () => void;
+  onExecuteHatefulAssault?: () => void;
   onExecuteUnwaveringSentinel?: () => void;
+  onOpenPossessionModal?: () => void;
 }
 
-export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onExecuteOverwatch, onExecuteFuryOfTheAncients, onExecuteMartialSuperiority, onExecuteUnwaveringSentinel }: ActionPanelProps) {
+export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onExecuteOverwatch, onExecuteFuryOfTheAncients, onExecuteMartialSuperiority, onExecuteHatefulAssault, onExecuteUnwaveringSentinel, onOpenPossessionModal }: ActionPanelProps) {
   const hasRanged = character.rangedHits !== undefined && character.rangedHits > 0;
   const hasActiveAbility = character.activeAbilities.length > 0;
   const hasMechanicTrait = character.traits.includes('Mechanic');
@@ -22,7 +24,9 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
   const hasTheBetrayerAbility = character.passiveAbilities?.includes('TheBetrayer') ?? false;
   const hasFuryOfTheAncientsAbility = character.passiveAbilities?.includes('FuryOfTheAncients') ?? false;
   const hasMartialSuperiorityAbility = character.passiveAbilities?.includes('MartialSuperiority') ?? false;
+  const hasHatefulAssaultAbility = character.passiveAbilities?.includes('HatefulAssault') ?? false;
   const hasUnwaveringSentinelAbility = character.passiveAbilities?.includes('UnwaveringSentinel') ?? false;
+  const hasPossessionAbility = character.passiveAbilities?.includes('Possession') ?? false;
   const isAdjacentToBoss = character.abilityToggles?.['adjacentToBoss'] ?? false;
   // Overwatch check - available for:
   // 1. Characters with Overwatch trait (e.g., Azrael) - always available once per turn
@@ -282,7 +286,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
       </div>
 
       {/* Other Actions */}
-      <div className={`grid gap-2 ${hasMechanicTrait || hasHealerTrait || hasTheBetrayerAbility || showOverwatchButton || hasMartialSuperiorityAbility || hasUnwaveringSentinelAbility ? 'grid-cols-2 sm:grid-cols-2' : 'grid-cols-1'}`}>
+      <div className={`grid gap-2 ${hasMechanicTrait || hasHealerTrait || hasTheBetrayerAbility || showOverwatchButton || hasMartialSuperiorityAbility || hasHatefulAssaultAbility || hasUnwaveringSentinelAbility || hasPossessionAbility ? 'grid-cols-2 sm:grid-cols-2' : 'grid-cols-1'}`}>
         {/* Repair (only for Mechanic trait) */}
         {hasMechanicTrait && (
           <button
@@ -427,6 +431,41 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
               <span className="text-xs font-medium">Martial Superiority</span>
             </div>
             <span className="text-[10px] text-gray-400">2x Power</span>
+          </button>
+        )}
+
+        {/* Hateful Assault (bonus attack for Angrax) */}
+        {hasHatefulAssaultAbility && onExecuteHatefulAssault && (
+          <button
+            onClick={() => !character.hasUsedHatefulAssaultThisTurn && onExecuteHatefulAssault()}
+            disabled={character.hasUsedHatefulAssaultThisTurn}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              character.hasUsedHatefulAssaultThisTurn ? disabledClasses : 'hover:bg-red-900/50 hover:border-red-600 text-red-500'
+            }`}
+            title="Hateful Assault: 2x Power melee attack (once per turn)"
+          >
+            <div className="flex items-center gap-1">
+              {getDamageTypeImageUrl('Power') && (
+                <img src={getDamageTypeImageUrl('Power')} alt="Power" className="w-5 h-5" />
+              )}
+              <span className="text-xs font-medium">Hateful Assault</span>
+            </div>
+            <span className="text-[10px] text-gray-400">2x Power</span>
+          </button>
+        )}
+
+        {/* Possession (summon for Archimatos) */}
+        {hasPossessionAbility && onOpenPossessionModal && (
+          <button
+            onClick={onOpenPossessionModal}
+            className="flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors hover:bg-purple-900/50 hover:border-purple-600 text-purple-400"
+            title="Possession: Spawn a Bloodletter or Blue Horror"
+          >
+            <div className="flex items-center gap-1">
+              <Sparkles size={18} />
+              <span className="text-xs font-medium">Possession</span>
+            </div>
+            <span className="text-[10px] text-gray-400">Spawn Daemon</span>
           </button>
         )}
 

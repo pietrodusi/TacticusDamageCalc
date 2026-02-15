@@ -1,6 +1,312 @@
 {
-	"orksOrkBoys": {
-        "name": "Ork Boyz",
+    "ultraSmnInceptor": {
+        "name": "Inceptor",
+        "FactionId": "Ultramarines",
+        "GrandAllianceId": "Imperial",
+        "Movement": 4,
+        "weapons": [{
+                "hits": 6,
+                "DamageProfile": "Bolter"
+            }
+        ],
+        "traits": ["Summon", "Flying", "MkXGravis"],
+        "activeAbilities": [],
+        "passiveAbilities": []
+    },
+    "ultraSmnDreadnought": {
+        "name": "Galatian",
+        "FactionId": "Ultramarines",
+        "GrandAllianceId": "Imperial",
+        "Movement": 0,
+        "weapons": [{
+                "hits": 5,
+                "DamageProfile": "Power"
+            }, {
+                "hits": 6,
+                "DamageProfile": "Projectile",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "BigTarget", "Overwatch", "Vehicle", "Mechanical"],
+        "activeAbilities": [],
+        "passiveAbilities": ["AncientFury"]
+    },
+    "necroSmnSwarm": {
+        "name": "Scarab Swarm",
+        "FactionId": "Necrons",
+        "GrandAllianceId": "Xenos",
+        "nrOfMembers": 5,
+        "Movement": 4,
+        "weapons": [{
+                "hits": 5,
+                "DamageProfile": "Energy"
+            }
+        ],
+        "traits": ["Summon", "LivingMetal", "Mechanical", "Swarm", "Flying"],
+        "activeAbilities": ["ScarabSummon"],
+        "passiveAbilities": ["ReanimationProtocols"]
+    },
+    "necroSmnWarrior": {
+        "name": "Necron Warrior",
+        "visualId": "necroNpc1Warrior",
+        "FactionId": "Necrons",
+        "GrandAllianceId": "Xenos",
+        "Movement": 2,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Gauss",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "LivingMetal", "Mechanical"],
+        "activeAbilities": [],
+        "passiveAbilities": ["ReanimationProtocols"]
+    },
+    "deathPoxwalker": {
+        "name": "Poxwalker",
+        "FactionId": "DeathGuard",
+        "GrandAllianceId": "Chaos",
+        "Movement": 2,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Physical"
+            }
+        ],
+        "traits": ["Summon", "ContagionsOfNurgle"],
+        "activeAbilities": [],
+        "passiveAbilities": ["CursedOfTheWalkingPox"]
+    },
+    "deathSmnNurglings": {
+        "name": "Nurglings",
+        "visualId": "deathNpc3Nurglings",
+        "FactionId": "DeathGuard",
+        "GrandAllianceId": "Chaos",
+        "nrOfMembers": 4,
+        "Movement": 2,
+        "weapons": [{
+                "hits": 4,
+                "DamageProfile": "Physical"
+            }
+        ],
+        "traits": ["Summon", "ContagionsOfNurgle", "Daemon", "PutridExplosion", "Swarm"],
+        "activeAbilities": [],
+        "passiveAbilities": ["MischiefMakers"]
+    },
+    "blackSmnBloodletter": {
+        "name": "Bloodletter",
+        "FactionId": "BlackLegion",
+        "GrandAllianceId": "Chaos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Piercing"
+            }
+        ],
+        "traits": ["Summon", "BlessingsOfKhorne", "Daemon"],
+        "activeAbilities": [],
+        "passiveAbilities": ["UnstoppableFerocity"]
+    },
+    "astraSmnGuardsman": {
+        "name": "Cadian Guardsman",
+        "visualId": "astraNpc1Guardsman",
+        "FactionId": "AstraMilitarum",
+        "GrandAllianceId": "Imperial",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Las",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "BattleFatigue"],
+        "activeAbilities": [],
+        "passiveAbilities": []
+    },
+    "astraSmnKell": {
+        "name": "Kell",
+        "FactionId": "AstraMilitarum",
+        "GrandAllianceId": "Imperial",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Power"
+            }
+        ],
+        "traits": ["Summon"],
+        "activeAbilities": [],
+        "passiveAbilities": ["ListenUpMaggots", "SwornProtector_Protect"]
+    },
+    "astraSmnDeathRider": {
+        "name": "Death Rider",
+        "visualId": "astraNpc5DeathRider",
+        "FactionId": "AstraMilitarum",
+        "GrandAllianceId": "Imperial",
+        "Movement": 4,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Physical"
+            }
+        ],
+        "traits": ["Summon", "Unstoppable"],
+        "activeAbilities": [],
+        "passiveAbilities": ["FragLance"]
+    },
+    "astraSmnMortar": {
+        "name": "Cadian Mortar Team",
+        "visualId": "astraNpc4Mortar",
+        "FactionId": "AstraMilitarum",
+        "GrandAllianceId": "Imperial",
+        "nrOfMembers": 2,
+        "Movement": 1,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 3,
+                "DamageProfile": "Blast",
+                "Range": 5
+            }
+        ],
+        "traits": ["Summon", "Emplacement", "BattleFatigue", "TwoManTeam", "IndirectFire", "SuppressiveFire"],
+        "activeAbilities": [],
+        "passiveAbilities": ["Shrapnel"]
+    },
+    "astraSmnVoxcaster": {
+        "name": "Cadian Vox-caster",
+        "visualId": "astraNpc3Voxcaster",
+        "FactionId": "AstraMilitarum",
+        "GrandAllianceId": "Imperial",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Las",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "BattleFatigue"],
+        "activeAbilities": ["ValkyrieStrike"],
+        "passiveAbilities": ["CallInReinforcements"]
+    },
+    "adeptSmnGeminaeSuperia": {
+        "name": "Geminae Superia",
+        "FactionId": "Sisterhood",
+        "GrandAllianceId": "Imperial",
+        "Movement": 4,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Power"
+            }
+        ],
+        "traits": ["Summon", "Flying"],
+        "activeAbilities": [],
+        "passiveAbilities": ["Lifewards"]
+    },
+    "tyranSmnTermagant": {
+        "name": "Termagant",
+        "visualId": "tyranNpc3Termagant",
+        "FactionId": "Tyranids",
+        "GrandAllianceId": "Xenos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Bio",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "InstinctiveBehaviour", "BattleFatigue"],
+        "activeAbilities": [],
+        "passiveAbilities": ["HailOfLivingAmmunition"]
+    },
+    "tyranSmnRipperSwarm": {
+        "name": "Ripper Swarm",
+        "visualId": "tyranNpc2RipperSwarm",
+        "FactionId": "Tyranids",
+        "GrandAllianceId": "Xenos",
+        "nrOfMembers": 5,
+        "Movement": 3,
+        "weapons": [{
+                "hits": 5,
+                "DamageProfile": "Physical"
+            }
+        ],
+        "traits": ["Summon", "InstinctiveBehaviour", "Swarm", "BattleFatigue"],
+        "activeAbilities": ["Burrowers"],
+        "passiveAbilities": []
+    },
+    "tyranSmnWarrior": {
+        "name": "Tyranid Warrior",
+        "visualId": "tyranNpc4Warrior",
+        "FactionId": "Tyranids",
+        "GrandAllianceId": "Xenos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 3,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 3,
+                "DamageProfile": "Bio",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "Synapse", "BigTarget", "ShadowInTheWarp"],
+        "activeAbilities": ["ScythingTalons"],
+        "passiveAbilities": ["ReinforcedHiveNode"]
+    },
+    "tyranSmnHormagaunt": {
+        "name": "Hormagaunt",
+        "visualId": "tyranNpc1Hormagaunt",
+        "FactionId": "Tyranids",
+        "GrandAllianceId": "Xenos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Physical"
+            }
+        ],
+        "traits": ["Summon", "InstinctiveBehaviour", "BattleFatigue"],
+        "activeAbilities": [],
+        "passiveAbilities": ["AdrenalGlands", "HungeringSwarm"]
+    },
+    "tyranSmnSporeMine": {
+        "name": "Spore Mine",
+        "FactionId": "Tyranids",
+        "GrandAllianceId": "Xenos",
+        "Movement": 1,
+        "weapons": [],
+        "traits": ["Summon", "InstinctiveBehaviour", "Flying"],
+        "activeAbilities": [],
+        "passiveAbilities": ["FloatingDeath"]
+    },
+    "orksGrot": {
+        "name": "Grot",
+        "visualId": "orksNpc1Grot",
+        "FactionId": "Orks",
+        "GrandAllianceId": "Xenos",
+        "Movement": 2,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Projectile"
+            }
+        ],
+        "traits": ["Summon", "Diminutive", "BattleFatigue"],
+        "activeAbilities": [],
+        "passiveAbilities": ["PileIn"]
+    },
+    "orksOrkBoys": {
+        "name": "Ork Boy",
+        "visualId": "orksNpc2OrkBoy",
         "FactionId": "Orks",
         "GrandAllianceId": "Xenos",
         "Movement": 3,
@@ -13,10 +319,117 @@
                 "Range": 2
             }
         ],
-        "traits": ["Summon", "BattleFatigue"]
+        "traits": ["Summon", "BattleFatigue"],
+        "activeAbilities": ["Stikkbomb"],
+        "passiveAbilities": []
     },
-	"tauSmnDroneShield": {
-        "name": "Shield Drones",
+    "orksGrotTank": {
+        "name": "Grot Tank",
+        "visualId": "orksNpc3GrotTank",
+        "FactionId": "Orks",
+        "GrandAllianceId": "Xenos",
+        "Movement": 2,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 3,
+                "DamageProfile": "Blast",
+                "Range": 3
+            }
+        ],
+        "traits": ["Summon", "Mechanical", "BattleFatigue", "Vehicle"],
+        "activeAbilities": [],
+        "passiveAbilities": ["Ramshackle"]
+    },
+    "orksSmnSquig": {
+        "name": "Large Squig",
+        "visualId": "orksNpc7Squig",
+        "FactionId": "Orks",
+        "GrandAllianceId": "Xenos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 3,
+                "DamageProfile": "Physical"
+            }
+        ],
+        "traits": ["Summon"],
+        "activeAbilities": [],
+        "passiveAbilities": []
+    },
+    "templInitiate": {
+        "name": "Initiate",
+        "visualId": "templNpc1Initiate",
+        "FactionId": "BlackTemplars",
+        "GrandAllianceId": "Imperial",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Chain"
+            }
+        ],
+        "traits": ["Summon"],
+        "activeAbilities": ["DevoutPush"],
+        "passiveAbilities": ["HeavyBoltPistol"]
+    },
+    "templNeophyte": {
+        "name": "Neophyte",
+        "visualId": "templNpc2Neophyte",
+        "FactionId": "BlackTemplars",
+        "GrandAllianceId": "Imperial",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Projectile",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon"],
+        "activeAbilities": ["IncendiaryShells"],
+        "passiveAbilities": []
+    },
+    "templInitiatePyreblaster": {
+        "name": "Initiate with Pyreblaster",
+        "visualId": "templNpc3InitiatePyreblaster",
+        "FactionId": "BlackTemplars",
+        "GrandAllianceId": "Imperial",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 3,
+                "DamageProfile": "Flame",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon"],
+        "activeAbilities": [],
+        "passiveAbilities": ["Pyreblaster"]
+    },
+    "tauSmnDroneSniper": {
+        "name": "Sniper Drone",
+        "FactionId": "Tau",
+        "GrandAllianceId": "Xenos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 1,
+                "DamageProfile": "Piercing",
+                "Range": 4
+            }
+        ],
+        "traits": ["Summon", "Flying", "Mechanical", "RangedSpecialist"],
+        "activeAbilities": [],
+        "passiveAbilities": ["SaviorProtocols"]
+    },
+    "tauSmnDroneShield": {
+        "name": "Shield Drone",
         "FactionId": "Tau",
         "GrandAllianceId": "Xenos",
         "Movement": 3,
@@ -25,38 +438,393 @@
                 "DamageProfile": "Physical"
             }
         ],
-        "traits": ["Summon", "Flying", "Mechanical"]
+        "traits": ["Summon", "Flying", "Mechanical"],
+        "activeAbilities": [],
+        "passiveAbilities": ["SaviorProtocols"]
     },
-	"admecSmnVanguard": {
+    "tauSmnDroneCommandLink": {
+        "name": "Command-Link Drone",
+        "FactionId": "Tau",
+        "GrandAllianceId": "Xenos",
+        "Movement": 0,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }
+        ],
+        "traits": ["Summon", "Flying", "Mechanical"],
+        "activeAbilities": [],
+        "passiveAbilities": ["SaviorProtocols", "DefenderOfTheGreaterGood"]
+    },
+    "tauSmnStealthSuit": {
+        "name": "Stealth Battlesuit",
+        "visualId": "tauNpc5StealthSuit",
+        "FactionId": "Tau",
+        "GrandAllianceId": "Xenos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 4,
+                "DamageProfile": "Pulse",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "Camouflage", "Infiltrate", "Flying", "RangedSpecialist"],
+        "activeAbilities": ["ForwardObservers", "WallOfMirrors"],
+        "passiveAbilities": []
+    },
+    "thousSmnRubricMarine": {
+        "name": "Rubric Marine",
+        "visualId": "thousNpc3RubricMarine",
+        "FactionId": "ThousandSons",
+        "GrandAllianceId": "Chaos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Flame",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "WeaverOfFate"],
+        "activeAbilities": [],
+        "passiveAbilities": ["AllIsDust"]
+    },
+    "thousSmnPinkHorror": {
+        "name": "Pink Horror",
+        "visualId": "thousNpc1PinkHorror",
+        "FactionId": "ThousandSons",
+        "GrandAllianceId": "Chaos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Psychic",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "WeaverOfFate", "Daemon", "Psyker"],
+        "activeAbilities": [],
+        "passiveAbilities": ["Split"]
+    },
+    "thousSmnBlueHorror": {
+        "name": "Blue Horror",
+        "FactionId": "ThousandSons",
+        "GrandAllianceId": "Chaos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Flame",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "WeaverOfFate", "Daemon"],
+        "activeAbilities": [],
+        "passiveAbilities": ["FlamesOfMutation"]
+    },
+    "thousSmnScreamer": {
+        "name": "Screamer",
+        "visualId": "thousNpc2Screamer",
+        "FactionId": "ThousandSons",
+        "GrandAllianceId": "Chaos",
+        "Movement": 4,
+        "weapons": [{
+                "hits": 3,
+                "DamageProfile": "Power"
+            }
+        ],
+        "traits": ["Summon", "WeaverOfFate", "Daemon", "Flying"],
+        "activeAbilities": ["SlashingDive"],
+        "passiveAbilities": []
+    },
+    "thousSmnDaemonPrince": {
+        "name": "Z'Kar",
+        "FactionId": "ThousandSons",
+        "GrandAllianceId": "Chaos",
+        "Movement": 0,
+        "weapons": [{
+                "hits": 4,
+                "DamageProfile": "Psychic"
+            }, {
+                "hits": 3,
+                "DamageProfile": "Psychic",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "WeaverOfFate", "Daemon", "BigTarget", "Psyker"],
+        "activeAbilities": [],
+        "passiveAbilities": ["HunterOfSouls"]
+    },
+    "admecSmnVanguard": {
         "name": "Skitarii Vanguard",
+        "visualId": "admecNpc1Vanguard",
         "FactionId": "AdeptusMechanicus",
         "GrandAllianceId": "Imperial",
         "Movement": 3,
         "weapons": [{
                 "hits": 1,
                 "DamageProfile": "Physical"
-            },
-			{
+            }, {
                 "hits": 3,
-                "DamageProfile": "Toxic"
+                "DamageProfile": "Toxic",
+                "Range": 2
             }
         ],
-        "traits": ["Summon", "Mechanical"]
+        "traits": ["Summon", "Mechanical"],
+        "activeAbilities": [],
+        "passiveAbilities": ["RadSaturation"]
     },
-	"necroSmnSwarm": {
-        "name": "Scarab Swarms",
+    "admecSmnTechpriest": {
+        "name": "Tech-Priest Enginseer",
+        "visualId": "admecNpc2Techpriest",
+        "FactionId": "AdeptusMechanicus",
+        "GrandAllianceId": "Imperial",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 3,
+                "DamageProfile": "Power"
+            }
+        ],
+        "traits": ["Summon", "Mechanical", "Mechanic"],
+        "activeAbilities": [],
+        "passiveAbilities": ["VengeanceForTheOmnissiah", "OmnissiahsBlessing"]
+    },
+    "admecSmnElectropriest": {
+        "name": "Electro-priest",
+        "visualId": "admecNpc3Electropriest",
+        "FactionId": "AdeptusMechanicus",
+        "GrandAllianceId": "Imperial",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 3,
+                "DamageProfile": "Particle"
+            }
+        ],
+        "traits": ["Summon", "Mechanical", "Resilient"],
+        "activeAbilities": [],
+        "passiveAbilities": ["VoltagheistField", "ElectroShock"]
+    },
+    "bloodSmnIntercessor": {
+        "name": "Jump Pack Intercessor",
+        "FactionId": "BloodAngels",
+        "GrandAllianceId": "Imperial",
+        "Movement": 4,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Chain"
+            }
+        ],
+        "traits": ["Summon", "Flying", "RapidAssault"],
+        "activeAbilities": [],
+        "passiveAbilities": ["RedThirst"]
+    },
+    "genesSmnGenestealer": {
+        "name": "Purestrain Genestealer",
+        "FactionId": "Genestealers",
+        "GrandAllianceId": "Xenos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 4,
+                "DamageProfile": "Bio"
+            }
+        ],
+        "traits": ["Summon", "Ambush", "Infiltrate", "Unstoppable"],
+        "activeAbilities": [],
+        "passiveAbilities": []
+    },
+    "genesSmnNeophyte": {
+        "name": "Neophyte Hybrid",
+        "FactionId": "Genestealers",
+        "GrandAllianceId": "Xenos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Projectile",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "Ambush", "BattleFatigue"],
+        "activeAbilities": [],
+        "passiveAbilities": []
+    },
+    "genesSmnDecoy": {
+        "name": "Decoy",
+        "FactionId": "Genestealers",
+        "GrandAllianceId": "Xenos",
+        "weapons": [],
+        "traits": ["Steppable", "Decoy"],
+        "activeAbilities": [],
+        "passiveAbilities": []
+    },
+    "genesSmnAberrant": {
+        "name": "Aberrant Hypermorph",
+        "FactionId": "Genestealers",
+        "GrandAllianceId": "Xenos",
+        "Movement": 2,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }
+        ],
+        "traits": ["Summon", "Ambush", "Resilient"],
+        "activeAbilities": [],
+        "passiveAbilities": ["Hypermorph"]
+    },
+    "eldarSmnHarlequin": {
+        "name": "Harlequin Player",
+        "visualId": "eldarNpc3Harlequin",
+        "FactionId": "Aeldari",
+        "GrandAllianceId": "Xenos",
+        "Movement": 4,
+        "weapons": [{
+                "hits": 4,
+                "DamageProfile": "Power"
+            }
+        ],
+        "traits": ["Summon", "Infiltrate", "Unstoppable"],
+        "activeAbilities": ["KissOfDeath"],
+        "passiveAbilities": ["HarlequinsPanoply"]
+    },
+    "eldarSmnGuardian": {
+        "name": "Guardian",
+        "visualId": "eldarNpc1Guardian",
+        "FactionId": "Aeldari",
+        "GrandAllianceId": "Xenos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Projectile",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "BattleFatigue"],
+        "activeAbilities": ["PlasmaGrenade"],
+        "passiveAbilities": ["BattleFocus"]
+    },
+    "blackSmnTerminator": {
+        "name": "Chaos Terminator",
+        "visualId": "blackNpc2Terminator",
+        "FactionId": "BlackLegion",
+        "GrandAllianceId": "Chaos",
+        "Movement": 2,
+        "weapons": [{
+                "hits": 2,
+                "DamageProfile": "Chain"
+            }, {
+                "hits": 4,
+                "DamageProfile": "Bolter",
+                "Range": 2
+            }
+        ],
+        "traits": ["Summon", "LetTheGalaxyBurn", "TeleportStrike", "TerminatorArmour"],
+        "activeAbilities": [],
+        "passiveAbilities": ["DrawFire"]
+    },
+    "ultraSmnEliminator": {
+        "name": "Eliminator",
+        "visualId": "ultraNpc2Eliminator",
+        "FactionId": "Ultramarines",
+        "GrandAllianceId": "Imperial",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 1,
+                "DamageProfile": "Bolter",
+                "Range": 3
+            }
+        ],
+        "traits": ["Summon", "HeavyWeapon", "Overwatch"],
+        "activeAbilities": [],
+        "passiveAbilities": ["CamoCloak"]
+    },
+    "ultraSmnHeavyIntercessor": {
+        "name": "Heavy Intercessor",
+        "visualId": "ultraNpc4HeavyIntercessor",
+        "FactionId": "Ultramarines",
+        "GrandAllianceId": "Imperial",
+        "Movement": 2,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 3,
+                "DamageProfile": "Bolter",
+                "Range": 3
+            }
+        ],
+        "traits": ["Summon", "MkXGravis", "HeavyWeapon", "SuppressiveFire"],
+        "activeAbilities": ["HellfireShells"],
+        "passiveAbilities": ["RapidFire"]
+    },
+    "necroSmnDestroyer": {
+        "name": "Ophydian Destroyer",
+        "visualId": "necroNpc4Destroyer",
         "FactionId": "Necrons",
         "GrandAllianceId": "Xenos",
         "Movement": 4,
         "weapons": [{
-                "hits": 5,
-                "DamageProfile": "Energy"
+                "hits": 2,
+                "DamageProfile": "Piercing"
             }
         ],
-        "traits": ["Summon", "Mechanical", "LivingMetal", "Swarm", "Flying"]
+        "traits": ["Summon", "LivingMetal", "Mechanical"],
+        "activeAbilities": ["TunnelingHorror"],
+        "passiveAbilities": ["WhipcoilBody"]
     },
-	"blackSmnBloodletter": {
-        "name": "Bloodletters",
+    "necroSmnDeathmark": {
+        "name": "Deathmark",
+        "visualId": "necroNpc3Deathmark",
+        "FactionId": "Necrons",
+        "GrandAllianceId": "Xenos",
+        "Movement": 2,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 1,
+                "DamageProfile": "Energy",
+                "Range": 3
+            }
+        ],
+        "traits": ["Summon", "LivingMetal", "HeavyWeapon", "Mechanical"],
+        "activeAbilities": ["PrecisionShot"],
+        "passiveAbilities": ["ReanimationProtocols"]
+    },
+    "votanSmnEcog": {
+        "name": "E-COG",
+        "visualId": "votanNpc1Ecog",
+        "FactionId": "LeaguesOfVotann",
+        "GrandAllianceId": "Xenos",
+        "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Plasma"
+            }
+        ],
+        "traits": ["Summon", "Flying", "Mechanical", "Mechanic"],
+        "activeAbilities": [],
+        "passiveAbilities": ["RepairEnthusiast"]
+    },
+    "blackSmnBloodletterHSE": {
+        "name": "Bloodletter",
+        "visualId": "blackSmnBloodletter",
         "FactionId": "BlackLegion",
         "GrandAllianceId": "Chaos",
         "Movement": 3,
@@ -65,175 +833,61 @@
                 "DamageProfile": "Piercing"
             }
         ],
-        "traits": ["Summon", "Daemon"]
+        "traits": ["Daemon"],
+        "activeAbilities": [],
+        "passiveAbilities": ["UnstoppableFerocity"]
     },
-	"astraSmnGuardsman": {
-        "name": "Cadian Guardsmen",
-        "FactionId": "AstraMilitarum",
-        "GrandAllianceId": "Imperial",
-        "Movement": 3,
-        "weapons": [{
-                "hits": 1,
-                "DamageProfile": "Physical"
-            },
-			{
-                "hits": 2,
-                "DamageProfile": "Las",
-				"Range": 2
-            }
-        ],
-        "traits": ["Summon", "BattleFatigue"]
-    },
-	"orksGrotTank": {
-        "name": "Grot Tank",
-        "FactionId": "Orks",
-        "GrandAllianceId": "Xenos",
-        "Movement": 3,
-        "weapons": [{
-                "hits": 1,
-                "DamageProfile": "Physical"
-            },
-			{
-                "hits": 3,
-                "DamageProfile": "Blast",
-				"Range": 3
-            }
-        ],
-        "traits": ["Summon", "Mechanical", "BattleFatigue", "Vehicle"]
-    },
-	"thousSmnPinkHorror": {
+    "thousSmnPinkHorrorHSE": {
         "name": "Pink Horror",
+        "visualId": "thousNpc1PinkHorror",
         "FactionId": "ThousandSons",
         "GrandAllianceId": "Chaos",
         "Movement": 3,
         "weapons": [{
                 "hits": 1,
                 "DamageProfile": "Physical"
-            },
-			{
+            }, {
                 "hits": 2,
                 "DamageProfile": "Psychic",
-				"Range": 2
+                "Range": 2
             }
         ],
-        "traits": ["Summon", "Daemon", "WeaverOfFate", "Psyker"]
+        "traits": ["WeaverOfFate", "Daemon", "Psyker"],
+        "activeAbilities": [],
+        "passiveAbilities": ["Split"]
     },
-	"thousSmnScreamer": {
-        "name": "Screamer of Tzeentch",
+    "thousSmnBlueHorrorHSE": {
+        "name": "Blue Horror",
+        "visualId": "thousSmnBlueHorror",
         "FactionId": "ThousandSons",
         "GrandAllianceId": "Chaos",
         "Movement": 3,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Flame",
+                "Range": 2
+            }
+        ],
+        "traits": ["WeaverOfFate", "Daemon"],
+        "activeAbilities": [],
+        "passiveAbilities": ["FlamesOfMutation"]
+    },
+    "thousSmnScreamerHSE": {
+        "name": "Screamer",
+        "visualId": "thousNpc2Screamer",
+        "FactionId": "ThousandSons",
+        "GrandAllianceId": "Chaos",
+        "Movement": 4,
         "weapons": [{
                 "hits": 3,
                 "DamageProfile": "Power"
             }
         ],
-        "traits": ["Summon", "Daemon", "WeaverOfFate", "Flying"]
-    },
-	"tauSmnDroneSniper": {
-        "name": "MV71 Sniper Drone",
-        "FactionId": "Tau",
-        "GrandAllianceId": "Xenos",
-        "Movement": 3,
-        "weapons": [{
-                "hits": 1,
-                "DamageProfile": "Physical"
-            },
-			{
-                "hits": 1,
-                "DamageProfile": "Piercing",
-				"Range": 4
-            }
-        ],
-        "traits": ["Summon", "Mechanical", "Flying", "RangedSpecialist"]
-    },
-	"orksGrot": {
-        "name": "Grots",
-        "FactionId": "Orks",
-        "GrandAllianceId": "Xenos",
-        "Movement": 3,
-        "weapons": [{
-                "hits": 1,
-                "DamageProfile": "Projectile"
-            }
-        ],
-        "traits": ["Summon", "Diminutive", "BattleFatigue"]
-    },
-	"ultraSmnInceptor": {
-        "name": "Inceptor",
-        "FactionId": "Ultramarines",
-        "GrandAllianceId": "Imperial",
-        "Movement": 4,
-        "weapons": [{
-                "hits": 6,
-                "DamageProfile": "Bolter"
-            }
-        ],
-        "traits": ["Summon", "Flying", "MkXGravis"]
-    },
-	"ultraSmnDreadnought": {
-        "name": "Redemptor Dreadnought",
-        "FactionId": "Ultramarines",
-        "GrandAllianceId": "Imperial",
-        "Movement": 3,
-        "weapons": [{
-                "hits": 2,
-                "DamageProfile": "Power"
-            },
-			{
-                "hits": 4,
-                "DamageProfile": "Heavy",
-				"Range": 3
-            }
-        ],
-        "traits": ["Summon", "Mechanical", "Vehicle"]
-    },
-	"bloodSmnIntercessor": {
-        "name": "Jump Pack Intercessor",
-        "FactionId": "BloodAngels",
-        "GrandAllianceId": "Imperial",
-        "Movement": 4,
-        "weapons": [{
-                "hits": 1,
-                "DamageProfile": "Physical"
-            }
-        ],
-        "traits": ["Summon", "Flying"]
-    },
-	"adeptSmnGeminaeSuperia": {
-        "name": "Geminae Superia",
-        "FactionId": "Sisterhood",
-        "GrandAllianceId": "Imperial",
-        "Movement": 4,
-        "weapons": [{
-                "hits": 2,
-                "DamageProfile": "Power"
-            }
-        ],
-        "traits": ["Summon", "Flying"]
-    },
-	"astraSmnKell": {
-        "name": "Colour Sergeant Kell",
-        "FactionId": "AstraMilitarum",
-        "GrandAllianceId": "Imperial",
-        "Movement": 3,
-        "weapons": [{
-                "hits": 2,
-                "DamageProfile": "Power"
-            }
-        ],
-        "traits": ["Summon"]
-    },
-	"astraSmnDeathRider": {
-        "name": "Death Rider",
-        "FactionId": "AstraMilitarum",
-        "GrandAllianceId": "Imperial",
-        "Movement": 3,
-        "weapons": [{
-                "hits": 2,
-                "DamageProfile": "Physical"
-            }
-        ],
-        "traits": ["Summon", "Unstoppable"]
+        "traits": ["WeaverOfFate", "Daemon", "Flying"],
+        "activeAbilities": ["SlashingDive"],
+        "passiveAbilities": []
     }
 }

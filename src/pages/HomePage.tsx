@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Users, Calculator, Map } from 'lucide-react';
 
-export function HomePage() {
+export default function HomePage() {
   return (
     <div className="space-y-12">
       {/* Hero Section */}

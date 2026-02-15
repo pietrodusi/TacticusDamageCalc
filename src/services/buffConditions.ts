@@ -478,7 +478,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     }
   }
 
-  // Head-Claimer (Haarken) - Killed Character
+  // Head-Claimer (Haarken) - Kill counter
   if (character.passiveAbilities.includes('HeadClaimer')) {
     const levelIndex = character.abilityLevels?.['HeadClaimer'] ?? 54;
     const values = getAbilityValues('HeadClaimer', levelIndex, character.progressionStepIndex);
@@ -486,23 +486,20 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
 
     if (values) {
       const extraDmg = values.extraDmg as number || 0;
+      const killCount = (character.abilityToggles['HeadClaimer_Kills'] as unknown as number) ?? 0;
 
       conditions.push({
         id: 'HeadClaimer_Kills',
-        label: 'Has kills',
+        label: 'Kills',
         source: abilityName,
-        effect: `+${extraDmg} dmg per kill`,
-        isActive: isToggleActive(character.abilityToggles['HeadClaimer_Kills']),
+        effect: killCount > 0 ? `+${extraDmg * killCount} dmg` : 'No bonus',
+        effectPerCount: `+${extraDmg} dmg`,
+        isActive: killCount > 0,
         category: 'self',
-      });
-
-      conditions.push({
-        id: 'HeadClaimer',
-        label: 'Killed Character',
-        source: abilityName,
-        effect: '+1 hit per Character kill',
-        isActive: isToggleActive(character.abilityToggles['HeadClaimer']),
-        category: 'self',
+        isCounter: true,
+        counterValue: killCount,
+        counterMin: 0,
+        counterMax: 10,
       });
     }
   }
@@ -723,6 +720,8 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
       });
     }
   }
+
+  // FrenziedFiring (Volk) - Free hexes counter moved to modal popup (no card condition needed)
 
   return conditions;
 }

@@ -11,7 +11,7 @@ import type { HexCoord } from '../types/strategium';
 import { getMapWithImage } from '../services/strategium/mapMetadata';
 import { isDataDrivenMap, getDataDrivenCellData } from '../services/strategium/boardDataService';
 
-export function StrategiumPage() {
+export default function StrategiumPage() {
   // Team, boss, and machine of war from teamStore (shared with Calculator)
   const {
     team,

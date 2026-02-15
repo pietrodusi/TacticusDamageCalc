@@ -613,11 +613,14 @@ interface BattleStore {
   toggleSummonBuffCondition: (summonId: string, conditionId: string) => void;
   executeSummonAttack: (summonId: string, attackType: 'melee' | 'ranged') => BattleLogEntry;
 
+  spawnPossessionSummon: (characterId: string, unitType: 'bloodletter' | 'blueHorror') => void;
+
   // Special ability executions
   executeTheBetrayerBonus: (characterId: string) => BattleLogEntry;
   executeOverwatchAttack: (characterId: string) => BattleLogEntry;
   executeFuryOfTheAncients: (characterId: string) => BattleLogEntry;
   executeMartialSuperiority: (characterId: string) => BattleLogEntry;
+  executeHatefulAssault: (characterId: string) => BattleLogEntry;
   executeUnwaveringSentinel: (characterId: string) => BattleLogEntry;
   executeTheQuickening: (casterId: string, targetId: string) => BattleLogEntry;
   applyBloodChaliceBuff: (casterId: string, targetIds: string[], extraPierceRatio: number) => void;
@@ -909,6 +912,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       hasUsedFuryOfTheAncientsThisTurn: false,
       // Reset Martial Superiority usage for new turn (once per turn ability)
       hasUsedMartialSuperiorityThisTurn: false,
+      // Reset Hateful Assault usage for new turn (once per turn ability)
+      hasUsedHatefulAssaultThisTurn: false,
+      // Reset Laviscus outrage for new turn
+      outrage: 0,
+      outrageContributors: [],
       // Increment attackTurnsCount if character attacked this turn (for LegacyOfCombat bonus)
       attackTurnsCount: char.attacksThisTurn > 0 ? char.attackTurnsCount + 1 : char.attackTurnsCount,
       // Advance ability cooldowns
@@ -1526,9 +1534,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const buffDamageMultiplier = attacker.activeBuffs.reduce(
       (mult, buff) => mult * (buff.baseDamageMultiplier || 1), 1
     ) * (poolBuffEffects.baseDamageMultiplier || 1);
+    // HeraldOfTheApocalypse debuff: +extraDmg to next attack by any team member
+    const heraldBonus = battleState.heraldExtraDmgDebuff || 0;
     const buffDamageBonus = attacker.activeBuffs.reduce(
       (sum, buff) => sum + (buff.baseDamageBonus || 0), 0
-    ) + (poolBuffEffects.baseDamageBonus || 0);
+    ) + (poolBuffEffects.baseDamageBonus || 0) + heraldBonus;
     const poolExtraHits = poolBuffEffects.extraHits || 0;
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
     const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
@@ -1909,6 +1919,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       buffSources.push({
         name: 'Supercharge',
         pierceRatioBonus: superchargePierceBonus,
+      });
+    }
+
+    // Add Herald of the Apocalypse debuff source for display
+    if (heraldBonus > 0) {
+      buffSources.push({
+        name: 'Herald of the Apocalypse',
+        damageBonus: heraldBonus,
       });
     }
 
@@ -3519,6 +3537,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             masterAnnihilatorMaxDmg: attacker.passiveAbilities.includes('MasterAnnihilator')
               ? (getAbilityValues('MasterAnnihilator', attacker.abilityLevels?.MasterAnnihilator ?? 54, attacker.progressionStepIndex)?.maxDmg as number) || 0
               : state.battleState.masterAnnihilatorMaxDmg,
+            // HeraldOfTheApocalypse: Clear debuff after it's consumed by this attack
+            ...(heraldBonus > 0 ? { heraldExtraDmgDebuff: undefined } : {}),
             // Remove consumed buffs from the pool
             buffPool: buffsToConsume.length > 0
               ? state.battleState.buffPool.filter(b => !buffsToConsume.includes(b.id))
@@ -5198,6 +5218,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 bossAttacksReceivedThisTurn: prophetAttackCounter,
                 // Supercharge: Store pierce bonus for ALL team Plasma attacks rest of turn
                 ...(result.superchargePierceBonus ? { superchargePierceBonus: result.superchargePierceBonus } : {}),
+                // HeraldOfTheApocalypse: Store +extraDmg debuff on boss for next attack by any team member
+                ...(result.bossDebuff?.extraDmg ? { heraldExtraDmgDebuff: result.bossDebuff.extraDmg } : {}),
                 team: state.battleState.team.map((char) => {
                   if (char.id === characterId) {
                     // Update ability user
@@ -6427,6 +6449,59 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }));
   },
 
+  spawnPossessionSummon: (characterId, unitType) => {
+    const { battleState } = get();
+    if (!battleState) return;
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) return;
+
+    const levelIndex = character.abilityLevels?.Possession ?? 54;
+    const values = getAbilityValues('Possession', levelIndex, character.progressionStepIndex);
+    if (!values) return;
+
+    const isBloodletter = unitType === 'bloodletter';
+    const unitId = isBloodletter ? 'blackSmnBloodletter' : 'thousSmnBlueHorror';
+    const hp = isBloodletter ? (values.summonHp as number || 0) : (values.summonHp_2 as number || 0);
+    const damage = isBloodletter ? (values.summonDmg as number || 0) : (values.summonDmg_2 as number || 0);
+
+    const summonData = getSummonUnitData(unitId);
+    if (!summonData) return;
+
+    const meleeWeapon = summonData.weapons.find(w => !w.Range);
+    const rangedWeapon = summonData.weapons.find(w => w.Range);
+
+    const newSummon: import('../types').BattleSummon = {
+      id: `summon_${unitId}_${Date.now()}`,
+      unitId,
+      name: summonData.name,
+      sourceCharacterId: characterId,
+      sourceAbilityId: 'Possession',
+      hp,
+      damage,
+      armor: 0,
+      meleeHits: meleeWeapon?.hits || 1,
+      meleeDamageType: (meleeWeapon?.DamageProfile as import('../types').DamageType) || 'Physical',
+      rangedHits: rangedWeapon?.hits,
+      rangedDamageType: rangedWeapon?.DamageProfile as import('../types').DamageType | undefined,
+      rangedRange: rangedWeapon?.Range,
+      traits: summonData.traits || [],
+      count: 1,
+      createdAtTurn: battleState.turn,
+      iconUrl: getSummonIconUrl(unitId),
+      activeAbilities: summonData.activeAbilities,
+      totalDamageDealt: 0,
+    };
+
+    set((state) => ({
+      battleState: state.battleState
+        ? { ...state.battleState, summons: [...state.battleState.summons, newSummon] }
+        : null,
+    }));
+
+    console.log(`[Possession: Spawned ${summonData.name} (HP: ${hp}, Dmg: ${damage})]`);
+  },
+
   removeSummon: (summonId) => {
     set((state) => ({
       battleState: state.battleState
@@ -6984,6 +7059,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const poolBuffEffects = combineBuffEffects(applicablePoolBuffs);
 
     // Combine pool buffs with character's active buffs
+    // HeraldOfTheApocalypse debuff: +extraDmg to next attack by any team member
+    const heraldBonus = battleState.heraldExtraDmgDebuff || 0;
     const buffCritChanceBonus = character.activeBuffs.reduce(
       (sum, buff) => sum + (buff.critChanceBonus || 0), 0
     ) + (poolBuffEffects.critChanceBonus || 0);
@@ -6995,7 +7072,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         if (buff.normalAttackOnly) return sum;  // Skip normalAttackOnly buffs for special attacks
         return sum + (buff.baseDamageBonus || 0);
       }, 0
-    ) + (poolBuffEffects.baseDamageBonus || 0);
+    ) + (poolBuffEffects.baseDamageBonus || 0) + heraldBonus;
     const poolExtraHits = poolBuffEffects.extraHits || 0;
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
     const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
@@ -7151,6 +7228,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       });
     }
 
+    // Add Herald of the Apocalypse debuff source for display
+    if (heraldBonus > 0) {
+      buffSources.push({
+        name: 'Herald of the Apocalypse',
+        damageBonus: heraldBonus,
+      });
+    }
+
     // Add activeBuffs pierce ratio sources (e.g., Blood Chalice)
     for (const buff of character.activeBuffs) {
       if (buff.pierceRatioBonus && (!buff.meleeOnly || attackType === 'melee')) {
@@ -7221,6 +7306,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         ? {
             ...state.battleState,
             totalDamageDealt: state.battleState.totalDamageDealt + result.damage,
+            // HeraldOfTheApocalypse: Clear debuff after it's consumed by this attack
+            ...(heraldBonus > 0 ? { heraldExtraDmgDebuff: undefined } : {}),
             team: state.battleState.team.map((c) =>
               c.id === characterId
                 ? { ...c, totalDamageDealt: c.totalDamageDealt + result.damage, hasUsedTheBetrayerThisTurn: true }
@@ -7457,6 +7544,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const applicablePoolBuffs = getApplicableBuffs(battleState.buffPool, buffEvalContext);
     const poolBuffEffects = combineBuffEffects(applicablePoolBuffs);
 
+    // HeraldOfTheApocalypse debuff: +extraDmg to next attack by any team member
+    const heraldBonus = battleState.heraldExtraDmgDebuff || 0;
     const buffCritChanceBonus = character.activeBuffs.reduce(
       (sum, buff) => sum + (buff.critChanceBonus || 0), 0
     ) + (poolBuffEffects.critChanceBonus || 0);
@@ -7468,7 +7557,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         if (buff.normalAttackOnly) return sum;  // Skip normalAttackOnly buffs for special attacks
         return sum + (buff.baseDamageBonus || 0);
       }, 0
-    ) + (poolBuffEffects.baseDamageBonus || 0);
+    ) + (poolBuffEffects.baseDamageBonus || 0) + heraldBonus;
     const poolExtraHits = poolBuffEffects.extraHits || 0;
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
     const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
@@ -7565,6 +7654,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       });
     }
 
+    // Add Herald of the Apocalypse debuff source for display
+    if (heraldBonus > 0) {
+      buffSources.push({
+        name: 'Herald of the Apocalypse',
+        damageBonus: heraldBonus,
+      });
+    }
+
     // Add activeBuffs pierce ratio sources (e.g., Blood Chalice)
     for (const buff of character.activeBuffs) {
       if (buff.pierceRatioBonus && (!buff.meleeOnly || attackType === 'melee')) {
@@ -7633,6 +7730,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         ? {
             ...state.battleState,
             totalDamageDealt: state.battleState.totalDamageDealt + result.damage,
+            // HeraldOfTheApocalypse: Clear debuff after it's consumed by this attack
+            ...(heraldBonus > 0 ? { heraldExtraDmgDebuff: undefined } : {}),
             team: state.battleState.team.map((c) =>
               c.id === characterId
                 ? { ...c, totalDamageDealt: c.totalDamageDealt + result.damage, hasUsedFuryOfTheAncientsThisTurn: true }
@@ -7764,6 +7863,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const applicablePoolBuffs = getApplicableBuffs(battleState.buffPool, buffEvalContext);
     const poolBuffEffects = combineBuffEffects(applicablePoolBuffs);
 
+    // HeraldOfTheApocalypse debuff: +extraDmg to next attack by any team member
+    const heraldBonus = battleState.heraldExtraDmgDebuff || 0;
     const buffCritChanceBonus = character.activeBuffs.reduce(
       (sum, buff) => sum + (buff.critChanceBonus || 0), 0
     ) + (poolBuffEffects.critChanceBonus || 0);
@@ -7775,7 +7876,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         if (buff.normalAttackOnly) return sum;  // Skip normalAttackOnly buffs for special attacks
         return sum + (buff.baseDamageBonus || 0);
       }, 0
-    ) + (poolBuffEffects.baseDamageBonus || 0);
+    ) + (poolBuffEffects.baseDamageBonus || 0) + heraldBonus;
     const poolExtraHits = poolBuffEffects.extraHits || 0;
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
     const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
@@ -7871,6 +7972,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       });
     }
 
+    // Add Herald of the Apocalypse debuff source for display
+    if (heraldBonus > 0) {
+      buffSources.push({
+        name: 'Herald of the Apocalypse',
+        damageBonus: heraldBonus,
+      });
+    }
+
     // Add activeBuffs pierce ratio sources (e.g., Blood Chalice)
     for (const buff of character.activeBuffs) {
       if (buff.pierceRatioBonus && (!buff.meleeOnly || attackType === 'melee')) {
@@ -7938,6 +8047,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         ? {
             ...state.battleState,
             totalDamageDealt: state.battleState.totalDamageDealt + result.damage,
+            // HeraldOfTheApocalypse: Clear debuff after it's consumed by this attack
+            ...(heraldBonus > 0 ? { heraldExtraDmgDebuff: undefined } : {}),
             team: state.battleState.team.map((c) =>
               c.id === characterId
                 ? { ...c, totalDamageDealt: c.totalDamageDealt + result.damage, hasUsedMartialSuperiorityThisTurn: true }
@@ -7996,6 +8107,323 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       damageType: damageType,
       attackType: 'melee' as const,
       message: `Martial Superiority deals ${result.damage.toLocaleString()} damage (${hits}x ${damageType})`,
+    };
+  },
+
+  /**
+   * Execute Hateful Assault attack (Angrax)
+   * Bonus melee attack: 2x Power hits
+   * Does NOT end turn, can only be used once per turn
+   */
+  executeHatefulAssault: (characterId) => {
+    const { battleState } = get();
+    if (!battleState || !battleState.boss) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'No battle in progress',
+      };
+    }
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: 'Unknown',
+        action: 'ability' as const,
+        message: 'Character not found',
+      };
+    }
+
+    // Get HatefulAssault ability values
+    const levelIndex = character.abilityLevels?.HatefulAssault ?? 54;
+    const abilityValues = getAbilityValues('HatefulAssault', levelIndex, character.progressionStepIndex);
+    if (!abilityValues) {
+      return {
+        timestamp: Date.now(),
+        characterId,
+        characterName: character.name,
+        characterIconUrl: character.iconUrl,
+        action: 'ability' as const,
+        message: 'Hateful Assault ability not found',
+      };
+    }
+
+    const minDamage = abilityValues.minDmg as number || 0;
+    const maxDamage = abilityValues.maxDmg as number || 0;
+    const avgDamage = Math.round((minDamage + maxDamage) / 2);
+    const hits = abilityValues.nrOfHits as number || 2;
+    const damageType: DamageType = 'Power';
+    const attackType = 'melee';
+
+    // Calculate boss armor
+    const bossBaseArmor = battleState.boss.armor || 0;
+    const bossArmorReduction = battleState.bossArmorReduction || 0;
+    const bossArmor = Math.max(0, bossBaseArmor - bossArmorReduction);
+
+    // Get equipment stats for crit calculation
+    const equipmentStats = calculateEquipmentStats(character.equipment);
+    const ignoreCrit = battleState.ignoreCrit || false;
+
+    // === BUFF EVALUATION ===
+    const buffEvalContext: BuffEvaluationContext = {
+      attacker: character,
+      attackType,
+      attackCategory: 'special',
+      target: battleState.boss,
+      battleState,
+    };
+
+    const applicablePoolBuffs = getApplicableBuffs(battleState.buffPool, buffEvalContext);
+    const poolBuffEffects = combineBuffEffects(applicablePoolBuffs);
+
+    // HeraldOfTheApocalypse debuff: +extraDmg to next attack by any team member
+    const heraldBonus = battleState.heraldExtraDmgDebuff || 0;
+    const buffCritChanceBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critChanceBonus || 0), 0
+    ) + (poolBuffEffects.critChanceBonus || 0);
+    const buffDamageMultiplier = character.activeBuffs.reduce(
+      (mult, buff) => mult * (buff.baseDamageMultiplier || 1), 1
+    ) * (poolBuffEffects.baseDamageMultiplier || 1);
+    const buffDamageBonus = character.activeBuffs.reduce(
+      (sum, buff) => {
+        if (buff.normalAttackOnly) return sum;  // Skip normalAttackOnly buffs for special attacks
+        return sum + (buff.baseDamageBonus || 0);
+      }, 0
+    ) + (poolBuffEffects.baseDamageBonus || 0) + heraldBonus;
+    const poolExtraHits = poolBuffEffects.extraHits || 0;
+    const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
+    const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
+    // Blood Chalice and other activeBuffs pierce ratio bonus (check meleeOnly flag)
+    const buffPierceRatioBonus = character.activeBuffs.reduce(
+      (sum, buff) => {
+        if (!buff.pierceRatioBonus) return sum;
+        if (buff.meleeOnly && attackType !== 'melee') return sum;
+        return sum + buff.pierceRatioBonus;
+      }, 0
+    );
+    const poolPierceRatioBonus = (poolBuffEffects.pierceRatioBonus || 0) + buffPierceRatioBonus;
+
+    // War Machine multiplier
+    const warMachineMultiplier = character.abilityToggles['WarMachine'] && battleState.machineOfWar
+      ? 1 + battleState.machineOfWar.extraDmgPct / 100
+      : 1;
+
+    // Build attacker stats
+    const attackerStats: AttackerStats = {
+      baseDamage: avgDamage,
+      damageType,
+      hits,
+      critChance: (equipmentStats.critChance || 0) + (equipmentStats.critChanceBonus || 0),
+      critDamage: (equipmentStats.critDmg || 0) + (equipmentStats.critDmgBonus || 0),
+      critChanceBonus: 0,
+      critDmgBonus: 0,
+      ignoreCrit,
+      traits: character.traits,
+      hasMoved: character.hasMoved,
+      attackType,
+      hasAttackedThisBattle: character.hasAttackedThisBattle,
+      attacksThisTurn: character.attacksThisTurn,
+      firstAttackTurn: character.firstAttackTurn ?? battleState.turn,
+      currentTurn: battleState.turn,
+      abilityToggles: character.abilityToggles,
+    };
+
+    // Evaluate aura bonuses
+    const auraBonuses = getCharacterAuraBonuses(character, battleState.team);
+    const activeAuras = auraBonuses.filter(a => {
+      if (!a.isActive) return false;
+      if (a.attackTypeRestriction && a.attackTypeRestriction !== attackType) return false;
+      return true;
+    });
+    const auraModifiers = activeAuras.map(a => a.modifiers || {});
+
+    // Build buff sources
+    type BuffSourceType = { name: string; sourceName?: string; damageBonus?: number; damageMultiplier?: number; extraHits?: number; critChanceBonus?: number; critDamageBonus?: number; armorIgnored?: number; pierceRatioBonus?: number };
+    const buffSources: BuffSourceType[] = [];
+
+    // Merge aura entries with same name+source
+    for (const a of activeAuras) {
+      const source: BuffSourceType = { name: a.abilityName, sourceName: a.sourceCharacterName || 'Unknown' };
+      if (a.modifiers?.baseDamageBonus) source.damageBonus = a.modifiers.baseDamageBonus;
+      if (a.modifiers?.extraHits) source.extraHits = a.modifiers.extraHits;
+      if (a.modifiers?.critChanceBonus) source.critChanceBonus = a.modifiers.critChanceBonus;
+      if (a.modifiers?.critDamageBonus) source.critDamageBonus = a.modifiers.critDamageBonus;
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus) {
+        const key = `${source.name}_${source.sourceName}`;
+        const existing = buffSources.find(b => `${b.name}_${b.sourceName}` === key);
+        if (existing) {
+          existing.damageBonus = (existing.damageBonus || 0) + (source.damageBonus || 0);
+          existing.extraHits = (existing.extraHits || 0) + (source.extraHits || 0);
+          existing.critChanceBonus = (existing.critChanceBonus || 0) + (source.critChanceBonus || 0);
+          existing.critDamageBonus = (existing.critDamageBonus || 0) + (source.critDamageBonus || 0);
+        } else {
+          buffSources.push(source);
+        }
+      }
+    }
+
+    for (const poolBuff of applicablePoolBuffs) {
+      const source: BuffSourceType = { name: poolBuff.name };
+      if (poolBuff.effects.baseDamageBonus) source.damageBonus = poolBuff.effects.baseDamageBonus;
+      if (poolBuff.effects.extraHits) source.extraHits = poolBuff.effects.extraHits;
+      if (poolBuff.effects.critChanceBonus) source.critChanceBonus = poolBuff.effects.critChanceBonus;
+      if (poolBuff.effects.critDamageBonus) source.critDamageBonus = poolBuff.effects.critDamageBonus;
+      if (poolBuff.effects.baseDamageMultiplier && poolBuff.effects.baseDamageMultiplier !== 1) {
+        source.damageMultiplier = poolBuff.effects.baseDamageMultiplier;
+      }
+      if (poolBuff.effects.armorIgnored) source.armorIgnored = poolBuff.effects.armorIgnored;
+      if (poolBuff.effects.pierceRatioBonus) source.pierceRatioBonus = poolBuff.effects.pierceRatioBonus;
+      if (source.damageBonus || source.extraHits || source.critChanceBonus || source.critDamageBonus || source.damageMultiplier || source.armorIgnored || source.pierceRatioBonus) {
+        buffSources.push(source);
+      }
+    }
+
+    if (warMachineMultiplier > 1 && battleState.machineOfWar) {
+      buffSources.push({
+        name: `Machine of War (+${battleState.machineOfWar.extraDmgPct}%)`,
+        damageMultiplier: warMachineMultiplier,
+      });
+    }
+
+    // Add Herald of the Apocalypse debuff source for display
+    if (heraldBonus > 0) {
+      buffSources.push({
+        name: 'Herald of the Apocalypse',
+        damageBonus: heraldBonus,
+      });
+    }
+
+    // Add activeBuffs pierce ratio sources (e.g., Blood Chalice)
+    for (const buff of character.activeBuffs) {
+      if (buff.pierceRatioBonus && (!buff.meleeOnly || attackType === 'melee')) {
+        buffSources.push({
+          name: buff.abilityName || 'Active Buff',
+          pierceRatioBonus: buff.pierceRatioBonus,
+        });
+      }
+    }
+
+    // Combine modifiers
+    const combinedMods = combineModifiers(auraModifiers);
+    const totalCritChanceBonus = (combinedMods.critChanceBonus || 0) + buffCritChanceBonus;
+    const buffCritDmgBonus = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.critDamageBonus || 0), 0
+    ) + poolCritDmgBonus;
+    const buffExtraHits = character.activeBuffs.reduce(
+      (sum, buff) => sum + (buff.extraHits || 0), 0
+    ) + poolExtraHits;
+    const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * warMachineMultiplier;
+    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus;
+    const totalArmorIgnored = (combinedMods.armorIgnored || 0) + poolArmorIgnored;
+    const totalPierceRatioBonus = (combinedMods.pierceRatioBonus || 0) + poolPierceRatioBonus;
+
+    attackerStats.abilityModifiers = {
+      ...combinedMods,
+      baseDamageBonus: totalDamageBonus > 0 ? totalDamageBonus : undefined,
+      baseDamageMultiplier: totalDamageMultiplier !== 1 ? totalDamageMultiplier : undefined,
+      critChanceBonus: totalCritChanceBonus > 0 ? totalCritChanceBonus : undefined,
+      critDamageBonus: (combinedMods.critDamageBonus || 0) + buffCritDmgBonus > 0 ? (combinedMods.critDamageBonus || 0) + buffCritDmgBonus : undefined,
+      extraHits: (combinedMods.extraHits || 0) + buffExtraHits > 0 ? (combinedMods.extraHits || 0) + buffExtraHits : undefined,
+      armorIgnored: totalArmorIgnored > 0 ? totalArmorIgnored : undefined,
+      pierceRatioBonus: totalPierceRatioBonus > 0 ? totalPierceRatioBonus : undefined,
+      buffSources,
+    };
+
+    // Daemon block check
+    const hasDaemonTrait = battleState.boss?.traits?.includes('Daemon') ?? false;
+
+    const defenderStats: DefenderStats = {
+      armor: bossArmor,
+      maxHealth: battleState.boss?.health ?? 100000,
+      traits: battleState.boss.traits,
+      daemonBlockChance: hasDaemonTrait ? 0.25 : undefined,
+      daemonBlockMaxAmount: hasDaemonTrait ? (battleState.boss?.damage ?? 0) * 0.5 : undefined,
+    };
+
+    // Calculate damage
+    const calculator = new DamageCalculator(true);
+    const result = calculator.calculate(attackerStats, defenderStats);
+
+    console.group(`=== Hateful Assault Execute (${character.name}) ===`);
+    console.log(`Base Damage: ${avgDamage} (${minDamage}-${maxDamage})`);
+    console.log(`Hits: ${hits}`);
+    console.log(`Damage Type: ${damageType}`);
+    if (buffSources.length > 0) {
+      console.log(`Active Buffs: ${buffSources.map(b => b.name).join(', ')}`);
+    }
+    calculator.printLogs();
+    console.groupEnd();
+
+    // Update battle state
+    set((state) => ({
+      battleState: state.battleState
+        ? {
+            ...state.battleState,
+            totalDamageDealt: state.battleState.totalDamageDealt + result.damage,
+            // HeraldOfTheApocalypse: Clear debuff after it's consumed by this attack
+            ...(heraldBonus > 0 ? { heraldExtraDmgDebuff: undefined } : {}),
+            team: state.battleState.team.map((c) =>
+              c.id === characterId
+                ? { ...c, totalDamageDealt: c.totalDamageDealt + result.damage, hasUsedHatefulAssaultThisTurn: true }
+                : c
+            ),
+          }
+        : null,
+    }));
+
+    // Build damage breakdown
+    const damageBreakdown: DamageBreakdown = {
+      damage: result.damage,
+      perHitDamage: result.perHitDamage,
+      hits: result.totalHits,
+      baseDamage: avgDamage,
+      flatModifiers: result.flatModifiers,
+      flatModifierSources: result.flatModifierSources || [],
+      critBonus: result.critBonus,
+      critChanceSources: result.critChanceSources || [],
+      critDamageSources: result.critDamageSources || [],
+      extraHits: result.extraHits,
+      extraHitsSources: result.extraHitsSources || [],
+      damVarMod: result.damVarMod,
+      targetArmor: bossArmor,
+      armorIgnored: result.armorIgnored,
+      armorIgnoredSources: result.armorIgnoredSources,
+      effectiveArmor: result.effectiveArmor,
+      afterArmor: result.afterArmor,
+      pierceRatio: result.pierceRatio,
+      effectivePierceRatio: result.effectivePierceRatio,
+      pierceRatioBonus: result.pierceRatioBonus,
+      pierceRatioBonusSources: result.pierceRatioBonusSources,
+      pierceFloor: result.pierceFloor,
+      afterArmorPierce: result.afterArmorPierce,
+      globalMultiplier: result.globalMultiplier,
+      globalMultiplierSources: result.globalMultiplierSources || [],
+      baseCritChance: equipmentStats.critChance || 0,
+      baseCritDamage: equipmentStats.critDmg || 0,
+      critChanceBonus: equipmentStats.critChanceBonus || 0,
+      critDmgBonus: equipmentStats.critDmgBonus || 0,
+      critChance: result.effectiveCritChance,
+      critDamage: result.effectiveCritDamage,
+      expectedBlocks: result.expectedBlocks,
+      blockReductionPerHit: result.blockReductionPerHit,
+      totalBlockReduction: result.totalBlockReduction,
+    };
+
+    return {
+      timestamp: Date.now(),
+      characterId,
+      characterName: character.name,
+      characterIconUrl: character.iconUrl,
+      action: 'ability' as const,
+      damage: result.damage,
+      damageBreakdown,
+      damageType: damageType,
+      attackType: 'melee' as const,
+      message: `Hateful Assault deals ${result.damage.toLocaleString()} damage (${hits}x ${damageType})`,
     };
   },
 
@@ -8069,6 +8497,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const applicablePoolBuffs = getApplicableBuffs(battleState.buffPool, buffEvalContext);
     const poolBuffEffects = combineBuffEffects(applicablePoolBuffs);
 
+    // HeraldOfTheApocalypse debuff: +extraDmg to next attack by any team member
+    const heraldBonus = battleState.heraldExtraDmgDebuff || 0;
     const buffCritChanceBonus = character.activeBuffs.reduce(
       (sum, buff) => sum + (buff.critChanceBonus || 0), 0
     ) + (poolBuffEffects.critChanceBonus || 0);
@@ -8080,7 +8510,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         if (buff.normalAttackOnly) return sum;
         return sum + (buff.baseDamageBonus || 0);
       }, 0
-    ) + (poolBuffEffects.baseDamageBonus || 0);
+    ) + (poolBuffEffects.baseDamageBonus || 0) + heraldBonus;
     const poolExtraHits = poolBuffEffects.extraHits || 0;
     const poolCritDmgBonus = poolBuffEffects.critDamageBonus || 0;
     const poolArmorIgnored = poolBuffEffects.armorIgnored || 0;
@@ -8174,6 +8604,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       });
     }
 
+    // Add Herald of the Apocalypse debuff source for display
+    if (heraldBonus > 0) {
+      buffSources.push({
+        name: 'Herald of the Apocalypse',
+        damageBonus: heraldBonus,
+      });
+    }
+
     for (const buff of character.activeBuffs) {
       if (buff.pierceRatioBonus && !buff.meleeOnly) {
         buffSources.push({
@@ -8240,6 +8678,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         ? {
             ...state.battleState,
             totalDamageDealt: state.battleState.totalDamageDealt + result.damage,
+            // HeraldOfTheApocalypse: Clear debuff after it's consumed by this attack
+            ...(heraldBonus > 0 ? { heraldExtraDmgDebuff: undefined } : {}),
             team: state.battleState.team.map((c) =>
               c.id === characterId
                 ? { ...c, totalDamageDealt: c.totalDamageDealt + result.damage }

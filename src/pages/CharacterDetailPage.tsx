@@ -8,7 +8,7 @@ import { useTeamStore } from '../stores/teamStore';
 import { getDefaultEquipment, calculateEquipmentStats } from '../services/dataService';
 import type { EquippedItem, ItemStats } from '../types';
 
-export function CharacterDetailPage() {
+export default function CharacterDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();

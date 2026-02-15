@@ -78,6 +78,8 @@ export interface BattleCharacter extends TeamMember {
   hasUsedFuryOfTheAncientsThisTurn?: boolean;  // When true, FuryOfTheAncients cannot be used again this turn
   // Jaeger's Martial Superiority manual trigger tracking
   hasUsedMartialSuperiorityThisTurn?: boolean;  // When true, MartialSuperiority cannot be used again this turn
+  // Angrax's Hateful Assault manual trigger tracking
+  hasUsedHatefulAssaultThisTurn?: boolean;  // When true, HatefulAssault cannot be used again this turn
 }
 
 export interface Buff {
@@ -266,6 +268,8 @@ export interface BattleState {
   summons: BattleSummon[];
   // Sarquael's Supercharge ability - pierce ratio bonus for ALL team Plasma attacks this turn
   superchargePierceBonus?: number;
+  // Herald of the Apocalypse (Haarken) - +extraDmg debuff on boss, consumed by next attack from any team member
+  heraldExtraDmgDebuff?: number;
 }
 
 export interface BattleSimulationConfig {

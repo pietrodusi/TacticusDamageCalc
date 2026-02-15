@@ -2159,60 +2159,72 @@ export const HeadClaimerHandler: AbilityHandler = {
   cooldown: -1,
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
-    const killCount = context.abilityToggles?.['HeadClaimer_Kills'] ? 1 : 0;
-    const charKillCount = context.abilityToggles?.['HeadClaimer'] ? 1 : 0;
+    const killCount = (context.abilityToggles?.['HeadClaimer_Kills'] as number) || 0;
     return {
       abilityId: 'HeadClaimer',
       abilityName: getAbilityNameSync('HeadClaimer'),
       modifiers: {
         baseDamageBonus: extraDmg * killCount,
-        extraHits: charKillCount,
       },
-      applicable: killCount > 0 || charKillCount > 0,
-      reason: charKillCount > 0
-        ? `+${extraDmg * killCount} Dmg (${killCount} kills), +${charKillCount} hit (Character killed)`
-        : killCount > 0
-          ? `+${extraDmg * killCount} Dmg (${killCount} kills)`
-          : `+${extraDmg} per kill, +1 hit per Character kill`,
-      requiresToggle: true,
-      toggleLabel: 'Killed Character',
+      applicable: killCount > 0,
+      reason: killCount > 0
+        ? `+${extraDmg * killCount} Dmg (${killCount} kills)`
+        : `+${extraDmg} per kill`,
+      requiresToggle: false,
     };
   },
 };
 
 /**
  * FleshmetalGuns (Volk)
- * Follow-up attacks after ranged: 2x Melta, 2x Flame, 2x Heavy
- * Variables: minDmg, maxDmg (Melta), minDmg_2, maxDmg_2 (Flame), minDmg_3, maxDmg_3 (Heavy)
+ * Follow-up attacks after ranged: cycles through 3 effects based on turn
+ * T1/T4: 2x Melta, T2/T5: 2x Flame, T3/T6: 2x HeavyRound
+ * Variables: minDmg, maxDmg (Melta), minDmg_2, maxDmg_2 (Flame), minDmg_3, maxDmg_3 (HeavyRound)
  */
 export const FleshmetalGunsHandler: AbilityHandler = {
   abilityId: 'FleshmetalGuns',
   abilityName: 'Fleshmetal Guns',
   category: 'passive',
   cooldown: -1,
-  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+    const isRanged = context.attackType === 'ranged';
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const minDmg2 = values.minDmg_2 as number || 0;
     const maxDmg2 = values.maxDmg_2 as number || 0;
     const minDmg3 = values.minDmg_3 as number || 0;
     const maxDmg3 = values.maxDmg_3 as number || 0;
+
+    // Cycle through 3 phases based on turn: 0=Melta, 1=Flame, 2=HeavyRound
+    const phase = ((context.currentTurn - 1) % 3);
+    const phaseConfig = [
+      { name: 'Melta', profile: 'Melta' as DamageType, min: minDmg, max: maxDmg },
+      { name: 'Flame', profile: 'Flame' as DamageType, min: minDmg2, max: maxDmg2 },
+      { name: 'HeavyRound', profile: 'HeavyRound' as DamageType, min: minDmg3, max: maxDmg3 },
+    ][phase];
+
+    const abilityName = getAbilityNameSync('FleshmetalGuns');
+
+    const followUpAttack: FollowUpAttack | undefined = isRanged ? {
+      abilityId: 'FleshmetalGuns',
+      abilityName,
+      hits: 2,
+      minDamage: phaseConfig.min,
+      maxDamage: phaseConfig.max,
+      damageProfile: phaseConfig.profile,
+      attackCategory: 'special',
+    } : undefined;
+
     return {
       abilityId: 'FleshmetalGuns',
-      abilityName: getAbilityNameSync('FleshmetalGuns'),
+      abilityName,
       modifiers: {},
-      applicable: true,
-      reason: `+2x Melta (${minDmg}-${maxDmg}) +2x Flame (${minDmg2}-${maxDmg2}) +2x Heavy (${minDmg3}-${maxDmg3})`,
+      applicable: isRanged,
+      reason: isRanged
+        ? `T${context.currentTurn}: 2x ${phaseConfig.name} (${phaseConfig.min}-${phaseConfig.max})`
+        : 'Only triggers on ranged attacks',
       requiresToggle: false,
-      followUpAttack: {
-        abilityId: 'FleshmetalGuns',
-        abilityName: getAbilityNameSync('FleshmetalGuns'),
-        hits: 2,
-        minDamage: minDmg,
-        maxDamage: maxDmg,
-        damageProfile: 'Melta' as DamageType,
-        attackCategory: 'special',
-      },
+      followUpAttack,
     };
   },
 };

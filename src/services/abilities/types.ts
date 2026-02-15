@@ -342,6 +342,9 @@ export interface ActiveAbilityResult {
   // Supercharge (Sarquael) - pierce ratio bonus for Plasma attacks for rest of turn
   superchargePierceBonus?: number;
 
+  // Boss debuff applied by the ability (e.g., HeraldOfTheApocalypse +extraDmg to next attack)
+  bossDebuff?: { extraDmg: number };
+
   // Log message
   message: string;
 }

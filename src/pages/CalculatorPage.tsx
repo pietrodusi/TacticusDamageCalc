@@ -21,6 +21,8 @@ import {
   RitesOfMorkaiModal,
   HealTargetModal,
   UnbreakableDutyModal,
+  PossessionSummonModal,
+  FrenziedFiringModal,
 } from '../components/battle';
 import type { DarkTalonStrikeMode } from '../components/battle';
 import type { TurnLogEntry } from '../components/battle/BattleLog';
@@ -39,7 +41,7 @@ function calculateDamageFromEntries(entries: TurnLogEntry[]): number {
   }, 0);
 }
 
-export function CalculatorPage() {
+export default function CalculatorPage() {
   const {
     team,
     removeCharacter,
@@ -86,7 +88,9 @@ export function CalculatorPage() {
     executeOverwatchAttack,
     executeFuryOfTheAncients,
     executeMartialSuperiority,
+    executeHatefulAssault,
     executeUnwaveringSentinel,
+    spawnPossessionSummon,
     executeTheQuickening,
     applyBloodChaliceBuff,
   } = useBattleStore();
@@ -168,6 +172,16 @@ export function CalculatorPage() {
   const [unbreakableDutyContext, setUnbreakableDutyContext] = useState<{
     casterId: string;
     extraDmg: number;
+  } | null>(null);
+
+  // Possession summon modal state (for Archimatos's Possession passive)
+  const [possessionModalOpen, setPossessionModalOpen] = useState(false);
+  const [possessionCharacterId, setPossessionCharacterId] = useState<string | null>(null);
+
+  // FrenziedFiring modal state (for Volk's active ability)
+  const [frenziedFiringModalOpen, setFrenziedFiringModalOpen] = useState(false);
+  const [frenziedFiringContext, setFrenziedFiringContext] = useState<{
+    casterId: string;
   } | null>(null);
 
   // Get the active turn (editing turn or current turn)
@@ -494,6 +508,13 @@ export function CalculatorPage() {
           break;
         }
 
+        // Special handling for FrenziedFiring - opens free hexes counter modal
+        if (abilityId === 'FrenziedFiring') {
+          setFrenziedFiringContext({ casterId: characterId });
+          setFrenziedFiringModalOpen(true);
+          break;
+        }
+
         // Only modify current turn flags if not editing past turn
         if (!isEditingPastTurn) {
           // Check if this ability ends the turn
@@ -654,6 +675,20 @@ export function CalculatorPage() {
 
     // Execute Martial Superiority bonus attack (does NOT end turn)
     const executeLog = executeMartialSuperiority(characterId);
+    setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
+  };
+
+  // Handle Hateful Assault execute action for Angrax
+  const handleExecuteHatefulAssault = (characterId: string) => {
+    if (!battleState) return;
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) return;
+
+    const targetTurn = activeTurn;
+
+    // Execute Hateful Assault bonus attack (does NOT end turn)
+    const executeLog = executeHatefulAssault(characterId);
     setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
   };
 
@@ -979,6 +1014,37 @@ export function CalculatorPage() {
   const handleDarkTalonStrikeCancel = () => {
     setDarkTalonStrikeModalOpen(false);
     setDarkTalonStrikeContext(null);
+  };
+
+  // Handle FrenziedFiring confirm
+  const handleFrenziedFiringConfirm = (freeHexes: number) => {
+    if (!frenziedFiringContext || !battleState) return;
+
+    const targetTurn = activeTurn;
+
+    // Set the free hexes toggle value before executing
+    toggleAbility(frenziedFiringContext.casterId, 'FrenziedFiring_freeHexes', freeHexes);
+
+    // Only modify current turn flags if not editing past turn
+    if (!isEditingPastTurn) {
+      setCharacterActed(frenziedFiringContext.casterId, true);
+      setCharacterTurnEnded(frenziedFiringContext.casterId, true);
+    }
+    addAction(frenziedFiringContext.casterId, { type: 'ability', characterId: frenziedFiringContext.casterId });
+
+    // Execute the ability
+    const abilityLog = executeAbility(frenziedFiringContext.casterId, 'FrenziedFiring');
+    setBattleLog((prev) => [...prev, { ...abilityLog, turn: targetTurn }]);
+
+    // Close modal and clear context
+    setFrenziedFiringModalOpen(false);
+    setFrenziedFiringContext(null);
+  };
+
+  // Cancel FrenziedFiring action
+  const handleFrenziedFiringCancel = () => {
+    setFrenziedFiringModalOpen(false);
+    setFrenziedFiringContext(null);
   };
 
   // Handle Rites of Morkai target selection confirm
@@ -1411,7 +1477,9 @@ export function CalculatorPage() {
                   onExecuteOverwatch={() => handleExecuteOverwatch(character.id)}
                   onExecuteFuryOfTheAncients={() => handleExecuteFuryOfTheAncients(character.id)}
                   onExecuteMartialSuperiority={() => handleExecuteMartialSuperiority(character.id)}
+                  onExecuteHatefulAssault={() => handleExecuteHatefulAssault(character.id)}
                   onExecuteUnwaveringSentinel={() => handleExecuteUnwaveringSentinel(character.id)}
+                  onOpenPossessionModal={() => { setPossessionCharacterId(character.id); setPossessionModalOpen(true); }}
                 />
               );
             })}
@@ -1616,6 +1684,28 @@ export function CalculatorPage() {
           characterName={battleState.team.find(c => c.id === unbreakableDutyContext.casterId)?.name || 'Thoread'}
           extraDmg={unbreakableDutyContext.extraDmg}
           onConfirm={handleUnbreakableDutyConfirm}
+        />
+      )}
+
+      {/* Frenzied Firing Modal (Volk's active ability) */}
+      {frenziedFiringContext && (
+        <FrenziedFiringModal
+          isOpen={frenziedFiringModalOpen}
+          onClose={handleFrenziedFiringCancel}
+          onConfirm={handleFrenziedFiringConfirm}
+        />
+      )}
+
+      {/* Possession Summon Modal (Archimatos's Possession passive) */}
+      {possessionCharacterId && (
+        <PossessionSummonModal
+          isOpen={possessionModalOpen}
+          onClose={() => { setPossessionModalOpen(false); setPossessionCharacterId(null); }}
+          onSelect={(unitType) => {
+            spawnPossessionSummon(possessionCharacterId, unitType);
+            setPossessionModalOpen(false);
+            setPossessionCharacterId(null);
+          }}
         />
       )}
     </div>
