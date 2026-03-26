@@ -651,6 +651,107 @@ export const blackRageBuffTemplate: BuffTemplate = {
   // only after BlackRage ability has been used (checked via abilityCooldowns)
 };
 
+/**
+ * AncestralFortune buff template (Uthar)
+ * Grants +crit chance to Uthar for the turn
+ */
+export const ancestralFortuneBuffTemplate: BuffTemplate = {
+  buffId: 'ancestral_fortune',
+  name: 'Ancestral Fortune',
+  sourceAbilityId: 'AncestralFortune',
+  defaultTargetCondition: { type: 'self' },
+  getEffects: (values) => ({
+    critChanceBonus: (values.extraCritChance as number) || 0,
+  }),
+  duration: 1,
+};
+
+/**
+ * PredictiveGuidance (melee) buff template (Ammuk passive)
+ * LoV or Mechanical allies deal +extraDmg with melee attacks when boss didn't move
+ * Condition: Boss in range 2 from Ammuk + boss didn't move last turn
+ */
+export const predictiveGuidanceMeleeBuffTemplate: BuffTemplate = {
+  buffId: 'predictive_guidance_melee',
+  name: 'Predictive Guidance',
+  sourceAbilityId: 'PredictiveGuidance',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      if (context.attacker.id === buff.sourceCharacterId) return false;
+      const isLoV = context.attacker.faction === 'LeaguesOfVotann';
+      const isMechanical = context.attacker.traits?.includes('Mechanical') ?? false;
+      if (!isLoV && !isMechanical) return false;
+      if (context.attackType !== 'melee') return false;
+      if (context.battleState.bossMovedLastTurn) return false;
+      const toggleId = 'bossRange2FromAmmuk';
+      return context.battleState.team.some(
+        c => c.passiveAbilities.includes('PredictiveGuidance') && c.abilityToggles?.[toggleId]
+      );
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg as number) || 0,
+  }),
+  requiredToggles: ['bossRange2FromAmmuk'],
+};
+
+/**
+ * PredictiveGuidance (ranged) buff template (Ammuk passive)
+ * LoV or Mechanical allies deal +extraDmg_2 with ranged attacks when boss moved
+ * Condition: Boss in range 2 from Ammuk + boss moved last turn
+ */
+export const predictiveGuidanceRangedBuffTemplate: BuffTemplate = {
+  buffId: 'predictive_guidance_ranged',
+  name: 'Predictive Guidance',
+  sourceAbilityId: 'PredictiveGuidance',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      if (context.attacker.id === buff.sourceCharacterId) return false;
+      const isLoV = context.attacker.faction === 'LeaguesOfVotann';
+      const isMechanical = context.attacker.traits?.includes('Mechanical') ?? false;
+      if (!isLoV && !isMechanical) return false;
+      if (context.attackType !== 'ranged') return false;
+      if (!context.battleState.bossMovedLastTurn) return false;
+      const toggleId = 'bossRange2FromAmmuk';
+      return context.battleState.team.some(
+        c => c.passiveAbilities.includes('PredictiveGuidance') && c.abilityToggles?.[toggleId]
+      );
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg_2 as number) || 0,
+  }),
+  requiredToggles: ['bossRange2FromAmmuk'],
+};
+
+/**
+ * PredictiveGuidance (+1 hit) buff template (Ammuk passive)
+ * LoV allies score +1 hit against affected enemies (regardless of movement)
+ * Condition: Boss in range 2 from Ammuk
+ */
+export const predictiveGuidanceHitsBuffTemplate: BuffTemplate = {
+  buffId: 'predictive_guidance_hits',
+  name: 'Predictive Guidance',
+  sourceAbilityId: 'PredictiveGuidance',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      if (context.attacker.id === buff.sourceCharacterId) return false;
+      if (context.attacker.faction !== 'LeaguesOfVotann') return false;
+      const toggleId = 'bossRange2FromAmmuk';
+      return context.battleState.team.some(
+        c => c.passiveAbilities.includes('PredictiveGuidance') && c.abilityToggles?.[toggleId]
+      );
+    },
+  },
+  getEffects: () => ({
+    extraHits: 1,
+  }),
+  requiredToggles: ['bossRange2FromAmmuk'],
+};
+
 // Registry of all buff templates by ability ID
 export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   WarHowl: warHowlBuffTemplate,
@@ -686,6 +787,12 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   serene_unifier_storm_of_fire: sereneUnifierStormOfFireBuffTemplate,
   // Vitruvius abilities
   master_annihilator: masterAnnihilatorBuffTemplate,
+  // Uthar abilities
+  AncestralFortune: ancestralFortuneBuffTemplate,
+  // Ammuk abilities
+  predictive_guidance_melee: predictiveGuidanceMeleeBuffTemplate,
+  predictive_guidance_ranged: predictiveGuidanceRangedBuffTemplate,
+  predictive_guidance_hits: predictiveGuidanceHitsBuffTemplate,
 };
 
 /**

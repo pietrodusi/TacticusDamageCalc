@@ -48,7 +48,7 @@ export function getCharacterPassiveBonuses(
 
   // Get default ability level index (level 55 = index 54)
   const defaultLevelIndex = character.abilityLevels
-    ? Object.values(character.abilityLevels)[0] ?? 54
+    ? Object.values(character.abilityLevels)[0] ?? 59
     : 54;
 
   // Evaluate each passive ability
@@ -351,7 +351,7 @@ export function getLegendaryCommanderBuffs(
   if (!trajann) return buffs;
 
   // Get ability values
-  const levelIndex = trajann.abilityLevels?.['LegendaryCommander'] ?? 54;
+  const levelIndex = trajann.abilityLevels?.['LegendaryCommander'] ?? 59;
   const values = getAbilityValues('LegendaryCommander', levelIndex, trajann.progressionStepIndex);
   if (!values) return buffs;
 
@@ -424,7 +424,7 @@ export function getLegendaryCommanderBuffDisplay(
   if (!trajann) return null;
 
   // Get ability values
-  const levelIndex = trajann.abilityLevels?.['LegendaryCommander'] ?? 54;
+  const levelIndex = trajann.abilityLevels?.['LegendaryCommander'] ?? 59;
   const values = getAbilityValues('LegendaryCommander', levelIndex, trajann.progressionStepIndex);
   if (!values) return null;
 

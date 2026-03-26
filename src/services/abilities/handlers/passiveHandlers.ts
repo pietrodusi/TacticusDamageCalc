@@ -103,9 +103,11 @@ export const ShockAssaultHandler: AbilityHandler = {
 };
 
 /**
- * RitesOfBattle (Various)
- * Grants extra damage to attacks
- * Variables: extraDmg, extraDmg_2 (low and high)
+ * RitesOfBattle (Calgar)
+ * Grants extra damage to adjacent friendly units (not self).
+ * Imperial allies get extraDmg_2 (higher), others get extraDmg.
+ * Aura effect is handled in battleStore.ts and buffConditions.ts.
+ * Variables: extraDmg, extraDmg_2
  */
 export const RitesOfBattleHandler: AbilityHandler = {
   abilityId: 'RitesOfBattle',
@@ -114,19 +116,13 @@ export const RitesOfBattleHandler: AbilityHandler = {
   cooldown: -1,
 
   evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
-    // Always applicable - provides flat damage bonus
-    const avgExtraDmg = Math.round(
-      ((values.extraDmg as number || 0) + (values.extraDmg_2 as number || values.extraDmg as number || 0)) / 2
-    );
-
+    // Does not apply to self - only buffs adjacent allies (handled as aura in battleStore)
     return {
       abilityId: 'RitesOfBattle',
       abilityName: getAbilityNameSync('RitesOfBattle'),
-      modifiers: {
-        baseDamageBonus: avgExtraDmg,
-      },
-      applicable: true,
-      reason: `+${values.extraDmg}-${values.extraDmg_2} damage`,
+      modifiers: {},
+      applicable: false,
+      reason: `Aura: +${values.extraDmg}-${values.extraDmg_2} damage to adjacent allies`,
       requiresToggle: false,
     };
   },
@@ -2516,20 +2512,20 @@ export const PsychicStalkHandler: AbilityHandler = {
   evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmgPct = values.extraDmgPct as number || 25;
     const extraDmg = values.extraDmg as number || 0;
-    const targetOnFire = isToggleActive(context.abilityToggles?.['PsychicStalk']);
+    const bossOnFire = context.bossDebuffs?.includes('OnHexWithFire') ?? false;
 
     return {
       abilityId: 'PsychicStalk',
       abilityName: getAbilityNameSync('PsychicStalk'),
-      modifiers: targetOnFire ? {
+      modifiers: bossOnFire ? {
         baseDamageMultiplier: 1 + (extraDmgPct / 100),
+        baseDamageBonus: extraDmg,
       } : {},
-      applicable: targetOnFire,
-      reason: targetOnFire
-        ? `+${extraDmgPct}% dmg (Flame/Psychic vs Fire). Chaos: +${extraDmg}. Ranged sets target on Fire`
-        : `Target not on Fire. Ranged attacks set target on Fire`,
-      requiresToggle: true,
-      toggleLabel: 'Target on Fire',
+      applicable: bossOnFire,
+      reason: bossOnFire
+        ? `+${extraDmgPct}% Flame/Psychic dmg, +${extraDmg} Chaos dmg`
+        : 'Boss not on Fire hex',
+      requiresToggle: false,
     };
   },
 };
@@ -2932,7 +2928,8 @@ export const GrimEfficiencyHandler: AbilityHandler = {
 
 /**
  * EcogSupport (Vynn)
- * After attacking, summons an E-COG unit adjacent to target
+ * When Vynn repairs a friendly unit, summons an E-COG (max 3).
+ * Summoning is handled in battleStore.ts executeRepairWithGalvanicField().
  * Variables: summonHp, summonDmg, summonArmor
  * Constants: maxSummons: 3, unitId: votanSmnEcog
  */
@@ -2946,13 +2943,42 @@ export const EcogSupportHandler: AbilityHandler = {
     const summonDmg = values.summonDmg as number || 0;
     const summonArmor = values.summonArmor as number || 0;
 
-    // This is a post-attack summon passive
     return {
       abilityId: 'EcogSupport',
       abilityName: getAbilityNameSync('EcogSupport'),
       modifiers: {},
       applicable: false,
-      reason: `After attack: summon E-COG adj to target (max 3). HP:${summonHp}, Dmg:${summonDmg}, Armor:${summonArmor}`,
+      reason: `On repair: summon E-COG (max 3). HP:${summonHp}, Dmg:${summonDmg}, Armor:${summonArmor}`,
+      requiresToggle: false,
+    };
+  },
+};
+
+/**
+ * PredictiveGuidance (Ammuk)
+ * Aura: enemies within 2 hexes are affected.
+ * If enemy didn't move: LoV/Mechanical allies deal +extraDmg melee damage.
+ * If enemy moved: LoV/Mechanical allies deal +extraDmg_2 ranged damage.
+ * LoV allies also score +1 hit against affected enemies.
+ * Variables: extraDmg, extraDmg_2
+ * Constants: range: 2, extraHits: 1
+ */
+export const PredictiveGuidanceHandler: AbilityHandler = {
+  abilityId: 'PredictiveGuidance',
+  abilityName: 'Predictive Guidance',
+  category: 'passive',
+  cooldown: -1,
+
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
+    const extraDmg = values.extraDmg as number || 0;
+    const extraDmg_2 = values.extraDmg_2 as number || 0;
+
+    return {
+      abilityId: 'PredictiveGuidance',
+      abilityName: getAbilityNameSync('PredictiveGuidance'),
+      modifiers: {},
+      applicable: false,
+      reason: `Aura: LoV/Mechanical allies +${extraDmg} melee / +${extraDmg_2} ranged dmg. LoV: +1 hit`,
       requiresToggle: false,
     };
   },
@@ -3161,6 +3187,7 @@ export const passiveHandlers: AbilityHandler[] = [
   // LeaguesOfVotann
   GrimEfficiencyHandler,
   EcogSupportHandler,
+  PredictiveGuidanceHandler,
   // AdeptusMechanicus
   HeavyGravCannonHandler,
   // Blood Angels

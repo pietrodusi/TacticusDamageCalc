@@ -115,7 +115,7 @@ function triggerOptimisedGait(params: OptimisedGaitParams): OptimisedGaitResult 
   let maxPerHitDamage = 0;
 
   // Get ability values for OptimizedGait
-  const ogAbilityLevel = exitorRho.abilityLevels?.OptimizedGait ?? 54;
+  const ogAbilityLevel = exitorRho.abilityLevels?.OptimizedGait ?? 59;
   const ogValues = getAbilityValues('OptimizedGait', ogAbilityLevel, exitorRho.progressionStepIndex);
   const ogMinDmg = (ogValues?.minDmg as number) || 0;
   const ogMaxDmg = (ogValues?.maxDmg as number) || 0;
@@ -508,7 +508,7 @@ function createBattleCharacter(character: TeamMember, index: number): BattleChar
   let initialActiveBuffs: import('../services/abilities/types').AbilityStatModifier[] = [];
   if (hasDoctrinaImperatives) {
     doctrinaStance = 'protector';  // Default stance is Protector
-    const doctrinaValues = getAbilityValues('DoctrinaImperatives', character.abilityLevels?.DoctrinaImperatives ?? 54, character.progressionStepIndex);
+    const doctrinaValues = getAbilityValues('DoctrinaImperatives', character.abilityLevels?.DoctrinaImperatives ?? 59, character.progressionStepIndex);
     if (doctrinaValues) {
       const extraArmor = doctrinaValues.extraArmor as number || 0;
       initialActiveBuffs = [{ abilityName: 'Doctrina Imperatives', armorBonus: extraArmor }];
@@ -596,6 +596,8 @@ interface BattleStore {
   // Battle settings
   setIgnoreCrit: (ignore: boolean) => void;
   setBossMarkerlight: (hasMarkerlight: boolean) => void;
+  setBossMovedLastTurn: (moved: boolean) => void;
+  setBossOnHexWithFire: (onFire: boolean) => void;
 
   // Repair action (Actus's Mechanic trait and DefendTheDivineWork)
   setPendingRepairAction: (action: import('../types').PendingRepairAction | null) => void;
@@ -643,7 +645,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     if (trajann) {
       const lcDamageTemplate = getBuffTemplate('legendary_commander_damage');
       const lcHitsTemplate = getBuffTemplate('legendary_commander_hits');
-      const lcValues = getAbilityValues('LegendaryCommander', trajann.abilityLevels?.LegendaryCommander ?? 54, trajann.progressionStepIndex);
+      const lcValues = getAbilityValues('LegendaryCommander', trajann.abilityLevels?.LegendaryCommander ?? 59, trajann.progressionStepIndex);
 
       if (lcValues && lcDamageTemplate) {
         buffPool = addBuffToPool(buffPool, lcDamageTemplate, trajann, lcValues as Record<string, number>, 1);
@@ -657,7 +659,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const farsight = battleCharacters.find(c => c.passiveAbilities.includes('WayOfTheShortBlade'));
     if (farsight) {
       const wotsTemplate = getBuffTemplate('way_of_the_short_blade_aura');
-      const wotsValues = getAbilityValues('WayOfTheShortBlade', farsight.abilityLevels?.WayOfTheShortBlade ?? 54, farsight.progressionStepIndex);
+      const wotsValues = getAbilityValues('WayOfTheShortBlade', farsight.abilityLevels?.WayOfTheShortBlade ?? 59, farsight.progressionStepIndex);
 
       if (wotsValues && wotsTemplate) {
         buffPool = addBuffToPool(buffPool, wotsTemplate, farsight, wotsValues as Record<string, number>, 1);
@@ -669,7 +671,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     if (eldryon) {
       const doomNonAeldariTemplate = getBuffTemplate('doom_non_aeldari');
       const doomAeldariTemplate = getBuffTemplate('doom_aeldari');
-      const doomValues = getAbilityValues('Doom', eldryon.abilityLevels?.Doom ?? 54, eldryon.progressionStepIndex);
+      const doomValues = getAbilityValues('Doom', eldryon.abilityLevels?.Doom ?? 59, eldryon.progressionStepIndex);
 
       if (doomValues && doomNonAeldariTemplate) {
         buffPool = addBuffToPool(buffPool, doomNonAeldariTemplate, eldryon, doomValues as Record<string, number>, 1);
@@ -679,11 +681,30 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Initialize PredictiveGuidance aura buffs if Ammuk is in team
+    const ammuk = battleCharacters.find(c => c.passiveAbilities.includes('PredictiveGuidance'));
+    if (ammuk) {
+      const pgMeleeTemplate = getBuffTemplate('predictive_guidance_melee');
+      const pgRangedTemplate = getBuffTemplate('predictive_guidance_ranged');
+      const pgHitsTemplate = getBuffTemplate('predictive_guidance_hits');
+      const pgValues = getAbilityValues('PredictiveGuidance', ammuk.abilityLevels?.PredictiveGuidance ?? 59, ammuk.progressionStepIndex);
+
+      if (pgValues && pgMeleeTemplate) {
+        buffPool = addBuffToPool(buffPool, pgMeleeTemplate, ammuk, pgValues as Record<string, number>, 1);
+      }
+      if (pgValues && pgRangedTemplate) {
+        buffPool = addBuffToPool(buffPool, pgRangedTemplate, ammuk, pgValues as Record<string, number>, 1);
+      }
+      if (pgValues && pgHitsTemplate) {
+        buffPool = addBuffToPool(buffPool, pgHitsTemplate, ammuk, pgValues as Record<string, number>, 1);
+      }
+    }
+
     // Initialize Structural Analyser aura buff if Darkstrider is in team
     const darkstrider = battleCharacters.find(c => c.passiveAbilities.includes('StructuralAnalyser'));
     if (darkstrider) {
       const saTemplate = getBuffTemplate('structural_analyser_aura');
-      const saValues = getAbilityValues('StructuralAnalyser', darkstrider.abilityLevels?.StructuralAnalyser ?? 54, darkstrider.progressionStepIndex);
+      const saValues = getAbilityValues('StructuralAnalyser', darkstrider.abilityLevels?.StructuralAnalyser ?? 59, darkstrider.progressionStepIndex);
 
       if (saValues && saTemplate) {
         buffPool = addBuffToPool(buffPool, saTemplate, darkstrider, saValues as Record<string, number>, 1);
@@ -694,7 +715,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const helbrecht = battleCharacters.find(c => c.passiveAbilities.includes('DestroyTheWitch'));
     if (helbrecht) {
       const dtwTemplate = getBuffTemplate('destroy_the_witch');
-      const dtwValues = getAbilityValues('DestroyTheWitch', helbrecht.abilityLevels?.DestroyTheWitch ?? 54, helbrecht.progressionStepIndex);
+      const dtwValues = getAbilityValues('DestroyTheWitch', helbrecht.abilityLevels?.DestroyTheWitch ?? 59, helbrecht.progressionStepIndex);
 
       if (dtwValues && dtwTemplate) {
         buffPool = addBuffToPool(buffPool, dtwTemplate, helbrecht, dtwValues as Record<string, number>, 1);
@@ -705,7 +726,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const atlacoya = battleCharacters.find(c => c.passiveAbilities.includes('DaughterOfTheAbyss'));
     if (atlacoya) {
       const dotaTemplate = getBuffTemplate('daughter_of_the_abyss');
-      const dotaValues = getAbilityValues('DaughterOfTheAbyss', atlacoya.abilityLevels?.DaughterOfTheAbyss ?? 54, atlacoya.progressionStepIndex);
+      const dotaValues = getAbilityValues('DaughterOfTheAbyss', atlacoya.abilityLevels?.DaughterOfTheAbyss ?? 59, atlacoya.progressionStepIndex);
 
       if (dotaValues && dotaTemplate) {
         buffPool = addBuffToPool(buffPool, dotaTemplate, atlacoya, dotaValues as Record<string, number>, 1);
@@ -716,7 +737,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const aesoth = battleCharacters.find(c => c.passiveAbilities.includes('StandVigil'));
     if (aesoth) {
       const svTemplate = getBuffTemplate('stand_vigil');
-      const svValues = getAbilityValues('StandVigil', aesoth.abilityLevels?.StandVigil ?? 54, aesoth.progressionStepIndex);
+      const svValues = getAbilityValues('StandVigil', aesoth.abilityLevels?.StandVigil ?? 59, aesoth.progressionStepIndex);
 
       if (svValues && svTemplate) {
         buffPool = addBuffToPool(buffPool, svTemplate, aesoth, svValues as Record<string, number>, 1);
@@ -727,7 +748,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const aunShi = battleCharacters.find(c => c.passiveAbilities.includes('SereneUnifier'));
     if (aunShi) {
       const suTemplate = getBuffTemplate('serene_unifier_storm_of_fire');
-      const suValues = getAbilityValues('SereneUnifier', aunShi.abilityLevels?.SereneUnifier ?? 54, aunShi.progressionStepIndex);
+      const suValues = getAbilityValues('SereneUnifier', aunShi.abilityLevels?.SereneUnifier ?? 59, aunShi.progressionStepIndex);
 
       if (suValues && suTemplate) {
         buffPool = addBuffToPool(buffPool, suTemplate, aunShi, suValues as Record<string, number>, 1);
@@ -738,7 +759,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const vitruvius = battleCharacters.find(c => c.passiveAbilities.includes('MasterAnnihilator'));
     if (vitruvius) {
       const maTemplate = getBuffTemplate('master_annihilator');
-      const maValues = getAbilityValues('MasterAnnihilator', vitruvius.abilityLevels?.MasterAnnihilator ?? 54, vitruvius.progressionStepIndex);
+      const maValues = getAbilityValues('MasterAnnihilator', vitruvius.abilityLevels?.MasterAnnihilator ?? 59, vitruvius.progressionStepIndex);
 
       if (maValues && maTemplate) {
         buffPool = addBuffToPool(buffPool, maTemplate, vitruvius, maValues as Record<string, number>, 1);
@@ -774,7 +795,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const initialSummons: import('../types').BattleSummon[] = [];
     const celestine = battleCharacters.find(c => c.passiveAbilities.includes('GeminaeSuperia'));
     if (celestine) {
-      const gsValues = getAbilityValues('GeminaeSuperia', celestine.abilityLevels?.GeminaeSuperia ?? 54, celestine.progressionStepIndex);
+      const gsValues = getAbilityValues('GeminaeSuperia', celestine.abilityLevels?.GeminaeSuperia ?? 59, celestine.progressionStepIndex);
       if (gsValues) {
         const summonData = getSummonUnitData('adeptSmnGeminaeSuperia');
         if (summonData) {
@@ -804,7 +825,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     // Initialize SwornProtector summon if Castellan Creed is in team (Kell with count 0, max 1)
     const creed = battleCharacters.find(c => c.passiveAbilities.includes('SwornProtector'));
     if (creed) {
-      const spValues = getAbilityValues('SwornProtector', creed.abilityLevels?.SwornProtector ?? 54, creed.progressionStepIndex);
+      const spValues = getAbilityValues('SwornProtector', creed.abilityLevels?.SwornProtector ?? 59, creed.progressionStepIndex);
       if (spValues) {
         const summonData = getSummonUnitData('astraSmnKell');
         if (summonData) {
@@ -844,6 +865,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       buffPool, // Buff pool with LC buffs if Trajann present
       bossArmorReduction: 0, // Cumulative boss armor reduction from abilities
       bossHasMarkerlight: false, // Markerlight debuff on boss
+      bossOnHexWithFire: false, // PsychicStalk debuff on boss
+      bossMovedLastTurn: false,
+      psychicStalkExtraDmgPct: 0,
+      psychicStalkExtraDmg: 0,
       bossHasMasterAnnihilatorMark: false, // Master Annihilator debuff on boss (Vitruvius)
       masterAnnihilatorMaxDmg: 0, // Damage cap for Master Annihilator extra hit
       activeAbilitiesUsedCount: 0, // Count of active abilities used in battle
@@ -858,6 +883,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // Summoned units (e.g., Ork Boyz from Waaagh!, Geminae Superia from Celestine)
       summons: initialSummons,
     };
+
+    // Cache PsychicStalk values if any team member has it
+    const psychicStalkChar = battleCharacters.find(c => c.passiveAbilities.includes('PsychicStalk'));
+    if (psychicStalkChar) {
+      const psLevelIndex = psychicStalkChar.abilityLevels?.['PsychicStalk'] ?? 59;
+      const psValues = getAbilityValues('PsychicStalk', psLevelIndex, psychicStalkChar.progressionStepIndex);
+      if (psValues) {
+        newBattleState.psychicStalkExtraDmgPct = psValues.extraDmgPct as number || 25;
+        newBattleState.psychicStalkExtraDmg = psValues.extraDmg as number || 0;
+      }
+    }
 
     set({
       battleState: newBattleState,
@@ -1404,7 +1440,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         darkAngelsAdjacentToBoss,
         abilityToggles: attacker.abilityToggles,
         bossTraits: battleState.boss?.traits,
-        bossDebuffs: battleState.bossHasMarkerlight ? ['Markerlight'] : [],
+        bossDebuffs: [
+          ...(battleState.bossHasMarkerlight ? ['Markerlight'] : []),
+          ...(battleState.bossOnHexWithFire ? ['OnHexWithFire'] : []),
+        ],
       }
     );
 
@@ -1584,6 +1623,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const isTauEmpire = attacker.faction === "T'au Empire" || attacker.faction === 'Tau';
     const markerlightMultiplier = (isTauEmpire && attackType === 'ranged' && battleState.bossHasMarkerlight) ? 1.15 : 1;
 
+    // PsychicStalk debuff: Flame/Psychic attacks get +dmgPct%, Chaos units get +extraDmg
+    // Only apply here for characters without PsychicStalk passive (Ahriman gets it from his handler)
+    const hasPsychicStalkPassive = attacker.passiveAbilities.includes('PsychicStalk');
+    let psychicStalkMultiplier = 1;
+    let psychicStalkFlatBonus = 0;
+    if (battleState.bossOnHexWithFire && !hasPsychicStalkPassive) {
+      const isDamageFlameOrPsychic = damageType === 'Flame' || damageType === 'Psychic';
+      if (isDamageFlameOrPsychic && battleState.psychicStalkExtraDmgPct > 0) {
+        psychicStalkMultiplier = 1 + (battleState.psychicStalkExtraDmgPct / 100);
+      }
+      if (attacker.alliance === 'Chaos' && battleState.psychicStalkExtraDmg > 0) {
+        psychicStalkFlatBonus = battleState.psychicStalkExtraDmg;
+      }
+    }
+
     // High Ground: +50% damage multiplier when toggle is enabled
     const highGroundMultiplier = attacker.abilityToggles['HighGround'] ? 1.5 : 1;
 
@@ -1684,7 +1738,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         outrageContributorCount: attacker.outrageContributors?.length || 0,
         // Boss state for abilities that check boss traits/debuffs
         bossTraits: battleState.boss?.traits,
-        bossDebuffs: battleState.bossHasMarkerlight ? ['Markerlight'] : [],
+        bossDebuffs: [
+          ...(battleState.bossHasMarkerlight ? ['Markerlight'] : []),
+          ...(battleState.bossOnHexWithFire ? ['OnHexWithFire'] : []),
+        ],
       }
     );
 
@@ -1730,7 +1787,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (teammate.passiveAbilities.includes('RitesOfBattle')) {
         const toggleId = `RitesOfBattle_${teammate.id}_adjacent`;
         if (attacker.abilityToggles[toggleId]) {
-          const levelIndex = teammate.abilityLevels?.['RitesOfBattle'] ?? 54;
+          const levelIndex = teammate.abilityLevels?.['RitesOfBattle'] ?? 59;
           const values = getAbilityValues('RitesOfBattle', levelIndex, teammate.progressionStepIndex);
           if (values) {
             const isImperial = attacker.alliance === 'Imperial';
@@ -1758,7 +1815,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         if (teammate.passiveAbilities.includes('ObsessiveAnnunciation')) {
           const toggleId = `ObsessiveAnnunciation_${teammate.id}_targetAdj`;
           if (isToggleActive(attacker.abilityToggles[toggleId])) {
-            const levelIndex = teammate.abilityLevels?.['ObsessiveAnnunciation'] ?? 54;
+            const levelIndex = teammate.abilityLevels?.['ObsessiveAnnunciation'] ?? 59;
             const values = getAbilityValues('ObsessiveAnnunciation', levelIndex, teammate.progressionStepIndex);
             if (values) {
               obsessiveAnnunciationDmgBonus = values.extraDmg as number || 0;
@@ -1899,6 +1956,8 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       buffSources.push(obsessiveAnnunciationSource);
     }
 
+
+
     // LegendaryCommander is now handled via the buff pool system
     // LC damage and +2 hits bonuses come from poolBuffEffects via getApplicableBuffs
     // For normal attacks, LC +2 hits doesn't apply (only for special attacks)
@@ -1917,14 +1976,14 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     ) + poolExtraHits;
 
     // Combine damage multipliers: passive mods + active buff multiplier + markerlight + high ground + war machine
-    const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * markerlightMultiplier * highGroundMultiplier * warMachineMultiplier;
+    const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * markerlightMultiplier * highGroundMultiplier * warMachineMultiplier * psychicStalkMultiplier;
     // Combine flat damage bonuses: passive mods + active buff bonus + options bonus (Overwatch) + RitesOfBattle
     // Support both legacy baseDamageBonus and new damageBonusSources array
     const optionsDamageBonusSources = options?.damageBonusSources || [];
     const optionsDamageBonus = optionsDamageBonusSources.length > 0
       ? optionsDamageBonusSources.reduce((sum, src) => sum + src.bonus, 0)
       : (options?.baseDamageBonus || 0);
-    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus + optionsDamageBonus + ritesOfBattleDmgBonus + obsessiveAnnunciationDmgBonus;
+    const totalDamageBonus = (combinedMods.baseDamageBonus || 0) + buffDamageBonus + optionsDamageBonus + ritesOfBattleDmgBonus + obsessiveAnnunciationDmgBonus + psychicStalkFlatBonus;
 
     // Add options damage bonus sources for display (Overwatch with detailed breakdown)
     if (optionsDamageBonusSources.length > 0) {
@@ -1948,6 +2007,20 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       buffSources.push({
         name: 'Markerlight',
         damageMultiplier: markerlightMultiplier,
+      });
+    }
+
+    // Add PsychicStalk buff sources for display
+    if (psychicStalkMultiplier > 1) {
+      buffSources.push({
+        name: 'Psychic Stalk',
+        damageMultiplier: psychicStalkMultiplier,
+      });
+    }
+    if (psychicStalkFlatBonus > 0) {
+      buffSources.push({
+        name: 'Psychic Stalk (Chaos)',
+        damageBonus: psychicStalkFlatBonus,
       });
     }
 
@@ -2145,7 +2218,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (thoread && thoread.id !== attacker.id) {
         const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
         if (isToggleActive(attacker.abilityToggles[bannerToggleId])) {
-          const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
+          const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 59;
           const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex, thoread.progressionStepIndex);
           if (bannerValues) {
             bannerActive = true;
@@ -2278,7 +2351,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
             // If character has CyclicIonBlaster, add its follow-up after the ranged attack
             // (CyclicIonBlaster triggers on normal attacks, which includes the WayOfTheShortBlade ranged follow-up)
             if (attacker.passiveAbilities.includes('CyclicIonBlaster')) {
-              const cibLevelIndex = attacker.abilityLevels?.['CyclicIonBlaster'] ?? 54;
+              const cibLevelIndex = attacker.abilityLevels?.['CyclicIonBlaster'] ?? 59;
               const cibValues = getAbilityValues('CyclicIonBlaster', cibLevelIndex, attacker.progressionStepIndex);
               if (cibValues) {
                 const cibMinDmg = cibValues.minDmg as number || 0;
@@ -2325,7 +2398,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (teammate.passiveAbilities.includes('ExplosiveMaladies')) {
         const toggleId = `ExplosiveMaladies_${teammate.id}_adjacent`;
         if (isToggleActive(attacker.abilityToggles[toggleId])) {
-          const levelIndex = teammate.abilityLevels?.['ExplosiveMaladies'] ?? 54;
+          const levelIndex = teammate.abilityLevels?.['ExplosiveMaladies'] ?? 59;
           const values = getAbilityValues('ExplosiveMaladies', levelIndex, teammate.progressionStepIndex);
           if (values) {
             const extraDmg = values.extraDmg as number || 0;
@@ -2349,7 +2422,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (teammate.passiveAbilities.includes('InfernalPacts')) {
         const toggleId = `InfernalPacts_${teammate.id}_adjacent`;
         if (isToggleActive(attacker.abilityToggles[toggleId])) {
-          const levelIndex = teammate.abilityLevels?.['InfernalPacts'] ?? 54;
+          const levelIndex = teammate.abilityLevels?.['InfernalPacts'] ?? 59;
           const values = getAbilityValues('InfernalPacts', levelIndex, teammate.progressionStepIndex);
           if (values) {
             const minDmg = values.minDmg as number || 0;
@@ -2364,6 +2437,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 maxDamage: maxDmg,
                 hits: 1,
                 attackCategory: 'special',
+                sharesCritChain: true,
               });
             }
           }
@@ -3381,7 +3455,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       furyOfTheAncientsTriggered = true;
 
       // Get FuryOfTheAncients ability values
-      const furyLevelIndex = attacker.abilityLevels?.FuryOfTheAncients ?? 54;
+      const furyLevelIndex = attacker.abilityLevels?.FuryOfTheAncients ?? 59;
       const furyAbilityValues = getAbilityValues('FuryOfTheAncients', furyLevelIndex, attacker.progressionStepIndex);
 
       if (furyAbilityValues) {
@@ -3670,7 +3744,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
               ? true
               : state.battleState.bossHasMasterAnnihilatorMark,
             masterAnnihilatorMaxDmg: attacker.passiveAbilities.includes('MasterAnnihilator')
-              ? (getAbilityValues('MasterAnnihilator', attacker.abilityLevels?.MasterAnnihilator ?? 54, attacker.progressionStepIndex)?.maxDmg as number) || 0
+              ? (getAbilityValues('MasterAnnihilator', attacker.abilityLevels?.MasterAnnihilator ?? 59, attacker.progressionStepIndex)?.maxDmg as number) || 0
               : state.battleState.masterAnnihilatorMaxDmg,
             // HeraldOfTheApocalypse: Clear debuff after it's consumed by this attack
             ...(heraldBonus > 0 ? { heraldExtraDmgDebuff: undefined } : {}),
@@ -3877,6 +3951,25 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // PsychicStalk: Ahriman's normal ranged attacks set boss hex on fire
+    if (attackType === 'ranged' && attacker.passiveAbilities.includes('PsychicStalk')) {
+      const currentState = get().battleState;
+      if (currentState && !currentState.bossOnHexWithFire) {
+        set({
+          battleState: {
+            ...currentState,
+            bossOnHexWithFire: true,
+            team: currentState.team.map(c =>
+              c.passiveAbilities.includes('PsychicStalk')
+                ? { ...c, abilityToggles: { ...c.abilityToggles, PsychicStalk: true } }
+                : c
+            ),
+          },
+        });
+        console.log('[PsychicStalk: Boss on Hex with Fire enabled after ranged attack]');
+      }
+    }
+
     // Handle ControlEdict (Tan Gi'da) - summon Skitarii Vanguard after attack if Protector stance is active
     // If summon exists, increment count (max 5). If not, create one.
     if (attacker.passiveAbilities.includes('ControlEdict') && attacker.doctrinaImperativeStance === 'protector') {
@@ -3906,7 +3999,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           }
         } else {
           // Create new summon
-          const controlEdictValues = getAbilityValues('ControlEdict', attacker.abilityLevels?.ControlEdict ?? 54, attacker.progressionStepIndex) || {};
+          const controlEdictValues = getAbilityValues('ControlEdict', attacker.abilityLevels?.ControlEdict ?? 59, attacker.progressionStepIndex) || {};
           const summonData = getSummonUnitData('admecSmnVanguard');
           if (summonData) {
             const meleeWeapon = summonData.weapons.find(w => !w.Range);
@@ -3971,21 +4064,33 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const { battleState } = get();
     if (!battleState) return;
 
+    const newToggleValue = counterValue !== undefined ? counterValue : undefined;
+
+    // Build updated team with the toggle change
+    const updatedTeam = battleState.team.map((char) =>
+      char.id === characterId
+        ? {
+            ...char,
+            abilityToggles: {
+              ...char.abilityToggles,
+              [abilityId]: newToggleValue !== undefined ? newToggleValue : !char.abilityToggles[abilityId],
+            },
+          }
+        : char
+    );
+
+    // Sync boss debuff flags when relevant toggles change
+    let bossOnHexWithFire = battleState.bossOnHexWithFire;
+    if (abilityId === 'PsychicStalk') {
+      const updatedChar = updatedTeam.find(c => c.id === characterId);
+      bossOnHexWithFire = updatedChar ? !!updatedChar.abilityToggles['PsychicStalk'] : bossOnHexWithFire;
+    }
+
     set({
       battleState: {
         ...battleState,
-        team: battleState.team.map((char) =>
-          char.id === characterId
-            ? {
-                ...char,
-                abilityToggles: {
-                  ...char.abilityToggles,
-                  // If counterValue is provided, use it; otherwise toggle boolean
-                  [abilityId]: counterValue !== undefined ? counterValue : !char.abilityToggles[abilityId],
-                },
-              }
-            : char
-        ),
+        team: updatedTeam,
+        bossOnHexWithFire,
       },
     });
   },
@@ -4068,7 +4173,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     const abilityName = getAbilityNameSync(abilityId);
-    const levelIndex = character.abilityLevels?.[abilityId] ?? 54;
+    const levelIndex = character.abilityLevels?.[abilityId] ?? 59;
 
     // Find Trajann for LC +2 hits check
     const trajann = battleState.team.find(c => c.passiveAbilities.includes('LegendaryCommander'));
@@ -4172,7 +4277,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         if (thoread && thoread.id !== character.id) {
           const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
           if (isToggleActive(character.abilityToggles[bannerToggleId])) {
-            const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
+            const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 59;
             const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex, thoread.progressionStepIndex);
             if (bannerValues) {
               componentBannerActive = true;
@@ -4710,7 +4815,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (abilityId === 'HammerOfWrath' && character.passiveAbilities.includes('AggressiveOnslaught')) {
         const isCharging = isToggleActive(character.abilityToggles['AggressiveOnslaught']);
         if (isCharging) {
-          const aggressiveOnslaughtLevel = character.abilityLevels?.['AggressiveOnslaught'] ?? 54;
+          const aggressiveOnslaughtLevel = character.abilityLevels?.['AggressiveOnslaught'] ?? 59;
           const aoValues = getAbilityValues('AggressiveOnslaught', aggressiveOnslaughtLevel, character.progressionStepIndex);
 
           if (aoValues) {
@@ -4914,7 +5019,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // FuelledByFury (Titus): +extraDmg per active ability used in battle
       let fuelledByFuryBonus = 0;
       if (character.passiveAbilities.includes('FuelledByFury')) {
-        const fuelledByFuryLevelIndex = character.abilityLevels?.['FuelledByFury'] ?? 54;
+        const fuelledByFuryLevelIndex = character.abilityLevels?.['FuelledByFury'] ?? 59;
         const fuelledByFuryValues = getAbilityValues('FuelledByFury', fuelledByFuryLevelIndex, character.progressionStepIndex);
         if (fuelledByFuryValues) {
           const extraDmgPerAbility = fuelledByFuryValues.extraDmg as number || 0;
@@ -5045,7 +5150,17 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
 
       // Check if we have any ability modifiers to pass
-      const hasModifiers = totalDmgBonus > 0 || totalHitsBonus > 0 || abilityGlobalMultiplier || result.abilityModifiers || poolDamageMultiplier !== 1 || abilityHighGroundMultiplier !== 1 || abilityWarMachineMultiplier !== 1 || mortisRoundHeavyWeaponMultiplier !== 1 || abilityCritChanceBonus > 0 || abilityCritDamageBonus > 0 || singleAbilitySuperchargeBonus > 0;
+      const abilityOwnPierceBonus = result.abilityModifiers?.pierceRatioBonus || 0;
+
+      // Add ability's own pierce ratio bonus source for display (e.g., GravitonRifle vs Mechanical)
+      if (abilityOwnPierceBonus > 0) {
+        abilityBuffSources.push({
+          name: abilityName,
+          pierceRatioBonus: abilityOwnPierceBonus,
+        });
+      }
+      const mergedPierceRatioBonus = singleAbilitySuperchargeBonus + abilityOwnPierceBonus;
+      const hasModifiers = totalDmgBonus > 0 || totalHitsBonus > 0 || abilityGlobalMultiplier || result.abilityModifiers || poolDamageMultiplier !== 1 || abilityHighGroundMultiplier !== 1 || abilityWarMachineMultiplier !== 1 || mortisRoundHeavyWeaponMultiplier !== 1 || abilityCritChanceBonus > 0 || abilityCritDamageBonus > 0 || mergedPierceRatioBonus > 0;
 
       // Merge ability-specific modifiers with LC + aura bonuses + pool multipliers + high ground + war machine
       const mergedBaseDmgBonus = totalDmgBonus + (result.abilityModifiers?.baseDamageBonus || 0);
@@ -5084,7 +5199,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           extraHits: mergedExtraHits > 0 ? mergedExtraHits : undefined,
           critChanceBonus: abilityCritChanceBonus > 0 ? abilityCritChanceBonus : undefined,
           critDamageBonus: abilityCritDamageBonus > 0 ? abilityCritDamageBonus : undefined,
-          pierceRatioBonus: singleAbilitySuperchargeBonus > 0 ? singleAbilitySuperchargeBonus : undefined,
+          pierceRatioBonus: mergedPierceRatioBonus > 0 ? mergedPierceRatioBonus : undefined,
           buffSources: abilityBuffSources,
         } : undefined,
       };
@@ -5166,7 +5281,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         if (thoread && thoread.id !== character.id) {
           const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
           if (isToggleActive(character.abilityToggles[bannerToggleId])) {
-            const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
+            const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 59;
             const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex, thoread.progressionStepIndex);
             if (bannerValues) {
               const singleBannerMaxDmg = bannerValues.maxDmg as number || 0;
@@ -5281,6 +5396,20 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       // If this damage ability also provides a buff (like Euphoric Strikes), prepare to add it
       const buffTemplate = result.buffResult ? getBuffTemplate(abilityId) : null;
       const abilityValuesForBuff = result.buffResult ? (getAbilityValues(abilityId, levelIndex, character.progressionStepIndex) || {}) : null;
+
+      // Add buff info to appliedBuffs for BattleLog display
+      if (result.buffResult && buffTemplate && abilityValuesForBuff) {
+        const buffEffects = buffTemplate.getEffects(abilityValuesForBuff as Record<string, number>);
+        const effects: string[] = [];
+        if (buffEffects.critChanceBonus) effects.push(`+${buffEffects.critChanceBonus}% Crit`);
+        if (buffEffects.baseDamageBonus) effects.push(`+${buffEffects.baseDamageBonus} Dmg`);
+        if (buffEffects.baseDamageMultiplier && buffEffects.baseDamageMultiplier !== 1) effects.push(`×${buffEffects.baseDamageMultiplier} Dmg`);
+        if (buffEffects.extraHits) effects.push(`+${buffEffects.extraHits} Hit`);
+        if (buffEffects.pierceRatioBonus) effects.push(`+${buffEffects.pierceRatioBonus}% Pierce`);
+        if (effects.length > 0) {
+          appliedBuffs.push({ name: abilityName, effect: effects.join(', ') });
+        }
+      }
 
       // If this damage ability also summons units (like LeadingTheCharge), prepare the summon
       let damageAbilitySummon: import('../types').BattleSummon | undefined;
@@ -5772,11 +5901,45 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           totalDamageDealt: 0,
         };
 
+        // Also create additional summons if present (e.g., MaleficMaelstrom: Pink Horror + Screamer)
+        const additionalSummonsList: import('../types').BattleSummon[] = [];
+        if (result.additionalSummons) {
+          for (const addSummon of result.additionalSummons) {
+            const addSummonData = getSummonUnitData(addSummon.unitId);
+            if (addSummonData) {
+              const addMeleeWeapon = addSummonData.weapons.find(w => !w.Range);
+              const addRangedWeapon = addSummonData.weapons.find(w => w.Range);
+              additionalSummonsList.push({
+                id: `summon_${addSummon.unitId}_${Date.now()}`,
+                unitId: addSummon.unitId,
+                name: addSummonData.name,
+                sourceCharacterId: characterId,
+                sourceAbilityId: abilityId,
+                hp: addSummon.hp,
+                damage: addSummon.damage,
+                armor: addSummon.armor,
+                meleeHits: addMeleeWeapon?.hits || 2,
+                meleeDamageType: (addMeleeWeapon?.DamageProfile as import('../types').DamageType) || 'Physical',
+                rangedHits: addRangedWeapon?.hits,
+                rangedDamageType: addRangedWeapon?.DamageProfile as import('../types').DamageType | undefined,
+                rangedRange: addRangedWeapon?.Range,
+                traits: addSummonData.traits || [],
+                count: addSummon.count || 1,
+                createdAtTurn: battleState.turn,
+                iconUrl: getSummonIconUrl(addSummon.unitId),
+                activeAbilities: addSummonData.activeAbilities,
+                totalDamageDealt: 0,
+              });
+              console.log(`[Additional summon created: ${addSummon.count || 1}x ${addSummonData.name}]`);
+            }
+          }
+        }
+
         set((state) => ({
           battleState: state.battleState
             ? {
                 ...state.battleState,
-                summons: [...state.battleState.summons, newSummon],
+                summons: [...state.battleState.summons, newSummon, ...additionalSummonsList],
               }
             : null,
         }));
@@ -5882,7 +6045,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       darkAngelsAdjacentToBoss,  // For FearedInterrogator
       abilityToggles: updatedCharacter.abilityToggles,
       bossTraits: battleState.boss?.traits,
-      bossDebuffs: battleState.bossHasMarkerlight ? ['Markerlight'] : [],
+      bossDebuffs: [
+        ...(battleState.bossHasMarkerlight ? ['Markerlight'] : []),
+        ...(battleState.bossOnHexWithFire ? ['OnHexWithFire'] : []),
+      ],
     };
 
     // Evaluate passive abilities for follow-up attacks
@@ -5899,36 +6065,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     for (const teammate of battleState.team) {
       if (teammate.id === character.id) continue;
 
-      // ExplosiveMaladies (Pestillian): +1x Blast follow-up on ranged (Chaos: also melee)
-      if (teammate.passiveAbilities.includes('ExplosiveMaladies')) {
-        const toggleId = `ExplosiveMaladies_${teammate.id}_adjacent`;
-        if (isToggleActive(character.abilityToggles[toggleId])) {
-          const levelIndex = teammate.abilityLevels?.['ExplosiveMaladies'] ?? 54;
-          const values = getAbilityValues('ExplosiveMaladies', levelIndex, teammate.progressionStepIndex);
-          if (values) {
-            const extraDmg = values.extraDmg as number || 0;
-            const isChaos = character.alliance === 'Chaos';
-            // Ability attacks: only trigger for Chaos (melee-equivalent)
-            if (isChaos) {
-              allAbilityFollowUps.push({
-                abilityId: 'ExplosiveMaladies',
-                abilityName: 'Explosive Maladies',
-                damageProfile: 'Blast' as DamageType,
-                minDamage: extraDmg,
-                maxDamage: extraDmg,
-                hits: 1,
-                attackCategory: 'special',
-              });
-            }
-          }
-        }
-      }
+      // ExplosiveMaladies (Pestillian): only triggers on normal attacks, not abilities
 
       // InfernalPacts (Abraxas): +1x Psychic follow-up on ranged (Daemons: also melee)
       if (teammate.passiveAbilities.includes('InfernalPacts')) {
         const toggleId = `InfernalPacts_${teammate.id}_adjacent`;
         if (isToggleActive(character.abilityToggles[toggleId])) {
-          const levelIndex = teammate.abilityLevels?.['InfernalPacts'] ?? 54;
+          const levelIndex = teammate.abilityLevels?.['InfernalPacts'] ?? 59;
           const values = getAbilityValues('InfernalPacts', levelIndex, teammate.progressionStepIndex);
           if (values) {
             const minDmg = values.minDmg as number || 0;
@@ -5944,6 +6087,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
                 maxDamage: maxDmg,
                 hits: 1,
                 attackCategory: 'special',
+                sharesCritChain: true,
               });
             }
           }
@@ -5996,7 +6140,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (thoread && thoread.id !== character.id) {
         const bannerToggleId = `AstartesBanner_${thoread.id}_range2`;
         if (isToggleActive(character.abilityToggles[bannerToggleId])) {
-          const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 54;
+          const bannerLevelIndex = thoread.abilityLevels?.['AstartesBanner'] ?? 59;
           const bannerValues = getAbilityValues('AstartesBanner', bannerLevelIndex, thoread.progressionStepIndex);
           if (bannerValues) {
             abilityBannerActive = true;
@@ -6562,6 +6706,36 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     });
   },
 
+  // Set boss On Hex with Fire debuff (PsychicStalk)
+  setBossOnHexWithFire: (onFire) => {
+    const { battleState } = get();
+    if (!battleState) return;
+
+    set({
+      battleState: {
+        ...battleState,
+        bossOnHexWithFire: onFire,
+        // Sync Ahriman's toggle for UI
+        team: battleState.team.map(c =>
+          c.passiveAbilities.includes('PsychicStalk')
+            ? { ...c, abilityToggles: { ...c.abilityToggles, PsychicStalk: onFire } }
+            : c
+        ),
+      },
+    });
+  },
+
+  setBossMovedLastTurn: (moved) => {
+    const { battleState } = get();
+    if (!battleState) return;
+    set({
+      battleState: {
+        ...battleState,
+        bossMovedLastTurn: moved,
+      },
+    });
+  },
+
   setPendingRepairAction: (action) => {
     const { battleState } = get();
     if (!battleState) return;
@@ -6583,7 +6757,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     if (!repairer) return [];
 
     // Get GalvanicField ability values from repairer
-    const galvanicFieldLevelIndex = repairer.abilityLevels?.['GalvanicField'] ?? 54;
+    const galvanicFieldLevelIndex = repairer.abilityLevels?.['GalvanicField'] ?? 59;
     const galvanicFieldValues = getAbilityValues('GalvanicField', galvanicFieldLevelIndex, repairer.progressionStepIndex);
     const dmgPct = (galvanicFieldValues?.dmgPct as number) || 100;
     const maxDmgPerHit = (galvanicFieldValues?.maxDmg as number) || 9999;
@@ -6634,8 +6808,9 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         followUpAttacks: [],
       };
 
-      // If not self-repair, trigger Galvanic Field attack using executeAttack
-      if (!isSelf) {
+      // If not self-repair and repairer has GalvanicField, trigger Galvanic Field attack
+      const hasGalvanicField = repairer.passiveAbilities.includes('GalvanicField');
+      if (!isSelf && hasGalvanicField) {
         const attackType = attackTypeChoices[targetId] || 'melee';
 
         // Call executeAttack with Galvanic Field options
@@ -6659,6 +6834,71 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       logEntries.push(repairLog);
     }
 
+    // EcogSupport (Vynn) - summon E-COG after repair (max 3)
+    if (repairer.passiveAbilities.includes('EcogSupport')) {
+      const currentState = get().battleState;
+      if (currentState) {
+        const MAX_ECOG_COUNT = 3;
+        const existingEcog = currentState.summons.find(s => s.unitId === 'votanSmnEcog' && s.sourceCharacterId === repairerId);
+
+        if (existingEcog) {
+          if (existingEcog.count < MAX_ECOG_COUNT) {
+            set((state) => ({
+              battleState: state.battleState
+                ? {
+                    ...state.battleState,
+                    summons: state.battleState.summons.map(s =>
+                      s.id === existingEcog.id
+                        ? { ...s, count: s.count + 1 }
+                        : s
+                    ),
+                  }
+                : null,
+            }));
+            console.log(`[E-COG Support: E-COG count increased to ${existingEcog.count + 1} (max ${MAX_ECOG_COUNT})]`);
+          } else {
+            console.log(`[E-COG Support: E-COG at max count (${MAX_ECOG_COUNT})]`);
+          }
+        } else {
+          const ecogValues = getAbilityValues('EcogSupport', repairer.abilityLevels?.EcogSupport ?? 59, repairer.progressionStepIndex) || {};
+          const summonData = getSummonUnitData('votanSmnEcog');
+          if (summonData) {
+            const meleeWeapon = summonData.weapons.find(w => !w.Range);
+            const rangedWeapon = summonData.weapons.find(w => w.Range);
+
+            const newEcog: import('../types').BattleSummon = {
+              id: `summon_votanSmnEcog_${Date.now()}`,
+              unitId: 'votanSmnEcog',
+              name: summonData.name,
+              sourceCharacterId: repairerId,
+              sourceAbilityId: 'EcogSupport',
+              hp: ecogValues.summonHp as number || 0,
+              damage: ecogValues.summonDmg as number || 0,
+              armor: ecogValues.summonArmor as number || 0,
+              meleeHits: meleeWeapon?.hits || 1,
+              meleeDamageType: (meleeWeapon?.DamageProfile as import('../types').DamageType) || 'Plasma',
+              rangedHits: rangedWeapon?.hits,
+              rangedDamageType: rangedWeapon?.DamageProfile as import('../types').DamageType | undefined,
+              rangedRange: rangedWeapon?.Range,
+              traits: summonData.traits || [],
+              count: 1,
+              createdAtTurn: currentState.turn,
+              iconUrl: getSummonIconUrl('votanSmnEcog'),
+              activeAbilities: summonData.activeAbilities,
+              totalDamageDealt: 0,
+            };
+
+            set((state) => ({
+              battleState: state.battleState
+                ? { ...state.battleState, summons: [...state.battleState.summons, newEcog] }
+                : null,
+            }));
+            console.log(`[E-COG Support: E-COG summoned (1/${MAX_ECOG_COUNT})]`);
+          }
+        }
+      }
+    }
+
     return logEntries;
   },
 
@@ -6678,7 +6918,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     const character = battleState.team.find((c) => c.id === characterId);
     if (!character) return;
 
-    const levelIndex = character.abilityLevels?.Possession ?? 54;
+    const levelIndex = character.abilityLevels?.Possession ?? 59;
     const values = getAbilityValues('Possession', levelIndex, character.progressionStepIndex);
     if (!values) return;
 
@@ -6838,7 +7078,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       if (toggles[waaghToggleId]) {
         const waaghBuff = battleState.buffPool.find(b => b.sourceAbilityId === 'Waaagh');
         if (waaghBuff) {
-          const levelIndex = sourceCharacter.abilityLevels?.['Waaagh'] ?? 54;
+          const levelIndex = sourceCharacter.abilityLevels?.['Waaagh'] ?? 59;
           const values = getAbilityValues('Waaagh', levelIndex, sourceCharacter.progressionStepIndex);
           if (values) {
             const extraDmg = values.extraDmg as number || 0;
@@ -6860,7 +7100,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           // Check if it's phase 3 (Storm of Fire)
           const phase = ((battleState.turn - 1) % 3) + 1;
           if (phase === 3) {
-            const levelIndex = teammate.abilityLevels?.['SereneUnifier'] ?? 54;
+            const levelIndex = teammate.abilityLevels?.['SereneUnifier'] ?? 59;
             const values = getAbilityValues('SereneUnifier', levelIndex, teammate.progressionStepIndex);
             if (values) {
               const extraDmg = values.extraDmg as number || 0;
@@ -6876,7 +7116,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     if (summon.unitId === 'ultraSmnInceptor' && sourceCharacter?.passiveAbilities.includes('ShockAssault')) {
       const toggleId = `ShockAssault_${sourceCharacter.id}_adjacentToBellator`;
       if (toggles[toggleId]) {
-        const levelIndex = sourceCharacter.abilityLevels?.['ShockAssault'] ?? 54;
+        const levelIndex = sourceCharacter.abilityLevels?.['ShockAssault'] ?? 59;
         const values = getAbilityValues('ShockAssault', levelIndex, sourceCharacter.progressionStepIndex);
         if (values) {
           const extraDmg = values.extraDmg as number || 0;
@@ -6890,7 +7130,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     if (summon.traits?.includes('BattleFatigue')) {
       const yarrick = battleState.team.find(c => c.passiveAbilities.includes('SummaryExecution'));
       if (yarrick) {
-        const levelIndex = yarrick.abilityLevels?.['SummaryExecution'] ?? 54;
+        const levelIndex = yarrick.abilityLevels?.['SummaryExecution'] ?? 59;
         const values = getAbilityValues('SummaryExecution', levelIndex, yarrick.progressionStepIndex);
         if (values) {
           const extraDmg = values.extraDmg as number || 0;
@@ -6916,7 +7156,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         if (teammate.passiveAbilities.includes('LordOfTheHost')) {
           const dmgToggleId = `LordOfTheHost_${teammate.id}_damage`;
           if (toggles[dmgToggleId]) {
-            const levelIndex = teammate.abilityLevels?.['LordOfTheHost'] ?? 54;
+            const levelIndex = teammate.abilityLevels?.['LordOfTheHost'] ?? 59;
             const values = getAbilityValues('LordOfTheHost', levelIndex, teammate.progressionStepIndex);
             if (values) {
               const extraDmg = values.extraDmg as number || 0;
@@ -6938,12 +7178,13 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
 
     // Evaluate pool buffs for summons (Master Annihilator, etc.)
     // Create a minimal context for buff evaluation
+    const summonUnitData = getSummonUnitData(summon.unitId);
     const summonAsAttacker = {
       id: summon.id,
       name: summon.name,
       traits: summon.traits || [],
-      faction: '', // Summons don't have faction
-      alliance: '', // Summons don't have alliance
+      faction: summonUnitData?.FactionId || '',
+      alliance: summonUnitData?.GrandAllianceId || '',
       meleeDamageType: summon.meleeDamageType,
       rangedDamageType: summon.rangedDamageType || summon.meleeDamageType,
       abilityToggles: toggles,
@@ -7025,6 +7266,24 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
               damageMultiplier: mod.damageMultiplier,
             });
           }
+        }
+      }
+    }
+
+    // PsychicStalk bonus for summons
+    if (battleState.bossOnHexWithFire) {
+      const summonDamageType = attackType === 'melee' ? summon.meleeDamageType : (summon.rangedDamageType || summon.meleeDamageType);
+      if ((summonDamageType === 'Flame' || summonDamageType === 'Psychic') && battleState.psychicStalkExtraDmgPct > 0) {
+        damageMultiplier *= 1 + (battleState.psychicStalkExtraDmgPct / 100);
+        buffSources.push({ name: 'Psychic Stalk', damageMultiplier: 1 + (battleState.psychicStalkExtraDmgPct / 100) });
+      }
+      // Check if summon's summoner is Chaos (summon itself stores summoner info)
+      if (battleState.psychicStalkExtraDmg > 0) {
+        // Summons from Chaos characters get flat bonus - check summoner's alliance
+        const summoner = battleState.team.find(c => c.id === summon.sourceCharacterId);
+        if (summoner && summoner.alliance === 'Chaos') {
+          flatDamageBonus += battleState.psychicStalkExtraDmg;
+          buffSources.push({ name: 'Psychic Stalk (Chaos)', damageBonus: battleState.psychicStalkExtraDmg });
         }
       }
     }
@@ -7132,6 +7391,96 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       console.log(`[Optimised Gait triggered by ${summon.name}]: +${ogResult.totalDamage} damage`);
     }
 
+    // InfernalPacts (Abraxas): +1x Psychic follow-up for Daemon summons
+    const isDaemonSummon = summon.traits?.includes('Daemon') ?? false;
+    if (isDaemonSummon) {
+      for (const teammate of battleState.team) {
+        if (teammate.passiveAbilities.includes('InfernalPacts')) {
+          const toggleId = `InfernalPacts_${teammate.id}_adjacent`;
+          if (isToggleActive(toggles[toggleId])) {
+            const levelIndex = teammate.abilityLevels?.['InfernalPacts'] ?? 59;
+            const ipValues = getAbilityValues('InfernalPacts', levelIndex, teammate.progressionStepIndex);
+            if (ipValues) {
+              const ipMinDmg = ipValues.minDmg as number || 0;
+              const ipMaxDmg = ipValues.maxDmg as number || 0;
+              const ipAvgDmg = Math.round((ipMinDmg + ipMaxDmg) / 2);
+
+              // Use DamageCalculator with shared crit chain from summon attack
+              const ipFollowUpStats: AttackerStats = {
+                baseDamage: ipAvgDmg,
+                damageType: 'Psychic' as DamageType,
+                hits: 1,
+                critChance: 0,
+                critDamage: 0,
+                ignoreCrit: battleState.ignoreCrit,
+                traits: summon.traits,
+                hasMoved: true,
+                attackType,
+                critChainOffset: effectiveHits, // Share crit chain from summon attack
+              };
+
+              const ipCalc = new DamageCalculator(true);
+              const ipResult = ipCalc.calculate(ipFollowUpStats, defenderStats);
+
+              totalDamage += ipResult.damage;
+              prophetAttackCounter += 1;
+
+              const ipBreakdown: import('../types/battle').DamageBreakdown = {
+                damage: ipResult.damage,
+                perHitDamage: ipResult.perHitDamage,
+                hits: ipResult.totalHits,
+                baseDamage: ipResult.baseDamage,
+                flatModifiers: ipResult.flatModifiers,
+                flatModifierSources: ipResult.flatModifierSources,
+                critBonus: ipResult.critBonus,
+                critChanceSources: ipResult.critChanceSources,
+                critDamageSources: ipResult.critDamageSources,
+                extraHits: ipResult.extraHits,
+                extraHitsSources: ipResult.extraHitsSources,
+                damVarMod: ipResult.damVarMod,
+                targetArmor: bossArmor,
+                armorIgnored: ipResult.armorIgnored,
+                armorIgnoredSources: ipResult.armorIgnoredSources,
+                effectiveArmor: ipResult.effectiveArmor,
+                afterArmor: ipResult.afterArmor,
+                pierceRatio: ipResult.pierceRatio,
+                effectivePierceRatio: ipResult.effectivePierceRatio,
+                pierceRatioBonus: ipResult.pierceRatioBonus,
+                pierceRatioBonusSources: ipResult.pierceRatioBonusSources,
+                pierceFloor: ipResult.pierceFloor,
+                afterArmorPierce: ipResult.afterArmorPierce,
+                globalMultiplier: ipResult.globalMultiplier,
+                globalMultiplierSources: ipResult.globalMultiplierSources,
+                baseCritChance: ipResult.baseCritChance,
+                baseCritDamage: ipResult.baseCritDamage,
+                critChanceBonus: ipResult.critChanceTotalBonus,
+                critDmgBonus: ipResult.critDamageTotalBonus,
+                critChance: ipResult.effectiveCritChance * 100,
+                critDamage: ipResult.effectiveCritDamage,
+                traitModifiers: ipResult.traitModifiers,
+                traitMultiplier: ipResult.traitMultiplier,
+                expectedBlocks: ipResult.expectedBlocks,
+                blockReductionPerHit: ipResult.blockReductionPerHit,
+                totalBlockReduction: ipResult.totalBlockReduction,
+              };
+
+              followUpAttackLogs.push({
+                abilityName: 'Infernal Pacts',
+                damageType: 'Psychic',
+                hits: ipResult.totalHits,
+                damage: ipResult.damage,
+                attackType,
+                breakdown: ipBreakdown,
+              });
+
+              console.log(`[Infernal Pacts triggered by ${summon.name}]: +${ipResult.damage} Psychic damage`);
+              break; // Only one Abraxas can provide the buff
+            }
+          }
+        }
+      }
+    }
+
     // Update battle state with damage dealt (including Exitor-Rho's OG damage if triggered)
     set((state) => {
       if (!state.battleState) return { battleState: null };
@@ -7236,7 +7585,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     // Get TheBetrayer ability values
-    const levelIndex = character.abilityLevels?.TheBetrayer ?? 54;
+    const levelIndex = character.abilityLevels?.TheBetrayer ?? 59;
     const abilityValues = getAbilityValues('TheBetrayer', levelIndex, character.progressionStepIndex);
     if (!abilityValues) {
       return {
@@ -7367,7 +7716,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         darkAngelsAdjacentToBoss,
         abilityToggles: character.abilityToggles,
         bossTraits: battleState.boss?.traits,
-        bossDebuffs: battleState.bossHasMarkerlight ? ['Markerlight'] : [],
+        bossDebuffs: [
+          ...(battleState.bossHasMarkerlight ? ['Markerlight'] : []),
+          ...(battleState.bossOnHexWithFire ? ['OnHexWithFire'] : []),
+        ],
       }
     );
 
@@ -7652,7 +8004,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       const hasLionHelmBonus = isAzrael || (character.abilityToggles?.[lionHelmToggleId] ?? false);
 
       if (hasLionHelmBonus) {
-        const lionHelmLevelIndex = azrael.abilityLevels?.['LionHelm'] ?? 54;
+        const lionHelmLevelIndex = azrael.abilityLevels?.['LionHelm'] ?? 59;
         const lionHelmValues = getAbilityValues('LionHelm', lionHelmLevelIndex, azrael.progressionStepIndex);
         const lionHelmExtraDmg = (lionHelmValues?.extraDmg as number) || 0;
         if (lionHelmExtraDmg > 0) {
@@ -7725,7 +8077,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     // Get FuryOfTheAncients ability values
-    const levelIndex = character.abilityLevels?.FuryOfTheAncients ?? 54;
+    const levelIndex = character.abilityLevels?.FuryOfTheAncients ?? 59;
     const abilityValues = getAbilityValues('FuryOfTheAncients', levelIndex, character.progressionStepIndex);
     if (!abilityValues) {
       return {
@@ -8044,7 +8396,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     // Get MartialSuperiority ability values
-    const levelIndex = character.abilityLevels?.MartialSuperiority ?? 54;
+    const levelIndex = character.abilityLevels?.MartialSuperiority ?? 59;
     const abilityValues = getAbilityValues('MartialSuperiority', levelIndex, character.progressionStepIndex);
     if (!abilityValues) {
       return {
@@ -8361,7 +8713,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     // Get HatefulAssault ability values
-    const levelIndex = character.abilityLevels?.HatefulAssault ?? 54;
+    const levelIndex = character.abilityLevels?.HatefulAssault ?? 59;
     const abilityValues = getAbilityValues('HatefulAssault', levelIndex, character.progressionStepIndex);
     if (!abilityValues) {
       return {
@@ -8678,7 +9030,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     // Get UnwaveringSentinel ability values
-    const levelIndex = character.abilityLevels?.UnwaveringSentinel ?? 54;
+    const levelIndex = character.abilityLevels?.UnwaveringSentinel ?? 59;
     const abilityValues = getAbilityValues('UnwaveringSentinel', levelIndex, character.progressionStepIndex);
     if (!abilityValues) {
       return {
@@ -9005,7 +9357,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     }
 
     // Get TheQuickening ability values
-    const levelIndex = caster.abilityLevels?.TheQuickening ?? 54;
+    const levelIndex = caster.abilityLevels?.TheQuickening ?? 59;
     const abilityValues = getAbilityValues('TheQuickening', levelIndex, caster.progressionStepIndex);
     if (!abilityValues) {
       return {

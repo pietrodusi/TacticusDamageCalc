@@ -21,9 +21,9 @@ interface CharacterStatsProps {
   onProgressionChange?: (progressionStepIndex: number, rank: number) => void;
 }
 
-// Default to Mythic 11★ (index 16) and Adamantine I (rank 18)
-export const DEFAULT_PROGRESSION_STEP = 16;
-export const DEFAULT_RANK = 18;
+// Default to Mythic 12★ (index 17) and Adamantine II (rank 19)
+export const DEFAULT_PROGRESSION_STEP = 17;
+export const DEFAULT_RANK = 19;
 
 export function CharacterStats({
   character,

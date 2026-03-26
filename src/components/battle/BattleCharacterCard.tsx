@@ -72,7 +72,7 @@ export function BattleCharacterCard({
     return {
       id,
       name: displayName,
-      description: getFormattedAbilityDescription(id, character.abilityLevels?.[id] ?? 54, character.progressionStepIndex),
+      description: getFormattedAbilityDescription(id, character.abilityLevels?.[id] ?? 59, character.progressionStepIndex),
     };
   });
 

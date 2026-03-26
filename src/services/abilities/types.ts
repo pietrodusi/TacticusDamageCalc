@@ -307,6 +307,15 @@ export interface ActiveAbilityResult {
     count?: number;  // Number of summons to create (default: 1)
   };
 
+  // For abilities that summon multiple different unit types
+  additionalSummons?: {
+    unitId: string;
+    hp: number;
+    damage: number;
+    armor: number;
+    count?: number;
+  }[];
+
   // For healing abilities
   healingResult?: {
     amount: number;

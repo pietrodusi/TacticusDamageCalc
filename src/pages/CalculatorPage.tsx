@@ -82,6 +82,8 @@ export default function CalculatorPage() {
     markAbilityUsed,
     refreshAbilityCooldown,
     setBossMarkerlight,
+    setBossOnHexWithFire,
+    setBossMovedLastTurn,
     removeSummon,
     updateSummonCount,
     toggleSummonBuffCondition,
@@ -374,7 +376,7 @@ export default function CalculatorPage() {
 
         // Special handling for DefendTheDivineWork - opens repair modal for multi-target selection
         if (abilityId === 'DefendTheDivineWork') {
-          const ddwLevelIndex = character.abilityLevels?.['DefendTheDivineWork'] ?? 54;
+          const ddwLevelIndex = character.abilityLevels?.['DefendTheDivineWork'] ?? 59;
           const ddwValues = getAbilityValues('DefendTheDivineWork', ddwLevelIndex, character.progressionStepIndex);
           const hpToRepair = (ddwValues?.hpToRepair as number) || 0;
 
@@ -392,7 +394,7 @@ export default function CalculatorPage() {
 
         // Special handling for InspiredToGreatness - opens target selection modal
         if (abilityId === 'InspiredToGreatness') {
-          const itgLevelIndex = character.abilityLevels?.['InspiredToGreatness'] ?? 54;
+          const itgLevelIndex = character.abilityLevels?.['InspiredToGreatness'] ?? 59;
           const itgValues = getAbilityValues('InspiredToGreatness', itgLevelIndex, character.progressionStepIndex);
           const hpToHeal = (itgValues?.hpToHeal as number) || 0;
           const hpToHeal_2 = (itgValues?.hpToHeal_2 as number) || 0;
@@ -408,7 +410,7 @@ export default function CalculatorPage() {
 
         // Special handling for TheQuickening - opens target selection modal
         if (abilityId === 'TheQuickening') {
-          const tqLevelIndex = character.abilityLevels?.['TheQuickening'] ?? 54;
+          const tqLevelIndex = character.abilityLevels?.['TheQuickening'] ?? 59;
           const tqValues = getAbilityValues('TheQuickening', tqLevelIndex, character.progressionStepIndex);
           const dmgPct = (tqValues?.dmgPct as number) || 100;
           const maxDmg = (tqValues?.maxDmg as number) || 0;
@@ -461,7 +463,7 @@ export default function CalculatorPage() {
 
         // Special handling for BloodChalice - opens target selection modal
         if (abilityId === 'BloodChalice') {
-          const bcLevelIndex = character.abilityLevels?.['BloodChalice'] ?? 54;
+          const bcLevelIndex = character.abilityLevels?.['BloodChalice'] ?? 59;
           const bcValues = getAbilityValues('BloodChalice', bcLevelIndex, character.progressionStepIndex);
           const extraPierceRatio = (bcValues?.extraPierceRatio as number) || 0;
 
@@ -475,7 +477,7 @@ export default function CalculatorPage() {
 
         // Special handling for DarkTalonStrike - opens attack type selection modal
         if (abilityId === 'DarkTalonStrike') {
-          const dtsLevelIndex = character.abilityLevels?.['DarkTalonStrike'] ?? 54;
+          const dtsLevelIndex = character.abilityLevels?.['DarkTalonStrike'] ?? 59;
           const dtsValues = getAbilityValues('DarkTalonStrike', dtsLevelIndex, character.progressionStepIndex);
 
           if (dtsValues) {
@@ -499,7 +501,7 @@ export default function CalculatorPage() {
 
         // Special handling for UnbreakableDuty - opens Yes/No confirmation modal
         if (abilityId === 'UnbreakableDuty') {
-          const udLevelIndex = character.abilityLevels?.['UnbreakableDuty'] ?? 54;
+          const udLevelIndex = character.abilityLevels?.['UnbreakableDuty'] ?? 59;
           const udValues = getAbilityValues('UnbreakableDuty', udLevelIndex, character.progressionStepIndex);
           const extraDmg = (udValues?.extraDmg as number) || 0;
 
@@ -513,7 +515,7 @@ export default function CalculatorPage() {
 
         // Special handling for RitesOfMorkai - opens target selection modal
         if (abilityId === 'RitesOfMorkai') {
-          const romLevelIndex = character.abilityLevels?.['RitesOfMorkai'] ?? 54;
+          const romLevelIndex = character.abilityLevels?.['RitesOfMorkai'] ?? 59;
           const romValues = getAbilityValues('RitesOfMorkai', romLevelIndex, character.progressionStepIndex);
           const extraDmg = (romValues?.extraDmg as number) || 0;
 
@@ -527,7 +529,7 @@ export default function CalculatorPage() {
 
         // Special handling for FoulInfusion - opens Chaos ally selection modal
         if (abilityId === 'FoulInfusion') {
-          const fiLevelIndex = character.abilityLevels?.['FoulInfusion'] ?? 54;
+          const fiLevelIndex = character.abilityLevels?.['FoulInfusion'] ?? 59;
           const fiValues = getAbilityValues('FoulInfusion', fiLevelIndex, character.progressionStepIndex);
           const dmg = (fiValues?.dmg as number) || 0;
 
@@ -541,7 +543,7 @@ export default function CalculatorPage() {
 
         // Special handling for SorcerousFacade - opens Psyker ally selection modal
         if (abilityId === 'SorcerousFacade') {
-          const sfLevelIndex = character.abilityLevels?.['SorcerousFacade'] ?? 54;
+          const sfLevelIndex = character.abilityLevels?.['SorcerousFacade'] ?? 59;
           const sfValues = getAbilityValues('SorcerousFacade', sfLevelIndex, character.progressionStepIndex);
           const sfMinDmg = (sfValues?.minDmg as number) || 0;
           const sfMaxDmg = (sfValues?.maxDmg as number) || 0;
@@ -648,7 +650,7 @@ export default function CalculatorPage() {
         let buffInfo: { critChanceBonus: number; critDamageBonus: number } | undefined;
 
         if (hasHealingBalms) {
-          const hbLevelIndex = character.abilityLevels?.['HealingBalms'] ?? 54;
+          const hbLevelIndex = character.abilityLevels?.['HealingBalms'] ?? 59;
           const hbValues = getAbilityValues('HealingBalms', hbLevelIndex, character.progressionStepIndex);
           if (hbValues) {
             buffInfo = {
@@ -1123,10 +1125,8 @@ export default function CalculatorPage() {
         } : null,
       }));
 
-      // Mark ability as used (one-time) and end turn
+      // Mark ability as used (one-time) but don't end turn - Pestillian can still melee attack
       markAbilityUsed(foulInfusionContext.casterId, 'FoulInfusion');
-      setCharacterActed(foulInfusionContext.casterId, true);
-      setCharacterTurnEnded(foulInfusionContext.casterId, true);
     }
     addAction(foulInfusionContext.casterId, { type: 'ability', characterId: foulInfusionContext.casterId });
 
@@ -1706,6 +1706,17 @@ export default function CalculatorPage() {
               char.passiveAbilities.includes('CyclicIonBlaster')
             );
 
+            // Only show On Hex with Fire if team has a character with PsychicStalk
+            const hasPsychicStalkRelevance = battleState.team.some(char =>
+              char.passiveAbilities.includes('PsychicStalk')
+            );
+            const hasPredictiveGuidanceRelevance = battleState.team.some(char =>
+              char.passiveAbilities.includes('PredictiveGuidance')
+            );
+            const psychicStalkEffect = hasPsychicStalkRelevance
+              ? `+${battleState.psychicStalkExtraDmgPct}% Flame/Psychic, +${battleState.psychicStalkExtraDmg} Chaos`
+              : undefined;
+
             return (
               <>
                 <h2 className="text-lg font-semibold text-gray-100">Enemy Boss</h2>
@@ -1715,6 +1726,11 @@ export default function CalculatorPage() {
                   bossArmorReduction={battleState.bossArmorReduction}
                   bossHasMarkerlight={battleState.bossHasMarkerlight}
                   onMarkerlightChange={hasMarkerlightRelevance ? setBossMarkerlight : undefined}
+                  bossOnHexWithFire={battleState.bossOnHexWithFire}
+                  onHexWithFireChange={hasPsychicStalkRelevance ? setBossOnHexWithFire : undefined}
+                  psychicStalkEffect={psychicStalkEffect}
+                  bossMovedLastTurn={battleState.bossMovedLastTurn}
+                  onBossMovedChange={hasPredictiveGuidanceRelevance ? setBossMovedLastTurn : undefined}
                   prophetOfGorkAndMork={battleState.prophetOfGorkAndMork}
                   bossAttacksReceivedThisTurn={battleState.bossAttacksReceivedThisTurn}
                   bossHasMasterAnnihilatorMark={battleState.bossHasMasterAnnihilatorMark}

@@ -66,7 +66,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
         const hasLionHelmBonus = isAzrael || (character.abilityToggles?.[lionHelmToggleId] ?? false);
 
         if (hasLionHelmBonus) {
-          const lionHelmLevelIndex = azrael.abilityLevels?.['LionHelm'] ?? 54;
+          const lionHelmLevelIndex = azrael.abilityLevels?.['LionHelm'] ?? 59;
           const lionHelmValues = getAbilityValues('LionHelm', lionHelmLevelIndex, azrael.progressionStepIndex);
           bonus += (lionHelmValues?.extraDmg as number) || 0;
         }
@@ -81,7 +81,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
   const activeAbilityId = character.activeAbilities[0];
   const activeAbilityName = activeAbilityId ? getAbilityNameSync(activeAbilityId) : null;
   const abilityLevelIndex = activeAbilityId
-    ? (character.abilityLevels?.[activeAbilityId] ?? 54)
+    ? (character.abilityLevels?.[activeAbilityId] ?? 59)
     : 54;
 
   // Get ability damage preview
@@ -157,7 +157,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
   const getExecuteDamagePreview = () => {
     if (!hasTheBetrayerAbility) return null;
 
-    const levelIndex = character.abilityLevels?.TheBetrayer ?? 54;
+    const levelIndex = character.abilityLevels?.TheBetrayer ?? 59;
     const values = getAbilityValues('TheBetrayer', levelIndex, character.progressionStepIndex);
     if (!values) return null;
 
@@ -174,7 +174,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
   const getSentinelDamagePreview = () => {
     if (!hasUnwaveringSentinelAbility) return null;
 
-    const levelIndex = character.abilityLevels?.UnwaveringSentinel ?? 54;
+    const levelIndex = character.abilityLevels?.UnwaveringSentinel ?? 59;
     const values = getAbilityValues('UnwaveringSentinel', levelIndex, character.progressionStepIndex);
     if (!values) return null;
 

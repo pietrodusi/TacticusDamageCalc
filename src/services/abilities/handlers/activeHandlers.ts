@@ -3570,7 +3570,7 @@ export const FoulInfusionHandler: AbilityHandler = {
   abilityName: 'Foul Infusion',
   category: 'buff',
   cooldown: -1,
-  endsTurn: true,
+  endsTurn: false,
   executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('FoulInfusion');
     const dmg = values.dmg as number || 0;
@@ -3646,9 +3646,8 @@ export const PlagueburstMortarHandler: AbilityHandler = {
 
 /**
  * PlagueWind (Typhus)
- * 1x Psychic to target, then cascades to adjacent enemies (3 tiers).
- * Raw damage (no crit, no modifiers).
- * Variables: minDmg, maxDmg, minDmg_2, maxDmg_2, minDmg_3, maxDmg_3
+ * 1x Psychic to target. Raw damage (no crit, no modifiers).
+ * Variables: minDmg, maxDmg
  * Constants: damageProfile: Psychic, nrOfHits: 1, range: 2
  */
 export const PlagueWindHandler: AbilityHandler = {
@@ -3660,27 +3659,15 @@ export const PlagueWindHandler: AbilityHandler = {
     const abilityName = getAbilityNameSync('PlagueWind');
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
-    const minDmg2 = values.minDmg_2 as number || 0;
-    const maxDmg2 = values.maxDmg_2 as number || 0;
-    const minDmg3 = values.minDmg_3 as number || 0;
-    const maxDmg3 = values.maxDmg_3 as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
-    const avgDmg2 = Math.round((minDmg2 + maxDmg2) / 2);
-    const avgDmg3 = Math.round((minDmg3 + maxDmg3) / 2);
-    // Primary target damage + cascade tiers
-    const damageComponents: DamageComponent[] = [
-      { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'Psychic' as DamageType },
-      { minDamage: minDmg2, maxDamage: maxDmg2, averageDamage: avgDmg2, hits: 1, damageProfile: 'Psychic' as DamageType },
-      { minDamage: minDmg3, maxDamage: maxDmg3, averageDamage: avgDmg3, hits: 1, damageProfile: 'Psychic' as DamageType },
-    ];
     return {
       abilityId: 'PlagueWind',
       abilityName,
       category: 'damage',
       damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 1, damageProfile: 'Psychic' as DamageType },
-      damageComponents,
+      rawDamage: true,
       attackType: 'ranged',
-      message: `${abilityName}: 1x Psychic (raw). Cascades: adj ${minDmg2}-${maxDmg2}, then ${minDmg3}-${maxDmg3}`,
+      message: abilityName,
     };
   },
 };
@@ -3691,7 +3678,7 @@ export const PlagueWindHandler: AbilityHandler = {
 
 /**
  * MasterOfTheTutelaries (Abraxas)
- * Summons Pink Horror. During turn, Psychic damage triggers Screamer summons.
+ * Summons Pink Horror and Screamer.
  * Variables: summonHp, summonDmg, summonHp_2, summonDmg_2
  * Constants: unitId: thousSmnPinkHorror, unitId_2: thousSmnScreamer
  */
@@ -3711,7 +3698,10 @@ export const MasterOfTheTutelariesHandler: AbilityHandler = {
       abilityName,
       category: 'summon',
       summonResult: { unitId: 'thousSmnPinkHorror', hp: summonHp, damage: summonDmg, armor: 0, count: 1 },
-      message: `${abilityName}: Pink Horror (HP: ${summonHp}, Dmg: ${summonDmg}). Psychic dmg this turn summons Screamers (HP: ${summonHp2}, Dmg: ${summonDmg2})`,
+      additionalSummons: [
+        { unitId: 'thousSmnScreamer', hp: summonHp2, damage: summonDmg2, armor: 0, count: 1 },
+      ],
+      message: `${abilityName}: Pink Horror (HP: ${summonHp}, Dmg: ${summonDmg}) + Screamer (HP: ${summonHp2}, Dmg: ${summonDmg2})`,
     };
   },
 };
@@ -3728,18 +3718,20 @@ export const DoomboltHandler: AbilityHandler = {
   abilityName: 'Doombolt',
   category: 'damage',
   cooldown: -1,
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('Doombolt');
+    const fireHexes = (context.abilityToggles?.['Doombolt_fireHexes'] as unknown as number) ?? 0;
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const hits = 3 + fireHexes;
     return {
       abilityId: 'Doombolt',
       abilityName,
       category: 'damage',
-      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Psychic' as DamageType },
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits, damageProfile: 'Psychic' as DamageType },
       attackType: 'ranged',
-      message: `${abilityName}: 3x Psychic split to all enemies in range 2. +1 hit per Fire hex (max 9). Resets on ranged kill`,
+      message: `${abilityName}: ${hits}x Psychic split to all enemies in range 2. +1 hit per Fire hex (max 9). Resets on ranged kill`,
     };
   },
 };
@@ -4129,7 +4121,7 @@ export const MindControlHandler: AbilityHandler = {
 
 /**
  * AncestralFortune (Uthar)
- * Deals 3x Plasma damage, grants crit chance and block chance bonuses
+ * Deals 3x Plasma damage, grants +extraCritChance% crit for the turn.
  * Variables: extraCritChance, extraBlockChance, minDmg, maxDmg, nrOfAttacks (6)
  * Constants: nrOfHits: 3, damageProfile: Plasma
  */
@@ -4144,22 +4136,28 @@ export const AncestralFortuneHandler: AbilityHandler = {
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
     const extraCritChance = values.extraCritChance as number || 15;
-    const extraBlockChance = values.extraBlockChance as number || 15;
-    const nrOfAttacks = values.nrOfAttacks as number || 6;
     return {
       abilityId: 'AncestralFortune',
       abilityName,
       category: 'damage',
       damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Plasma' as DamageType },
+      abilityModifiers: { critChanceBonus: extraCritChance },
+      buffResult: {
+        effect: {
+          critChanceBonus: extraCritChance,
+        },
+        duration: 1,
+      },
       attackType: 'melee',
-      message: `${abilityName}: 3x Plasma (melee). Grants +${extraCritChance}% crit, +${extraBlockChance}% block for ${nrOfAttacks} attacks`,
+      message: abilityName,
     };
   },
 };
 
 /**
  * GravitonRifle (Vynn)
- * Deals 3x Physical damage with extra pierce ratio, suppresses target for 1 round
+ * Deals 3x Physical damage, suppresses target for 1 round.
+ * +extraPierceRatio% pierce against Mechanical targets.
  * Variables: minDmg, maxDmg, extraPierceRatio
  * Constants: nrOfHits: 3, damageProfile: Physical, range: 2, nrOfRounds: 1
  */
@@ -4168,19 +4166,53 @@ export const GravitonRifleHandler: AbilityHandler = {
   abilityName: 'Graviton Rifle',
   category: 'damage',
   cooldown: -1,
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('GravitonRifle');
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
     const extraPierceRatio = values.extraPierceRatio as number || 40;
+    const isMechanical = context.bossTraits?.includes('Mechanical') ?? false;
     return {
       abilityId: 'GravitonRifle',
       abilityName,
       category: 'damage',
       damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 3, damageProfile: 'Physical' as DamageType },
+      abilityModifiers: isMechanical ? { pierceRatioBonus: extraPierceRatio } : undefined,
       attackType: 'ranged',
-      message: `${abilityName}: 3x Physical (range 2). +${extraPierceRatio}% pierce. Suppresses 1 round`,
+      message: abilityName,
+    };
+  },
+};
+
+/**
+ * IronkinSteeljack (Ammuk)
+ * Summons an Ironkin Steeljack in a free adjacent hex.
+ * Variables: summonHp, summonDmg, summonArmor
+ * Constants: unitId: votanSmnSteeljack
+ */
+export const IronkinSteeljackHandler: AbilityHandler = {
+  abilityId: 'IronkinSteeljack',
+  abilityName: 'Ironkin Steeljack',
+  category: 'summon',
+  cooldown: -1,
+  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+    const abilityName = getAbilityNameSync('IronkinSteeljack');
+    const summonHp = values.summonHp as number || 0;
+    const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
+    return {
+      abilityId: 'IronkinSteeljack',
+      abilityName,
+      category: 'summon',
+      summonResult: {
+        unitId: 'votanSmnSteeljack',
+        hp: summonHp,
+        damage: summonDmg,
+        armor: summonArmor,
+        count: 1,
+      },
+      message: abilityName,
     };
   },
 };
@@ -4368,6 +4400,7 @@ export const activeHandlers: AbilityHandler[] = [
   // LeaguesOfVotann
   AncestralFortuneHandler,
   GravitonRifleHandler,
+  IronkinSteeljackHandler,
   // AdeptusMechanicus
   SentinelDirectivesHandler,
   // Sisterhood

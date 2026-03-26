@@ -340,5 +340,14 @@
 	},
 	"orksOrkBoys": {
 		"img": "/summons/orksOrkBoys.webp"
+	},
+	"votanUthar": {
+		"img": "/portraits/votanUthar.webp"
+	},
+	"votanMemnyr": {
+		"img": "/portraits/votanMemnyr.webp"
+	},
+	"votanIronmaster": {
+		"img": "/portraits/votanIronmaster.webp"
 	}
 }

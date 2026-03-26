@@ -255,6 +255,10 @@ export interface BattleState {
   pendingRepairAction?: PendingRepairAction;
   // Boss debuffs - Markerlight gives T'au Empire +15% ranged damage
   bossHasMarkerlight: boolean;
+  // PsychicStalk (Ahriman) - boss on hex with fire debuff
+  bossOnHexWithFire: boolean;
+  psychicStalkExtraDmgPct: number;  // Cached from Ahriman's ability level
+  psychicStalkExtraDmg: number;      // Cached from Ahriman's ability level
   // Master Annihilator debuff (Vitruvius) - all attacks get +1 hit (except Psychic)
   bossHasMasterAnnihilatorMark: boolean;
   masterAnnihilatorMaxDmg: number;  // Damage cap for the extra hit
@@ -279,6 +283,8 @@ export interface BattleState {
   superchargePierceBonus?: number;
   // Herald of the Apocalypse (Haarken) - +extraDmg debuff on boss, consumed by next attack from any team member
   heraldExtraDmgDebuff?: number;
+  // PredictiveGuidance (Ammuk) - boss moved in its last turn
+  bossMovedLastTurn: boolean;
 }
 
 export interface BattleSimulationConfig {

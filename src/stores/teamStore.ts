@@ -5,9 +5,9 @@ import { getDefaultEquipment } from '../services/dataService';
 
 const MAX_TEAM_SIZE = 5;
 
-// Default progression step and rank (Mythic 11★, Adamantine I)
-const DEFAULT_PROGRESSION_STEP = 16;
-const DEFAULT_RANK = 18;
+// Default progression step and rank (Mythic 12★, Adamantine II)
+const DEFAULT_PROGRESSION_STEP = 17;
+const DEFAULT_RANK = 19;
 
 // Default boss rank (Legendary 1)
 const DEFAULT_BOSS_RANK: BossRank = 13;

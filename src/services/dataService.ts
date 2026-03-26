@@ -70,7 +70,7 @@ const damageImages = import.meta.glob<{ default: string }>(
 
 // Import faction images
 const factionImages = import.meta.glob<{ default: string }>(
-  '../assets/images/factions/*.png',
+  '../assets/images/factions/*.{png,webp}',
   { eager: true }
 );
 
@@ -117,7 +117,7 @@ for (const path in damageImages) {
 // Create faction image map (e.g., 'Ultramarines' -> url)
 const factionImageMap: Record<string, string> = {};
 for (const path in factionImages) {
-  const filename = path.split('/').pop()?.replace('.png', '') || '';
+  const filename = path.split('/').pop()?.replace(/\.(png|webp)$/, '') || '';
   factionImageMap[filename] = factionImages[path].default;
 }
 
@@ -478,6 +478,7 @@ const factionDisplayNames: Record<string, string> = {
   'Tau': "T'au Empire",
   'Tyranids': 'Tyranids',
   'Genestealers': 'Genestealer Cults',
+  'LeaguesOfVotann': 'Leagues of Votann',
 };
 
 // Get faction display name from FactionId
@@ -512,6 +513,7 @@ const factionOrderByAlliance: Record<string, string[]> = {
     'Tau',
     'Tyranids',
     'Genestealers',
+    'LeaguesOfVotann',
   ],
 };
 
@@ -570,8 +572,8 @@ export function getAllianceOrder(): Alliance[] {
 
 // ============ Ability Functions ============
 
-// Default ability level (0-indexed, so 54 = level 55)
-export const DEFAULT_ABILITY_LEVEL = 54;
+// Default ability level (0-indexed, so 59 = level 60)
+export const DEFAULT_ABILITY_LEVEL = 59;
 
 // Get ability level index from display level (1-65 -> 0-64)
 export function getAbilityLevelIndex(displayLevel: number): number {

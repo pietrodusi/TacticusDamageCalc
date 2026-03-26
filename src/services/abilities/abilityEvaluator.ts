@@ -96,7 +96,7 @@ export function evaluatePassiveAbilities(
 
   for (const abilityId of passiveAbilityIds) {
     const handler = getAbilityHandler(abilityId);
-    const levelIndex = abilityLevels[abilityId] ?? 54; // Default to level 55
+    const levelIndex = abilityLevels[abilityId] ?? 59; // Default to level 55
 
     if (handler?.evaluatePassive) {
       // Use registered handler

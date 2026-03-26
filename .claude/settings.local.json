@@ -54,7 +54,8 @@
       "Bash(python3:*)",
       "Bash(sort:*)",
       "Bash(for ability in SorcerousFacade RealityUnbound HellfyreMissileRack TimeFlux MasterOfTheTutelaries InfernalPacts AttemptedPossession ArcaneShield Doombolt PsychicStalk AetherStride InfernalCannon CabalOfSorcerers)",
-      "Bash(do echo -n \"$ability: \")"
+      "Bash(do echo -n \"$ability: \")",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []

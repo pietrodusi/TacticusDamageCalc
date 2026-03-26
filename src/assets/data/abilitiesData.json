@@ -711,7 +711,7 @@
         "name": "Hateful Assault"
     },
     "HazeOfCorruption": {
-        "description": "When <style=Faction_DeathGuard>{[UnitName]}</style> attacks and defeats a unit, any leftover <style=Stat_Damage>Damage</style> and an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[extraDmg]} Toxic Damage</style> is dealt to a random enemy adjacent to both {[UnitName]} and his initial target. If this unit is also defeated, this ability triggers again, dealing <style=Stat_Damage>Damage</style> to an additional unit adjacent to both {[UnitName]} and his initial target.",
+        "description": "When <style=Faction_DeathGuard>Maladus</style> attacks and defeats a unit, any leftover <style=Stat_Damage>Damage</style> and an additional <style=Stat_Hits>{[nrOfHits]}x</style> <style=DMG_Toxic>{[extraDmg]} Toxic Damage</style> is dealt to a random enemy adjacent to both Maladus and his initial target. If this unit is also defeated, this ability triggers again, dealing <style=Stat_Damage>Damage</style> to an additional unit adjacent to both Maladus and his initial target.",
         "name": "Haze of Corruption"
     },
     "HeadClaimer": {
@@ -1830,5 +1830,29 @@
     "WrathfulDevotion": {
         "description": "When <style=Faction_WorldEaters>Wrask</style> arrives from <style=Teleport_Strike_short>Deep Strike</style> or defeats an enemy in <style=Stat_Melee>melee</style>, he and adjacent friendly <style=Aliance_Chaos>Chaos</style> units gain a <style=Buff_Shield>Shield</style> with <style=Stat_Health>{[shieldHp]} Health</style> for 1 round.",
         "name": "Wrathful Devotion"
-    }
+    },
+	"GravitonRifle": {
+		"description": "Deals {[nrOfHits]}x {[minDmg]}-{[maxDmg]} {[damageProfile]} to an enemy in range {[range]} and Stuns it for {[nrOfRounds]} round. This attack has +{extraPierceRatio}% pierce ratio against MK X Gravis, Terminator Armour or Mechanical units." ,
+		"name": "Graviton Rifle"
+	},
+	"EcogSupport": {
+		"description": "Whenever Vynn repairs a friendly unit, he summons an E-COG in a free adjacent hex. Cannot have more than 3 E-COGs summoned this way at the same time. Vynn can repair other friendly units even if they are at full Health and if he repairs a friendly unit while {[maxSummons]} summoned E-COGs are already on the battlefield, one random summoned E-COG adjacent to Vynn also performs a repair, if possible. \n\nE-COG stats:\n{[summonHp]} Health\n{[summonDmg]} Damage\n{[summonArmor]} Armour" ,
+		"name": "E-COG-Support"
+	},
+	"AncestralFortune": {
+		"description": "Ûthar gains +{[extraCritChance]}% Crit Chance and +{[extraBlockChance]}% Block chance until the start of his next turn. If he is adjacent to an enemy unit, he immediately performs an attack, dealing {[nrOfHits]}x {[minDmg]}-{[maxDmg]} {[damageProfile]}. After a combined total of {[nrOfAttacks]} attacks that Ûthar has Blocked or scored Crits in after using Ancestral Fortune, the ability can be used again.",
+		"name": "Ancestral Fortune"
+	},
+	"GrimEfficiency": {
+		"description": "Other friendly units within 2 hexes of Ûthar gain a bonus based on Ûthar's current effect from Prioritised Efficiency:\nHostile Acquisition: Affected units have +{[extraArmor]} Armour.\nFortify Takeover: Affected units have +{[extraPierceRatio]}% pierce ratio with all attacks.",
+		"name": "Grim Efficiency"
+	},
+	"IronkinSteeljack": {
+		"description": "Summons an Ironkin Steeljack in a free adjacent hex. The Ironkin Steeljack can immediately attack, but cannot move this turn.\n\nIronkin Steeljack stats:\n{[summonHp]} Health\n{[summonDmg]} Damage\n{[summonArmor]} Armour",
+		"name": "Ironkin Steeljack"
+	},
+	"PredictiveGuidance": {
+		"description": "Enemies within 2 hexes of Âmmuk are affected by Predictive Guidance. If an affected enemy did not move in its last turn, other friendly Leagues of Votann or Mechanical units deal +{[extraDmg]} Damage with melee attacks against it. If an affected enemy moved in its last turn, other friendly Leagues of Votann or Mechanical units deal +{[extraDmg_2]} Damage with ranged attacks against it. Other friendly Leagues of Votann units also score an additional hit with all attacks against affected enemies.",
+		"name": "Predictive Guidance"
+	}
 }

@@ -22,7 +22,7 @@ import {
 } from './types';
 
 // Default ability level - levels at this value are not stored
-const DEFAULT_ABILITY_LEVEL = 54;
+const DEFAULT_ABILITY_LEVEL = 59;
 
 /**
  * Encode battle state to compact shareable format
