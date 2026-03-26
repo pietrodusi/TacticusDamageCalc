@@ -667,6 +667,56 @@ export const ancestralFortuneBuffTemplate: BuffTemplate = {
 };
 
 /**
+ * DefenderOfTheGreaterGood (adjacent) buff template (Shadowsun passive)
+ * Non-T'au allies adjacent to Shadowsun/CL Drone deal +extraDmg with ranged attacks (not Psychic)
+ */
+export const defenderGGAdjacentBuffTemplate: BuffTemplate = {
+  buffId: 'defender_gg_adjacent',
+  name: 'Defender of the Greater Good',
+  sourceAbilityId: 'DefenderOfTheGreaterGood',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      if (context.attacker.id === buff.sourceCharacterId) return false;
+      if (context.attackType !== 'ranged') return false;
+      // Non-T'au: use adjacent toggle
+      const isTau = context.attacker.faction === "T'au Empire" || context.attacker.faction === 'Tau';
+      if (isTau) return false;
+      const toggleId = `DefenderOfTheGreaterGood_${buff.sourceCharacterId}_adjacent`;
+      return !!context.attacker.abilityToggles?.[toggleId];
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg as number) || 0,
+  }),
+};
+
+/**
+ * DefenderOfTheGreaterGood (range 2) buff template (Shadowsun passive)
+ * T'au allies within range 2 of Shadowsun/CL Drone deal +extraDmg with ranged attacks (not Psychic)
+ */
+export const defenderGGRange2BuffTemplate: BuffTemplate = {
+  buffId: 'defender_gg_range2',
+  name: 'Defender of the Greater Good',
+  sourceAbilityId: 'DefenderOfTheGreaterGood',
+  defaultTargetCondition: {
+    type: 'custom',
+    customEvaluator: (context, buff) => {
+      if (context.attacker.id === buff.sourceCharacterId) return false;
+      if (context.attackType !== 'ranged') return false;
+      // T'au only: use range 2 toggle
+      const isTau = context.attacker.faction === "T'au Empire" || context.attacker.faction === 'Tau';
+      if (!isTau) return false;
+      const toggleId = `DefenderOfTheGreaterGood_${buff.sourceCharacterId}_range2`;
+      return !!context.attacker.abilityToggles?.[toggleId];
+    },
+  },
+  getEffects: (values) => ({
+    baseDamageBonus: (values.extraDmg as number) || 0,
+  }),
+};
+
+/**
  * PredictiveGuidance (melee) buff template (Ammuk passive)
  * LoV or Mechanical allies deal +extraDmg with melee attacks when boss didn't move
  * Condition: Boss in range 2 from Ammuk + boss didn't move last turn
@@ -793,6 +843,9 @@ export const buffTemplateRegistry: Record<string, BuffTemplate> = {
   predictive_guidance_melee: predictiveGuidanceMeleeBuffTemplate,
   predictive_guidance_ranged: predictiveGuidanceRangedBuffTemplate,
   predictive_guidance_hits: predictiveGuidanceHitsBuffTemplate,
+  // Shadowsun abilities
+  defender_gg_adjacent: defenderGGAdjacentBuffTemplate,
+  defender_gg_range2: defenderGGRange2BuffTemplate,
 };
 
 /**

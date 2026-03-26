@@ -634,23 +634,7 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     }
   }
 
-  // DefenderOfTheGreaterGood (Shadowsun) - Extra hit proc
-  if (character.passiveAbilities.includes('DefenderOfTheGreaterGood')) {
-    const levelIndex = character.abilityLevels?.['DefenderOfTheGreaterGood'] ?? 59;
-    const values = getAbilityValues('DefenderOfTheGreaterGood', levelIndex, character.progressionStepIndex);
-    const abilityName = getAbilityNameSync('DefenderOfTheGreaterGood');
-    if (values) {
-      const chance = values.chance as number || 25;
-      conditions.push({
-        id: 'DefenderOfTheGreaterGood_extraHit',
-        label: `Extra hit proc (${chance}%)`,
-        source: abilityName,
-        effect: '+1 hit',
-        isActive: isToggleActive(character.abilityToggles['DefenderOfTheGreaterGood_extraHit']),
-        category: 'self',
-      });
-    }
-  }
+  // DefenderOfTheGreaterGood (Shadowsun) - self-toggle removed, now handled as aura in getAuraConditions
 
   // Ecstatic Slaughter (Hascule) - Thrilled or adjacent overkill
   if (character.passiveAbilities.includes('EcstaticSlaughter')) {
@@ -1405,6 +1389,43 @@ function getAuraConditions(
       }
     }
 
+    // DefenderOfTheGreaterGood (Shadowsun) - ranged damage bonus to adjacent allies (T'au: range 2)
+    if (teammate.passiveAbilities.includes('DefenderOfTheGreaterGood')) {
+      if (character.id !== teammate.id) {
+        const levelIndex = teammate.abilityLevels?.['DefenderOfTheGreaterGood'] ?? 59;
+        const values = getAbilityValues('DefenderOfTheGreaterGood', levelIndex, teammate.progressionStepIndex);
+        const abilityName = getAbilityNameSync('DefenderOfTheGreaterGood');
+
+        if (values) {
+          const extraDmg = values.extraDmg as number || 0;
+          const isTau = character.faction === "T'au Empire" || character.faction === 'Tau';
+
+          if (isTau) {
+            const toggleId = `DefenderOfTheGreaterGood_${teammate.id}_range2`;
+            conditions.push({
+              id: toggleId,
+              label: `Range 2 from ${teammate.name}/CL Drone`,
+              source: abilityName,
+              sourceCharacter: teammate.name,
+              effect: `+${extraDmg} ranged dmg (not Psychic)`,
+              isActive: isToggleActive(character.abilityToggles[toggleId]),
+              category: 'aura',
+            });
+          } else {
+            const toggleId = `DefenderOfTheGreaterGood_${teammate.id}_adjacent`;
+            conditions.push({
+              id: toggleId,
+              label: `Adjacent to ${teammate.name}/CL Drone`,
+              source: abilityName,
+              sourceCharacter: teammate.name,
+              effect: `+${extraDmg} ranged dmg (not Psychic)`,
+              isActive: isToggleActive(character.abilityToggles[toggleId]),
+              category: 'aura',
+            });
+          }
+        }
+      }
+    }
   }
 
   return conditions;

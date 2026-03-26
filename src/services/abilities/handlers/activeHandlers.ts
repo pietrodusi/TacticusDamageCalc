@@ -2422,6 +2422,7 @@ export const ExemplarOfTheKauyonHandler: AbilityHandler = {
     const hits = values.nrOfHits as number || 2;
     const summonHp = values.summonHp as number || 0;
     const summonDmg = values.summonDmg as number || 0;
+    const summonArmor = values.summonArmor as number || 0;
 
     return {
       abilityId: 'ExemplarOfTheKauyon',
@@ -2434,8 +2435,15 @@ export const ExemplarOfTheKauyonHandler: AbilityHandler = {
         hits,
         damageProfile: 'Blast' as DamageType,
       },
+      summonResult: {
+        unitId: 'tauSmnDroneCommandLink',
+        hp: summonHp,
+        damage: summonDmg,
+        armor: summonArmor,
+        count: 1,
+      },
       attackType: 'ranged',
-      message: `${abilityName}: Summons Command Link Drone (HP: ${summonHp}, Dmg: ${summonDmg})`,
+      message: abilityName,
     };
   },
 };

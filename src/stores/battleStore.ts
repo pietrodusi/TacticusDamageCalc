@@ -700,6 +700,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // Initialize DefenderOfTheGreaterGood aura buffs if Shadowsun is in team
+    const shadowsun = battleCharacters.find(c => c.passiveAbilities.includes('DefenderOfTheGreaterGood'));
+    if (shadowsun) {
+      const dggAdjacentTemplate = getBuffTemplate('defender_gg_adjacent');
+      const dggRange2Template = getBuffTemplate('defender_gg_range2');
+      const dggValues = getAbilityValues('DefenderOfTheGreaterGood', shadowsun.abilityLevels?.DefenderOfTheGreaterGood ?? 59, shadowsun.progressionStepIndex);
+
+      if (dggValues && dggAdjacentTemplate) {
+        buffPool = addBuffToPool(buffPool, dggAdjacentTemplate, shadowsun, dggValues as Record<string, number>, 1);
+      }
+      if (dggValues && dggRange2Template) {
+        buffPool = addBuffToPool(buffPool, dggRange2Template, shadowsun, dggValues as Record<string, number>, 1);
+      }
+    }
+
     // Initialize Structural Analyser aura buff if Darkstrider is in team
     const darkstrider = battleCharacters.find(c => c.passiveAbilities.includes('StructuralAnalyser'));
     if (darkstrider) {
@@ -1806,6 +1821,30 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // DefenderOfTheGreaterGood (Shadowsun) - damage handled via buff pool; extra hit scales with turn
+    let defenderGGExtraHits = 0;
+    let defenderGGHitSource: { name: string; extraHits: number } | null = null;
+    if (attackType === 'ranged' && damageType !== 'Psychic') {
+      for (const teammate of battleState.team) {
+        if (teammate.id === attacker.id) continue;
+        if (teammate.passiveAbilities.includes('DefenderOfTheGreaterGood')) {
+          const isTau = attacker.faction === "T'au Empire" || attacker.faction === 'Tau';
+          const toggleId = isTau
+            ? `DefenderOfTheGreaterGood_${teammate.id}_range2`
+            : `DefenderOfTheGreaterGood_${teammate.id}_adjacent`;
+          if (attacker.abilityToggles[toggleId]) {
+            const hitChance = Math.min(battleState.turn * 25, 100);
+            defenderGGExtraHits = hitChance / 100;
+            defenderGGHitSource = {
+              name: `Defender of the Greater Good (${hitChance}%)`,
+              extraHits: defenderGGExtraHits,
+            };
+          }
+          break;
+        }
+      }
+    }
+
     // ObsessiveAnnunciation (Adamatar) - ranged damage bonus vs enemies adj to Adamatar
     let obsessiveAnnunciationDmgBonus = 0;
     let obsessiveAnnunciationSource: { name: string; sourceName: string; damageBonus: number } | null = null;
@@ -1951,6 +1990,11 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       buffSources.push(ritesOfBattleSource);
     }
 
+    // Add DefenderOfTheGreaterGood hit source for display
+    if (defenderGGHitSource) {
+      buffSources.push(defenderGGHitSource);
+    }
+
     // Add ObsessiveAnnunciation source for display
     if (obsessiveAnnunciationSource) {
       buffSources.push(obsessiveAnnunciationSource);
@@ -1973,7 +2017,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
     ) + poolCritDmgBonus;
     const buffExtraHits = attacker.activeBuffs.reduce(
       (sum, buff) => sum + (buff.extraHits || 0), 0
-    ) + poolExtraHits;
+    ) + poolExtraHits + defenderGGExtraHits;
 
     // Combine damage multipliers: passive mods + active buff multiplier + markerlight + high ground + war machine
     const totalDamageMultiplier = (combinedMods.baseDamageMultiplier || 1) * buffDamageMultiplier * markerlightMultiplier * highGroundMultiplier * warMachineMultiplier * psychicStalkMultiplier;

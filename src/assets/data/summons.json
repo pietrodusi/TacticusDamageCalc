@@ -937,5 +937,20 @@
         "traits": ["Big Target", "Mechanical", "Overwatch", "Prioritised Efficiency"],
         "activeAbilities": [],
         "passiveAbilities": []
-    }
+    },
+	"tauSmnDroneCommandLink": {
+		"name": "Command-Link Drone",
+        "visualId": "votanSmnSteeljack",
+        "FactionId": "Tau",
+        "GrandAllianceId": "Xenos",
+        "Movement": 0,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }
+        ],
+        "traits": ["Flying", "Mechanical"],
+        "activeAbilities": [],
+        "passiveAbilities": []
+	}
 }

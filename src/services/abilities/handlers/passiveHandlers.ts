@@ -1562,7 +1562,8 @@ export const SummaryExecutionHandler: AbilityHandler = {
 
 /**
  * DefenderOfTheGreaterGood (Shadowsun)
- * +extraDmg and 25% chance for +1 hit
+ * Aura: adjacent allies (T'au: range 2) deal +extraDmg with ranged attacks (not Psychic).
+ * 25% chance per round for +1 hit. Handled via buffConditions.ts and battleStore.ts.
  * Variables: extraDmg
  * Constants: chance: 25, extraHit: 1
  */
@@ -1572,22 +1573,15 @@ export const DefenderOfTheGreaterGoodHandler: AbilityHandler = {
   category: 'passive',
   cooldown: -1,
 
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
     const extraDmg = values.extraDmg as number || 0;
-    const chance = values.chance as number || 25;
-    const extraHitProc = isToggleActive(context.abilityToggles?.['DefenderOfTheGreaterGood_extraHit']);
 
     return {
       abilityId: 'DefenderOfTheGreaterGood',
       abilityName: getAbilityNameSync('DefenderOfTheGreaterGood'),
-      modifiers: {
-        baseDamageBonus: extraDmg,
-        ...(extraHitProc ? { extraHits: 1 } : {}),
-      },
-      applicable: true,
-      reason: extraHitProc
-        ? `+${extraDmg} damage, +1 hit (${chance}% proc)`
-        : `+${extraDmg} damage, ${chance}% chance for +1 hit`,
+      modifiers: {},
+      applicable: false,
+      reason: `Aura: allies +${extraDmg} ranged dmg (not Psychic). T'au: range 2`,
       requiresToggle: false,
     };
   },
