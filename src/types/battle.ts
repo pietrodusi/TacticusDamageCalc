@@ -36,6 +36,7 @@ export interface BattleCharacter extends TeamMember {
   firstAttackTurn: number | null;  // Turn number when character first attacked (for RapidAssault)
   attackTurnsCount: number;        // Number of turns character has attacked (for LegacyOfCombat)
   totalAttacksThisBattle: number;  // Total attacks performed (for FirstAmongTraitors scaling)
+  timesRepaired: number;  // Number of times this character has been repaired (for DakkaDakkaDakka)
   hasUsedAbilityThisTurn: boolean; // Track if active ability used this turn
   // Legendary Commander tracking
   hasQualifiedForLCDamage: boolean;  // LC damage: adjacent to boss + ability "used" (immediately for buffs, after first special for special attacks)

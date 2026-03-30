@@ -2054,6 +2054,7 @@ export const SquigHoundHandler: AbilityHandler = {
         maxDamage: maxDmg,
         damageProfile: 'Physical' as DamageType,
         attackCategory: 'special',
+        triggersOnNormalOnly: true,
       },
     };
   },

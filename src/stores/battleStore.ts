@@ -533,6 +533,7 @@ function createBattleCharacter(character: TeamMember, index: number): BattleChar
     firstAttackTurn: null,  // Track the turn when character first attacked (for RapidAssault)
     attackTurnsCount: 0,  // Track turns with attacks for LegacyOfCombat
     totalAttacksThisBattle: 0,  // Track total attacks for FirstAmongTraitors
+    timesRepaired: 0,  // Track repairs for DakkaDakkaDakka
     hasUsedAbilityThisTurn: false,  // Track ability usage
     // Legendary Commander tracking
     hasQualifiedForLCDamage: false,  // LC damage buff qualified (adjacent + ability used)
@@ -2817,10 +2818,10 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
           baseDamage: multipliedDamage,  // Just the ability base damage (avg of min/max * multiplier)
           damageType: effectiveDamageProfile,  // Use effective damage profile (may be from character's ranged)
           hits: effectiveHits,  // Use effective hits (may be from character's ranged)
-          critChance: equipmentStats.critChance || 0,
-          critDamage: equipmentStats.critDmg || 0,
-          critChanceBonus: (equipmentStats.critChanceBonus || 0) + followUpCritChanceBonus,
-          critDmgBonus: (equipmentStats.critDmgBonus || 0) + followUpCritDamageBonus,
+          critChance: (equipmentStats.critChance || 0) + (equipmentStats.critChanceBonus || 0),
+          critDamage: (equipmentStats.critDmg || 0) + (equipmentStats.critDmgBonus || 0),
+          critChanceBonus: followUpCritChanceBonus,
+          critDmgBonus: followUpCritDamageBonus,
           ignoreCrit,
           traits: attacker.traits, // Apply trait bonuses to follow-up attacks
           hasMoved: true,
@@ -4086,6 +4087,71 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       }
     }
 
+    // SquigHound (Snotflogga) - summon Grot after normal attack (max 5)
+    if (attacker.passiveAbilities.includes('SquigHound')) {
+      const currentState = get().battleState;
+      if (currentState) {
+        const MAX_GROT_COUNT = 5;
+        const existingGrot = currentState.summons.find(s => s.unitId === 'orksGrot' && s.sourceCharacterId === attackerId);
+
+        if (existingGrot) {
+          if (existingGrot.count < MAX_GROT_COUNT) {
+            set((state) => ({
+              battleState: state.battleState
+                ? {
+                    ...state.battleState,
+                    summons: state.battleState.summons.map(s =>
+                      s.id === existingGrot.id
+                        ? { ...s, count: s.count + 1 }
+                        : s
+                    ),
+                  }
+                : null,
+            }));
+            console.log(`[Squig Hound: Grot count increased to ${existingGrot.count + 1} (max ${MAX_GROT_COUNT})]`);
+          } else {
+            console.log(`[Squig Hound: Grot at max count (${MAX_GROT_COUNT})]`);
+          }
+        } else {
+          const squigValues = getAbilityValues('SquigHound', attacker.abilityLevels?.SquigHound ?? 59, attacker.progressionStepIndex) || {};
+          const summonData = getSummonUnitData('orksGrot');
+          if (summonData) {
+            const meleeWeapon = summonData.weapons.find(w => !w.Range);
+            const rangedWeapon = summonData.weapons.find(w => w.Range);
+
+            const newGrot: import('../types').BattleSummon = {
+              id: `summon_orksGrot_${Date.now()}`,
+              unitId: 'orksGrot',
+              name: summonData.name,
+              sourceCharacterId: attackerId,
+              sourceAbilityId: 'SquigHound',
+              hp: squigValues.summonHp as number || 0,
+              damage: squigValues.summonDmg as number || 0,
+              armor: 0,
+              meleeHits: meleeWeapon?.hits || 1,
+              meleeDamageType: (meleeWeapon?.DamageProfile as import('../types').DamageType) || 'Physical',
+              rangedHits: rangedWeapon?.hits,
+              rangedDamageType: rangedWeapon?.DamageProfile as import('../types').DamageType | undefined,
+              rangedRange: rangedWeapon?.Range,
+              traits: summonData.traits || [],
+              count: 1,
+              createdAtTurn: currentState.turn,
+              iconUrl: getSummonIconUrl('orksGrot'),
+              activeAbilities: summonData.activeAbilities,
+              totalDamageDealt: 0,
+            };
+
+            set((state) => ({
+              battleState: state.battleState
+                ? { ...state.battleState, summons: [...state.battleState.summons, newGrot] }
+                : null,
+            }));
+            console.log(`[Squig Hound: Grot summoned (1/${MAX_GROT_COUNT})]`);
+          }
+        }
+      }
+    }
+
     return {
       timestamp: Date.now(),
       characterId: attackerId,
@@ -4243,6 +4309,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
       maxHealth: character.calculatedHealth,
       currentTurn: battleState.turn,
       activeAbilitiesUsedCount: battleState.activeAbilitiesUsedCount,
+      timesRepaired: character.timesRepaired,
       attackType: 'ability' as const,
       attackCategory: 'ability' as const,
       isFirstSpecialAttackOfTurn: !character.hasUsedFirstSpecialAttackThisTurn,  // Per-character LC tracking
@@ -6823,7 +6890,7 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         team: state.battleState.team.map(char => {
           const healUpdate = healingUpdates.find(h => h.targetId === char.id);
           if (healUpdate) {
-            return { ...char, currentHealth: healUpdate.newHealth };
+            return { ...char, currentHealth: healUpdate.newHealth, timesRepaired: char.timesRepaired + 1 };
           }
           return char;
         }),

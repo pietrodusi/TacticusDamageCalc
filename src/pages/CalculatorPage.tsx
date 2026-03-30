@@ -769,12 +769,13 @@ export default function CalculatorPage() {
     const repairer = battleState.team.find(c => c.id === repairContext.repairerId);
     if (!repairer) return;
 
-    // Find targets that need attack type choice (non-self with both melee and ranged)
-    const pendingAttackChoiceTargets = targetIds.filter(targetId => {
+    // Find targets that need attack type choice (only for Galvanic Field - non-self with both melee and ranged)
+    const hasGalvanicField = repairer.passiveAbilities.includes('GalvanicField');
+    const pendingAttackChoiceTargets = hasGalvanicField ? targetIds.filter(targetId => {
       if (targetId === repairContext.repairerId) return false; // Self-repair doesn't trigger attack
       const target = battleState.team.find(c => c.id === targetId);
       return target && hasBothAttacks(target);
-    });
+    }) : [];
 
     // Set default attack type for targets without both attacks (melee by default)
     const attackTypeChoices: Record<string, 'melee' | 'ranged'> = {};

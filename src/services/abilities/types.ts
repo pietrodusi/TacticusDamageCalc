@@ -137,6 +137,7 @@ export interface AbilityContext {
   hasActedThisBattle: boolean;
   attacksThisTurn: number;
   attackTurnsCount: number;  // Number of turns character has attacked (for LegacyOfCombat)
+  timesRepaired?: number;  // Number of times character was repaired this battle (for DakkaDakkaDakka)
   hasUsedAbilityThisTurn: boolean;  // Whether an active ability was used this turn
   hasQualifiedForLCDamage: boolean;  // LC damage buff: adjacent to boss + ability "used" (immediately for buffs, after first special for special attacks)
   currentHealth?: number;

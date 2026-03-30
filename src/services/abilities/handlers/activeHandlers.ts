@@ -3130,18 +3130,27 @@ export const DakkaDakkaDakkaHandler: AbilityHandler = {
   abilityName: 'Dakka! Dakka! Dakka!',
   category: 'damage',
   cooldown: -1,
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('DakkaDakkaDakka');
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
     const avgDmg = Math.round((minDmg + maxDmg) / 2);
+    const baseHits = 6;
+    const extraHitsPerRepair = 2;
+    const maxHits = 16;
+    const repairCount = context.timesRepaired || 0;
+    const repairExtraHits = Math.min(repairCount * extraHitsPerRepair, maxHits - baseHits);
     return {
       abilityId: 'DakkaDakkaDakka',
       abilityName,
       category: 'damage',
-      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: 6, damageProfile: 'Projectile' as DamageType },
+      damageResult: { minDamage: minDmg, maxDamage: maxDmg, averageDamage: avgDmg, hits: baseHits, damageProfile: 'Projectile' as DamageType },
+      abilityModifiers: repairExtraHits > 0 ? {
+        extraHits: repairExtraHits,
+        abilityName: `Repaired ${repairCount}x`,
+      } : undefined,
       attackType: 'ranged',
-      message: `${abilityName}: 6x Projectile (+2 per repair, max 16). Costs 15% HP. Overflow hits random enemies`,
+      message: abilityName,
     };
   },
 };

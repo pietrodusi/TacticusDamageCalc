@@ -55,7 +55,8 @@
       "Bash(sort:*)",
       "Bash(for ability in SorcerousFacade RealityUnbound HellfyreMissileRack TimeFlux MasterOfTheTutelaries InfernalPacts AttemptedPossession ArcaneShield Doombolt PsychicStalk AetherStride InfernalCannon CabalOfSorcerers)",
       "Bash(do echo -n \"$ability: \")",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(jq \".[] | select\\(.name == \"\"Snappawrecka\"\" or .name | contains\\(\"\"Snappawrecka\"\"\\)\\)\")"
     ],
     "deny": [],
     "ask": []
