@@ -81,6 +81,10 @@ export interface BattleCharacter extends TeamMember {
   hasUsedMartialSuperiorityThisTurn?: boolean;  // When true, MartialSuperiority cannot be used again this turn
   // Angrax's Hateful Assault manual trigger tracking
   hasUsedHatefulAssaultThisTurn?: boolean;  // When true, HatefulAssault cannot be used again this turn
+  // Anuphet's Martial Apotheosis manual trigger tracking
+  hasUsedMartialApotheosisThisTurn?: boolean;  // When true, MartialApotheosis cannot be used again this turn
+  // Thutmose's Living Lightning manual trigger tracking
+  hasUsedLivingLightningThisTurn?: boolean;  // When true, LivingLightning cannot be used again this turn
   // Pestillian's Foul Infusion buff tracking - adds Toxic follow-up to melee attacks
   foulInfusionActive?: boolean;
   foulInfusionDmg?: number;

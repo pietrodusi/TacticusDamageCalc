@@ -952,5 +952,24 @@
         "traits": ["Flying", "Mechanical"],
         "activeAbilities": [],
         "passiveAbilities": []
+	},
+	"necroSmnWarrior": {
+		"name": "Necron Warrior",
+        "visualId": "necroSmnWarrior",
+        "FactionId": "Necrons",
+        "GrandAllianceId": "Xenos",
+        "Movement": 0,
+        "weapons": [{
+                "hits": 1,
+                "DamageProfile": "Physical"
+            }, {
+                "hits": 2,
+                "DamageProfile": "Gauss",
+                "Range": 2
+            }
+        ],
+        "traits": ["Flying", "LivingMetal", "Mechanical"],
+        "activeAbilities": [],
+        "passiveAbilities": []
 	}
 }

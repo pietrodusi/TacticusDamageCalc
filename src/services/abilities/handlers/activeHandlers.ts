@@ -2712,11 +2712,12 @@ export const ResurrectionOrbHandler: AbilityHandler = {
   category: 'summon',
   cooldown: -1,
 
-  executeActive: (values: ComputedAbilityValues, _context: AbilityContext): ActiveAbilityResult => {
+  executeActive: (values: ComputedAbilityValues, context: AbilityContext): ActiveAbilityResult => {
     const abilityName = getAbilityNameSync('ResurrectionOrb');
     const summonHp = values.summonHp as number || 0;
     const summonDmg = values.summonDmg as number || 0;
     const summonArmor = values.summonArmor as number || 0;
+    const count = context.currentTurn || 1;
 
     return {
       abilityId: 'ResurrectionOrb',
@@ -2727,9 +2728,9 @@ export const ResurrectionOrbHandler: AbilityHandler = {
         hp: summonHp,
         damage: summonDmg,
         armor: summonArmor,
-        count: 1,
+        count,
       },
-      message: `${abilityName}: Resurrects Necron Warrior (HP: ${summonHp}, Dmg: ${summonDmg})`,
+      message: abilityName,
     };
   },
 };

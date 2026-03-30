@@ -23,7 +23,9 @@ interface BattleCharacterCardProps {
   onExecuteFuryOfTheAncients?: () => void;  // For Mephiston's Fury of the Ancients
   onExecuteMartialSuperiority?: () => void;  // For Jaeger's Martial Superiority
   onExecuteHatefulAssault?: () => void;  // For Angrax's Hateful Assault
+  onExecuteMartialApotheosis?: () => void;  // For Anuphet's Martial Apotheosis
   onExecuteUnwaveringSentinel?: () => void;  // For Tyrith's Unwavering Sentinel
+  onExecuteLivingLightning?: () => void;  // For Thutmose's Living Lightning
   onOpenPossessionModal?: () => void;  // For Archimatos's Possession
 }
 
@@ -44,12 +46,14 @@ export function BattleCharacterCard({
   onExecuteFuryOfTheAncients,
   onExecuteMartialSuperiority,
   onExecuteHatefulAssault,
+  onExecuteMartialApotheosis,
   onExecuteUnwaveringSentinel,
+  onExecuteLivingLightning,
   onOpenPossessionModal,
 }: BattleCharacterCardProps) {
   const [hoveredPassive, setHoveredPassive] = useState<string | null>(null);
   const hasActedThisTurn = character.hasMoved && character.hasActed;
-  const hasAnyAction = character.hasMoved || character.hasActed || character.hasUsedTheBetrayerThisTurn || character.hasUsedAbilityThisTurn || character.hasUsedOverwatchThisTurn || character.hasUsedFuryOfTheAncientsThisTurn || character.hasUsedMartialSuperiorityThisTurn || character.hasUsedHatefulAssaultThisTurn;
+  const hasAnyAction = character.hasMoved || character.hasActed || character.hasUsedTheBetrayerThisTurn || character.hasUsedAbilityThisTurn || character.hasUsedOverwatchThisTurn || character.hasUsedFuryOfTheAncientsThisTurn || character.hasUsedMartialSuperiorityThisTurn || character.hasUsedHatefulAssaultThisTurn || character.hasUsedMartialApotheosisThisTurn || character.hasUsedLivingLightningThisTurn;
 
   // Helper to get passive ability display name (with phase for Serene Unifier)
   const getPassiveDisplayName = (passiveId: string): string => {
@@ -338,7 +342,7 @@ export function BattleCharacterCard({
       {/* Action Panel (only if selected) */}
       {isSelected && (
         <div className="mt-3 pt-3 border-t border-gray-700">
-          <ActionPanel character={character} team={team} onAction={onAction} onExecuteBetrayer={onExecuteBetrayer} onExecuteOverwatch={onExecuteOverwatch} onExecuteFuryOfTheAncients={onExecuteFuryOfTheAncients} onExecuteMartialSuperiority={onExecuteMartialSuperiority} onExecuteHatefulAssault={onExecuteHatefulAssault} onExecuteUnwaveringSentinel={onExecuteUnwaveringSentinel} onOpenPossessionModal={onOpenPossessionModal} />
+          <ActionPanel character={character} team={team} onAction={onAction} onExecuteBetrayer={onExecuteBetrayer} onExecuteOverwatch={onExecuteOverwatch} onExecuteFuryOfTheAncients={onExecuteFuryOfTheAncients} onExecuteMartialSuperiority={onExecuteMartialSuperiority} onExecuteHatefulAssault={onExecuteHatefulAssault} onExecuteMartialApotheosis={onExecuteMartialApotheosis} onExecuteUnwaveringSentinel={onExecuteUnwaveringSentinel} onExecuteLivingLightning={onExecuteLivingLightning} onOpenPossessionModal={onOpenPossessionModal} />
         </div>
       )}
     </div>

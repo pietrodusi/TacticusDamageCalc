@@ -93,6 +93,8 @@ export default function CalculatorPage() {
     executeFuryOfTheAncients,
     executeMartialSuperiority,
     executeHatefulAssault,
+    executeMartialApotheosis,
+    executeLivingLightning,
     executeUnwaveringSentinel,
     spawnPossessionSummon,
     executeTheQuickening,
@@ -738,6 +740,34 @@ export default function CalculatorPage() {
 
     // Execute Hateful Assault bonus attack (does NOT end turn)
     const executeLog = executeHatefulAssault(characterId);
+    setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
+  };
+
+  // Handle Martial Apotheosis execute action for Anuphet
+  const handleExecuteMartialApotheosis = (characterId: string) => {
+    if (!battleState) return;
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) return;
+
+    const targetTurn = activeTurn;
+
+    // Execute Martial Apotheosis bonus attack (does NOT end turn)
+    const executeLog = executeMartialApotheosis(characterId);
+    setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
+  };
+
+  // Handle Living Lightning execute action for Thutmose
+  const handleExecuteLivingLightning = (characterId: string) => {
+    if (!battleState) return;
+
+    const character = battleState.team.find((c) => c.id === characterId);
+    if (!character) return;
+
+    const targetTurn = activeTurn;
+
+    // Execute Living Lightning bonus attack (does NOT end turn)
+    const executeLog = executeLivingLightning(characterId);
     setBattleLog((prev) => [...prev, { ...executeLog, turn: targetTurn }]);
   };
 
@@ -1657,6 +1687,8 @@ export default function CalculatorPage() {
                   onExecuteFuryOfTheAncients={() => handleExecuteFuryOfTheAncients(character.id)}
                   onExecuteMartialSuperiority={() => handleExecuteMartialSuperiority(character.id)}
                   onExecuteHatefulAssault={() => handleExecuteHatefulAssault(character.id)}
+                  onExecuteMartialApotheosis={() => handleExecuteMartialApotheosis(character.id)}
+                  onExecuteLivingLightning={() => handleExecuteLivingLightning(character.id)}
                   onExecuteUnwaveringSentinel={() => handleExecuteUnwaveringSentinel(character.id)}
                   onOpenPossessionModal={() => { setPossessionCharacterId(character.id); setPossessionModalOpen(true); }}
                 />

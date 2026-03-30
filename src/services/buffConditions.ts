@@ -421,27 +421,6 @@ function getOwnPassiveConditions(character: BattleCharacter): BuffCondition[] {
     }
   }
 
-  // Living Lightning (Thutmose) - Has moved
-  if (character.passiveAbilities.includes('LivingLightning')) {
-    const levelIndex = character.abilityLevels?.['LivingLightning'] ?? 59;
-    const values = getAbilityValues('LivingLightning', levelIndex, character.progressionStepIndex);
-    const abilityName = getAbilityNameSync('LivingLightning');
-
-    if (values) {
-      const minDmg = values.minDmg as number || 0;
-      const maxDmg = values.maxDmg as number || 0;
-
-      conditions.push({
-        id: 'LivingLightning',
-        label: 'Has moved',
-        source: abilityName,
-        effect: `1x ${minDmg}-${maxDmg} DirectDamage`,
-        isActive: isToggleActive(character.abilityToggles['LivingLightning']),
-        category: 'self',
-      });
-    }
-  }
-
   // Power Trip (Snappawrecka) - At full health
   if (character.passiveAbilities.includes('PowerTrip')) {
     const levelIndex = character.abilityLevels?.['PowerTrip'] ?? 59;

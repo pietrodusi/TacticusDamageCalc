@@ -12,11 +12,13 @@ interface ActionPanelProps {
   onExecuteFuryOfTheAncients?: () => void;
   onExecuteMartialSuperiority?: () => void;
   onExecuteHatefulAssault?: () => void;
+  onExecuteMartialApotheosis?: () => void;
   onExecuteUnwaveringSentinel?: () => void;
+  onExecuteLivingLightning?: () => void;
   onOpenPossessionModal?: () => void;
 }
 
-export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onExecuteOverwatch, onExecuteFuryOfTheAncients, onExecuteMartialSuperiority, onExecuteHatefulAssault, onExecuteUnwaveringSentinel, onOpenPossessionModal }: ActionPanelProps) {
+export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onExecuteOverwatch, onExecuteFuryOfTheAncients, onExecuteMartialSuperiority, onExecuteHatefulAssault, onExecuteMartialApotheosis, onExecuteUnwaveringSentinel, onExecuteLivingLightning, onOpenPossessionModal }: ActionPanelProps) {
   const hasRanged = character.rangedHits !== undefined && character.rangedHits > 0;
   const hasActiveAbility = character.activeAbilities.length > 0;
   const hasMechanicTrait = character.traits.includes('Mechanic');
@@ -25,6 +27,8 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
   const hasFuryOfTheAncientsAbility = character.passiveAbilities?.includes('FuryOfTheAncients') ?? false;
   const hasMartialSuperiorityAbility = character.passiveAbilities?.includes('MartialSuperiority') ?? false;
   const hasHatefulAssaultAbility = character.passiveAbilities?.includes('HatefulAssault') ?? false;
+  const hasMartialApotheosisAbility = character.passiveAbilities?.includes('MartialApotheosis') ?? false;
+  const hasLivingLightningAbility = character.passiveAbilities?.includes('LivingLightning') ?? false;
   const hasUnwaveringSentinelAbility = character.passiveAbilities?.includes('UnwaveringSentinel') ?? false;
   const hasPossessionAbility = character.passiveAbilities?.includes('Possession') ?? false;
   const isAdjacentToBoss = character.abilityToggles?.['adjacentToBoss'] ?? false;
@@ -286,7 +290,7 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
       </div>
 
       {/* Other Actions */}
-      <div className={`grid gap-2 ${hasMechanicTrait || hasHealerTrait || hasTheBetrayerAbility || showOverwatchButton || hasMartialSuperiorityAbility || hasHatefulAssaultAbility || hasUnwaveringSentinelAbility || hasPossessionAbility ? 'grid-cols-2 sm:grid-cols-2' : 'grid-cols-1'}`}>
+      <div className={`grid gap-2 ${hasMechanicTrait || hasHealerTrait || hasTheBetrayerAbility || showOverwatchButton || hasMartialSuperiorityAbility || hasHatefulAssaultAbility || hasUnwaveringSentinelAbility || hasPossessionAbility || hasFuryOfTheAncientsAbility || hasMartialApotheosisAbility || hasLivingLightningAbility ? 'grid-cols-2 sm:grid-cols-2' : 'grid-cols-1'}`}>
         {/* Repair (only for Mechanic trait) */}
         {hasMechanicTrait && (
           <button
@@ -451,6 +455,46 @@ export function ActionPanel({ character, team, onAction, onExecuteBetrayer, onEx
               <span className="text-xs font-medium">Hateful Assault</span>
             </div>
             <span className="text-[10px] text-gray-400">2x Power</span>
+          </button>
+        )}
+
+        {/* Martial Apotheosis (bonus attack for Anuphet) - once per turn */}
+        {hasMartialApotheosisAbility && onExecuteMartialApotheosis && (
+          <button
+            onClick={() => !character.hasUsedMartialApotheosisThisTurn && onExecuteMartialApotheosis()}
+            disabled={character.hasUsedMartialApotheosisThisTurn}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              character.hasUsedMartialApotheosisThisTurn ? disabledClasses : 'hover:bg-yellow-900/50 hover:border-yellow-600 text-yellow-500'
+            }`}
+            title="Martial Apotheosis: Start of turn 2x Energy to adjacent enemy"
+          >
+            <div className="flex items-center gap-1">
+              {getDamageTypeImageUrl('Energy') && (
+                <img src={getDamageTypeImageUrl('Energy')} alt="Energy" className="w-5 h-5" />
+              )}
+              <span className="text-xs font-medium">Martial Apotheosis</span>
+            </div>
+            <span className="text-[10px] text-gray-400">2x Energy</span>
+          </button>
+        )}
+
+        {/* Living Lightning (bonus attack for Thutmose) - once per turn */}
+        {hasLivingLightningAbility && onExecuteLivingLightning && (
+          <button
+            onClick={() => !character.hasUsedLivingLightningThisTurn && onExecuteLivingLightning()}
+            disabled={character.hasUsedLivingLightningThisTurn}
+            className={`flex flex-col items-center gap-1 p-2 rounded-lg border border-gray-700 transition-colors ${
+              character.hasUsedLivingLightningThisTurn ? disabledClasses : 'hover:bg-cyan-900/50 hover:border-cyan-600 text-cyan-500'
+            }`}
+            title="Living Lightning: 1x DirectDamage raw (once per turn)"
+          >
+            <div className="flex items-center gap-1">
+              {getDamageTypeImageUrl('DirectDamage') && (
+                <img src={getDamageTypeImageUrl('DirectDamage')} alt="DirectDamage" className="w-5 h-5" />
+              )}
+              <span className="text-xs font-medium">Living Lightning</span>
+            </div>
+            <span className="text-[10px] text-gray-400">1x DirectDmg (raw)</span>
           </button>
         )}
 

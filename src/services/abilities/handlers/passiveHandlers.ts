@@ -1758,7 +1758,7 @@ export const MartialApotheosisHandler: AbilityHandler = {
 
 /**
  * InescapableDeath (Imospekh)
- * +extraDmg to attacks, adjacent enemies -1 hit
+ * +extraDmg per hit on Overwatch attacks only. Handled in executeOverwatchAttack().
  * Variables: extraDmg
  * Constants: hitsReduction: 1
  */
@@ -1774,11 +1774,9 @@ export const InescapableDeathHandler: AbilityHandler = {
     return {
       abilityId: 'InescapableDeath',
       abilityName: getAbilityNameSync('InescapableDeath'),
-      modifiers: {
-        baseDamageBonus: extraDmg,
-      },
-      applicable: true,
-      reason: `+${extraDmg} damage (adjacent enemies -1 hit)`,
+      modifiers: {},
+      applicable: false,
+      reason: `Overwatch: +${extraDmg} dmg per hit`,
       requiresToggle: false,
     };
   },
@@ -1821,32 +1819,16 @@ export const LivingLightningHandler: AbilityHandler = {
   category: 'passive',
   cooldown: -1,
 
-  evaluatePassive: (values: ComputedAbilityValues, context: AbilityContext): PassiveAbilityEvaluation => {
+  evaluatePassive: (values: ComputedAbilityValues, _context: AbilityContext): PassiveAbilityEvaluation => {
     const minDmg = values.minDmg as number || 0;
     const maxDmg = values.maxDmg as number || 0;
-    const hasMoved = isToggleActive(context.abilityToggles?.['LivingLightning']);
-
     return {
       abilityId: 'LivingLightning',
       abilityName: getAbilityNameSync('LivingLightning'),
       modifiers: {},
-      applicable: hasMoved,
-      reason: hasMoved
-        ? `1x DirectDamage (${minDmg}-${maxDmg}) to adjacent enemy (raw damage)`
-        : 'Triggers after moving or at end of turn',
-      requiresToggle: true,
-      toggleLabel: 'Has moved',
-      followUpAttack: hasMoved
-        ? {
-            abilityId: 'LivingLightning',
-            abilityName: getAbilityNameSync('LivingLightning'),
-            hits: 1,
-            minDamage: minDmg,
-            maxDamage: maxDmg,
-            damageProfile: 'DirectDamage' as DamageType,
-            attackCategory: 'special',
-          }
-        : undefined,
+      applicable: false,
+      reason: `1x DirectDamage (${minDmg}-${maxDmg}) raw damage, no crit`,
+      requiresToggle: false,
     };
   },
 };
